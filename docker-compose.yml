@@ -5,6 +5,7 @@ services:
       context: .
     volumes:
     - ./:/src # Left hand is host, right hand is container. Basically map an outside volume into container
+    - ../data:/data # Map data folder into container
     deploy:
       resources:
         reservations:
