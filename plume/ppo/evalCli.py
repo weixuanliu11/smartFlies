@@ -82,8 +82,8 @@ import traceback
 
 import os
 os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"]=""
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152 # this line is from #https://stackoverflow.com/questions/37893755/tensorflow-set-cuda-visible-devices-within-jupyter
+# os.environ["CUDA_VISIBLE_DEVICES"]=""
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -206,11 +206,17 @@ def evaluate_agent(actor_critic, env, args):
             obs, reward, done, info = env.step(action)
             masks.fill_(0.0 if done else 1.0)
 
-            _obs = obs.detach().numpy()
-            _reward = reward.detach().numpy().squeeze()
-            _info = info[0] 
-            _action = action.detach().numpy().squeeze()
+            if args.device != 'cpu':
+                _obs = obs.to("cpu").numpy()
+                _reward = reward.to("cpu").numpy().squeeze()
+                _action = action.to("cpu").numpy().squeeze()
+            else:
+                _obs = obs.detach().numpy()
+                _reward = reward.detach().numpy().squeeze()
+                _action = action.detach().numpy().squeeze()
+            _info = info[0]
             _done = done
+            
         #         done_reason = "HOME" if is_home else \
                     # "OOB" if is_outofbounds else \
                     # "OOT" if is_outoftime else \
@@ -231,21 +237,31 @@ def evaluate_agent(actor_critic, env, args):
             reward_sum += _reward
 
             if args.squash_action:
-                action = (np.tanh(action) + 1)/2
+                action = (np.tanh(action.to("cpu")) + 1)/2
 
             trajectory.append( _info['location'] )
             observations.append( _obs )
             actions.append( _action )
             rewards.append( _reward )
             infos.append( [_info] )
-            activities.append( {
-                'rnn_hxs': activity['rnn_hxs'].detach().numpy().squeeze(),
-                'hx1_actor': activity['hx1_actor'].detach().numpy().squeeze(),
-                # 'hx1_critic': activity['hx1_critic'].detach().numpy().squeeze(), # don't care
-                # 'hidden_actor': activity['hidden_actor'].detach().numpy().squeeze(), # don't care
-                # 'hidden_critic': activity['hidden_critic'].detach().numpy().squeeze(), # don't care
-                'value': activity['value'].detach().numpy().squeeze(),
-            } )
+            if args.device != 'cpu':
+                activities.append( {
+                    'rnn_hxs': activity['rnn_hxs'].to("cpu").numpy().squeeze(),
+                    'hx1_actor': activity['hx1_actor'].to("cpu").numpy().squeeze(),
+                    # 'hx1_critic': activity['hx1_critic'].detach().numpy().squeeze(), # don't care
+                    # 'hidden_actor': activity['hidden_actor'].detach().numpy().squeeze(), # don't care
+                    # 'hidden_critic': activity['hidden_critic'].detach().numpy().squeeze(), # don't care
+                    'value': activity['value'].to("cpu").numpy().squeeze(),
+                } )
+            else:
+                activities.append( {
+                    'rnn_hxs': activity['rnn_hxs'].detach().numpy().squeeze(),
+                    'hx1_actor': activity['hx1_actor'].detach().numpy().squeeze(),
+                    # 'hx1_critic': activity['hx1_critic'].detach().numpy().squeeze(), # don't care
+                    # 'hidden_actor': activity['hidden_actor'].detach().numpy().squeeze(), # don't care
+                    # 'hidden_critic': activity['hidden_critic'].detach().numpy().squeeze(), # don't care
+                    'value': activity['value'].detach().numpy().squeeze(),
+                } )
 
             ep_step += 1
 
@@ -320,7 +336,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
         pd.DataFrame(episode_summaries).to_csv(fname3)
         print("Saving", fname3)
 
-
+        graph_OUTPREFIX = f"{OUTPREFIX}/eg_trajectory/"
         zoom = 1 if 'constant' in args.dataset else 2    
         zoom = 3 if args.walking else zoom
         agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
@@ -329,7 +345,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
                                           animate=False, # Quick plot
                                           fprefix=args.dataset,
                                           diffusionx=args.diffusionx,
-                                          outprefix=OUTPREFIX
+                                          outprefix=graph_OUTPREFIX
                                          )
         # agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
         #                                   zoom=zoom, 
@@ -366,7 +382,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
     if test_sparsity:
         for birthx in np.arange(0.9, 0.05, -0.05):
             birthx = round(birthx, 2)
-            # print("Sparse/birthx:", birthx)
+            print("Sparse/birthx:", birthx)
             try:
                 args.birthx_max = birthx # load time birthx: subsample the plume data at the time of loading 
                 args.birthx = 1.0 # dynamic birthx: subsample by rand.unif.[birthx, 1] at the time of reset at each epoch, on top of the loaded birthx
@@ -399,15 +415,16 @@ def eval_loop(args, actor_critic, test_sparsity=True):
 
                 zoom = 1 if 'constant' in args.dataset else 2    
                 zoom = 3 if args.walking else zoom
-                agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
-                    zoom=zoom, 
-                    dataset=args.dataset,
-                    animate=False,
-                    fprefix=f'sparse_{args.dataset}_{birthx}', 
-                    outprefix=OUTPREFIX,
-                    diffusionx=args.diffusionx,
-                    birthx=birthx,
-                    )
+                if birthx in [0.8, 0.6, 0.4, 0.2, 0.1]:
+                    agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
+                        zoom=zoom, 
+                        dataset=args.dataset,
+                        animate=False,
+                        fprefix=f'sparse_{args.dataset}_{birthx}', 
+                        outprefix=OUTPREFIX,
+                        diffusionx=args.diffusionx,
+                        birthx=birthx,
+                        )
                 # agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
                 #     zoom=zoom, 
                 #     dataset=args.dataset,
@@ -457,7 +474,8 @@ if __name__ == "__main__":
 
     parser.add_argument('--fixed_eval', action='store_true', default=False)
     parser.add_argument('--test_sparsity', action='store_true', default=False)
-
+    parser.add_argument('--device', default="cuda:0")
+    
     # env related
     parser.add_argument('--diffusionx',  type=float, default=1.0)
 
@@ -508,7 +526,7 @@ if __name__ == "__main__":
     args.stacking = 0
     if 'MLP' in args.model_fname:
         args.stacking = int( args.model_fname.split('MLP_s')[-1].split('_')[0] )
-    args.device = torch.device(f"cuda:0")
+    
     # actor_critic, ob_rms = torch.load(args.model_fname, map_location=torch.device('cpu'))
     actor_critic, ob_rms = torch.load(args.model_fname, map_location=torch.device(args.device))
     eval_loop(args, actor_critic, test_sparsity=args.test_sparsity)
