@@ -624,6 +624,7 @@ def main():
         fname = fname.replace('.pt', f'.{args.dataset}.pt')
         torch.save([
             actor_critic,
+            # TODO save optimizer weights
             getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
         ], fname)
         print('Saved', fname)
