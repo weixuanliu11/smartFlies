@@ -1,4 +1,4 @@
-# python3 tabulate --base_dir /src/TrainigCurriculum/data/TrainingCurriculum/sw_dist/
+# python3 /src/plume/tabulate_from_summary.py --base_dir /src/TrainigCurriculum/data/TrainingCurriculum/sw_dist/
 
 # aggregate performance eval results of all models in a directory 
 
