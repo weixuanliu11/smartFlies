@@ -404,8 +404,10 @@ def main():
     # TODO ask about seed for continuing training...
     # initializing random seed with the prev. value will repeat the sequence... Influence unknown. # goal would be to reproduce, so just doc the new seed...
     
-    if args.agent:
-    #     # get seed from fname
+    # code for continuing training a .pt
+    if args.agent: # currently just a sanity check to make sure I don't overwrite the agent
+    #     # get seed from fname SO THAT I can set the same seed... but it does not really matter?
+    # TODO find sat's seed and rerun to see if reproducible.
     #     # forgot to save json file so have to parse... ugh
     #     log_p = args.agent.replace('.pt','.log').replace('plume_','')
     #     log_p = log_p.split('plume_')[1] + '.log'
@@ -415,10 +417,13 @@ def main():
 
     #     print(first_10_lines)
         # update outprefix 
-        
-        args.outsuffix = os.path.basename(args.agent).replace('.pt','continued')
-        args.save_dir = os.path.dirname(args.agent)
-        print("[Continuing prev training] Continuing training with outprefix", args.outsuffix)
+        agent_suffix = os.path.basename(args.agent).replace('.pt','')
+        assert args.outsuffix != agent_suffix, "outprefix must NOT be the same as the seed"
+        # args.outsuffix = os.path.basename(args.agent).replace('.pt','continued')
+        # args.save_dir = os.path.dirname(args.agent)
+        print("[Continuing prev training] Continuing training ", args.agent)
+        print("[Continuing prev training] New outprefix", args.outsuffix)
+        print("[Continuing prev training] Will save to ", args.save_dir)
         # update args seed
     
         
@@ -490,8 +495,10 @@ def main():
         allow_early_resets=True)
     if args.agent:
         # TODO add saving optimizer state as well 
+        # TODO what's the difference bewteen actor_critic and agent? NOT saving before understanding this
+            # would need to look into PPO code
         print("[Continuing prev training] Loading agent from", args.agent)
-        actor_critic, ob_rms = torch.load(args.model_fname, map_location=torch.device(device))
+        actor_critic, ob_rms = torch.load(args.agent, map_location=torch.device(device))
     else:
         actor_critic = Policy(
             envs.observation_space.shape,
@@ -553,7 +560,8 @@ def main():
         fname = fname.replace('.pt', f'.{args.dataset}.pt')
         torch.save([
             actor_critic,
-            getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
+            getattr(utils.get_vec_normalize(envs), 'ob_rms', None),
+            # agent.optimizer.state_dict(),
         ], fname)
         print('Saved', fname)
     
