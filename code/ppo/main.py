@@ -335,7 +335,9 @@ def build_tc_schedule_dict(schedule_dict, total_number_trials):
         subdict = {}
         tupl_minMax, n_step_bt_minmax = value
         print("n_step_bt_minmax", n_step_bt_minmax)
+        # TODO support switching on and off log space
         scheduled_value = np.linspace(tupl_minMax[0], tupl_minMax[1], n_step_bt_minmax)
+        # scheduled_value = np.logspace(np.log10(0.9), np.log10(0.001), n_step_bt_minmax, endpoint=True)
         print("scheduled_value", len(scheduled_value))
         when_2_update = np.linspace(0, total_number_trials, n_step_bt_minmax, endpoint=False, dtype=int)
         for i in range(len(when_2_update)):
