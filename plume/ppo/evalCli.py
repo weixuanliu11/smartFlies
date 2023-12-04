@@ -336,7 +336,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
         pd.DataFrame(episode_summaries).to_csv(fname3)
         print("Saving", fname3)
 
-        graph_OUTPREFIX = f"{OUTPREFIX}/eg_trajectory/"
+        # graph_OUTPREFIX = f"{OUTPREFIX}/eg_trajectory/"
         zoom = 1 if 'constant' in args.dataset else 2    
         zoom = 3 if args.walking else zoom
         agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
@@ -345,7 +345,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
                                           animate=False, # Quick plot
                                           fprefix=args.dataset,
                                           diffusionx=args.diffusionx,
-                                          outprefix=graph_OUTPREFIX
+                                          outprefix=OUTPREFIX
                                          )
         # agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
         #                                   zoom=zoom, 
