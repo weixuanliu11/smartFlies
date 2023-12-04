@@ -6,7 +6,7 @@ import matplotlib
 
 import socket
 MACHINE = socket.gethostname().lower()
-datadir = '/src/smartFlies/data/published_results/reproduce/'
+datadir = '/data/published_results/reproduce/'
 if MACHINE == 'mycroft':
 	datadir = '/data/users/satsingh/plumedata/'
 if (MACHINE == 'salarian') or (MACHINE == 'cylon'):

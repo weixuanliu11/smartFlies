@@ -77,10 +77,9 @@ import numpy as np
 from pprint import pprint
 import glob
 import sys
-sys.path.append('../')
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 # sys.path.append('/home/satsingh/plume/plume2/')
 from plume_env import PlumeEnvironment, PlumeFrameStackEnvironment
-import agents
 import agent_analysis
 import os
 import log_analysis
