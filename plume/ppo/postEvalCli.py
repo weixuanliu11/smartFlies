@@ -89,16 +89,20 @@ import vid_stitch_cli
 import sklearn.decomposition as skld
 
 
-def post_eval(model_dir, use_datasets, n_episodes_home, n_episodes_other, viz_episodes):
-    is_recurrent = True if ('GRU' in model_dir) or ('VRNN' in model_dir) else False
+def smart_outprefix(model_dir, dataset, out_reldir):
+    # makes a directory for videos, create dir if not present
+    outprefix = '/'.join([model_dir, out_reldir, dataset])
+    os.makedirs(outprefix, exist_ok=True)
+    return outprefix
 
-    selected_df = log_analysis.get_selected_df(model_dir, 
-                                  use_datasets, 
+
+def post_eval(args):
+    is_recurrent = True if ('GRU' in args.model_dir) or ('VRNN' in args.model_dir) else False
+    selected_df = log_analysis.get_selected_df(args.model_dir, 
+                                  args.use_datasets, 
                                   n_episodes_home=60, 
                                   n_episodes_other=60,
                                   min_ep_steps=0)
-
-
     # Generate common PCA
     h_episodes = []
     traj_dfs = []
@@ -115,10 +119,10 @@ def post_eval(model_dir, use_datasets, n_episodes_home, n_episodes_other, viz_ep
     pca_common = skld.PCA(3, whiten=False)
     pca_common.fit(h_episodes_stacked)
 
-    # Get neural net 
+    # Get neural net # TODO fix this. Would never work with current setup. model.pt is not in the dir of behavioral eval
     try:
-        model_fname = model_dir[:-1] + ".pt"
-        is_recurrent = True if ('GRU' in model_dir) or ('VRNN' in model_dir) else False
+        model_fname = args.model_dir[:-1] + ".pt"
+        is_recurrent = True if ('GRU' in args.model_dir) or ('VRNN' in args.model_dir) else False
         actor_critic, ob_rms = \
             torch.load(model_fname, map_location=torch.device('cpu'))
         net = actor_critic.base.rnn #.weight_hh_l0.detach().numpy()
@@ -126,33 +130,19 @@ def post_eval(model_dir, use_datasets, n_episodes_home, n_episodes_other, viz_ep
     except Exception as e:
         print(f"Exception: {e}")
 
+    subset_df = selected_df.groupby(['dataset', 'outcome']).head(args.viz_episodes)
 
-    # Animate (1) trajectory, (2) Neural on common subspace, (3) eigen    
-    # subset_df = selected_df.groupby(['dataset', 'outcome']).sample(viz_episodes)
-    # subset_df = selected_df.query("outcome == 'HOME' and dataset == 'noisy3x5b5'").sample(viz_episodes)
-    # subset_df = selected_df.query("outcome == 'HOME' and dataset == 'constantx5b5'").sample(viz_episodes)
-    # subset_df = selected_df.query("outcome == 'HOME' and dataset == 'switch45x5b5'").sample(viz_episodes)
-    # subset_df = selected_df.query("outcome == 'OOB' and dataset == 'noisy3x5b5'").sample(viz_episodes)
-    # subset_df = selected_df.query("outcome == 'OOB' and dataset == 'constantx5b5'").sample(viz_episodes)
-    # subset_df = selected_df.query("outcome == 'OOB' and dataset == 'switch45x5b5'").sample(viz_episodes)
-    # subset_df = selected_df.query("dataset == 'noisy3x5b5'").groupby(['dataset', 'outcome']).sample(viz_episodes)
-    # subset_df = selected_df.query("dataset == 'constantx5b5'").groupby(['dataset', 'outcome']).sample(viz_episodes)
-    # subset_df = selected_df.query("dataset == 'switch45x5b5'").groupby(['dataset', 'outcome']).sample(viz_episodes)
-    subset_df = selected_df.groupby(['dataset', 'outcome']).head(viz_episodes)
     for idx, row in subset_df.iterrows():
-        if args.birthxs is not None: # HACK!!!!
-            continue
-
         ep_activity = log_analysis.get_activity(row['log'], 
             is_recurrent, 
             do_plot=False)
         traj_df = log_analysis.get_traj_df(row['log'], 
                     extended_metadata=False, 
                     squash_action=squash_action)
-        OUTPREFIX = model_dir
         dataset = row['dataset']
         outcome = row['outcome']
         fprefix = f'{row["dataset"]}_{outcome}'
+        OUTPREFIX = smart_outprefix(args.model_dir, dataset, args.out_reldir)
 
         try:
             # Need to regenerate since no guarantee present already?
@@ -196,75 +186,78 @@ def post_eval(model_dir, use_datasets, n_episodes_home, n_episodes_other, viz_ep
 
 
     # DIRTY Hack to add sparse videos
-    logfiles = natsorted(glob.glob(model_dir + '*.pkl'))
-    if args.birthxs is not None:
-        for birthx in args.birthxs:
-            sparse_dataset = [f'constantx5b5_{birthx}']
+    # logfiles = natsorted(glob.glob(args.model_dir + '*.pkl')) # never used. Commented out
+    for birthx in args.birthxs:
+        if birthx == 1 or not birthx or birthx == 'None': # skip. 1 is not sparse. The rest is for supporting old format
+            continue 
+        sparse_dataset = [f'constantx5b5_{birthx}', f'switch45x5b5_{birthx}', f'noisy3x5b5_{birthx}']
+        
+        try:
+            sparse_selected_df = log_analysis.get_selected_df(args.model_dir, 
+                                sparse_dataset, 
+                                n_episodes_home=60, 
+                                n_episodes_other=60,
+                                min_ep_steps=0)
+        except Exception as e:
+            print(f"Exception: {e}", traceback.print_exc())
+            continue
+
+        sparse_subset_df = sparse_selected_df.groupby(['dataset', 'outcome']).sample(args.viz_episodes)
+        # sparse_subset_df = sparse_selected_df.query("outcome == 'OOB'").sample(args.viz_episodes)
+        for idx, row in sparse_subset_df.iterrows():
+            ep_activity = log_analysis.get_activity(row['log'], 
+                is_recurrent, 
+                do_plot=False)
+            traj_df = log_analysis.get_traj_df(row['log'], 
+                        extended_metadata=False, 
+                        squash_action=squash_action)
+            
+            dataset = row['dataset'].split('_')[0]
+            outcome = row['outcome']
+            fprefix = f'{row["dataset"]}_{birthx}_{outcome}'
+            OUTPREFIX = smart_outprefix(args.model_dir, dataset)
+            print("dataset",dataset)
+
             try:
-                sparse_selected_df = log_analysis.get_selected_df(model_dir, 
-                                  sparse_dataset, 
-                                  n_episodes_home=60, 
-                                  n_episodes_other=60,
-                                  min_ep_steps=0)
+                # Need to regenerate since no guarantee present already?
+                zoom = 1 if 'constant' in dataset else 2    
+                zoom = 4 if ('constant' in dataset) and ('HOME' not in outcome) else zoom 
+                # zoom = 0 
+                zoom = 3 if args.walking else zoom
+                agent_analysis.visualize_episodes(episode_logs=[row['log']], 
+                                                    episode_idxs=[row['idx']],
+                                                    zoom=zoom, 
+                                                    dataset=dataset,
+                                                    animate=True,
+                                                    fprefix=fprefix,
+                                                    outprefix=OUTPREFIX,
+                                                    birthx=float(birthx),
+                                                    diffusionx=args.diffusionx,
+                                                    )    
+
+                log_analysis.animate_activity_1episode(ep_activity, 
+                        traj_df, 
+                        row['idx'], 
+                        fprefix=fprefix,
+                        outprefix=OUTPREFIX,
+                        pca_dims=3,
+                        pca_common=pca_common)
+
+                # eig animations/plots
+                eig_df = archu.get_eig_df_episode(net, row['log'])
+                fname_suffix = f"{fprefix}_ep{row['idx']}"
+                archu.animate_Jh_episode(eig_df, 
+                    fname_suffix=fname_suffix, 
+                    outprefix=OUTPREFIX)
+                eig_vals, eig_vecs = np.linalg.eig(J0)
+                archu.plot_eigvec_projections(eig_vals, 
+                    eig_vecs, 
+                    ep_activity, 
+                    fname_suffix=fname_suffix, 
+                    outprefix=OUTPREFIX)
+
             except Exception as e:
                 print(f"Exception: {e}", traceback.print_exc())
-                continue
-
-            sparse_subset_df = sparse_selected_df.groupby(['dataset', 'outcome']).sample(viz_episodes)
-            # sparse_subset_df = sparse_selected_df.query("outcome == 'OOB'").sample(viz_episodes)
-            for idx, row in sparse_subset_df.iterrows():
-                ep_activity = log_analysis.get_activity(row['log'], 
-                    is_recurrent, 
-                    do_plot=False)
-                traj_df = log_analysis.get_traj_df(row['log'], 
-                            extended_metadata=False, 
-                            squash_action=squash_action)
-                OUTPREFIX = model_dir
-                dataset = row['dataset'].split('_')[0]
-                outcome = row['outcome']
-                fprefix = f'{row["dataset"]}_{outcome}'
-                print("dataset",dataset)
-
-                try:
-                    # Need to regenerate since no guarantee present already?
-                    zoom = 1 if 'constant' in dataset else 2    
-                    zoom = 4 if ('constant' in dataset) and ('HOME' not in outcome) else zoom 
-                    # zoom = 0 
-                    zoom = 3 if args.walking else zoom
-                    agent_analysis.visualize_episodes(episode_logs=[row['log']], 
-                                                      episode_idxs=[row['idx']],
-                                                      zoom=zoom, 
-                                                      dataset=dataset,
-                                                      animate=True,
-                                                      fprefix=fprefix,
-                                                      outprefix=OUTPREFIX,
-                                                      birthx=float(birthx),
-                                                      diffusionx=args.diffusionx,
-                                                     )    
-
-                    log_analysis.animate_activity_1episode(ep_activity, 
-                            traj_df, 
-                            row['idx'], 
-                            fprefix=fprefix,
-                            outprefix=OUTPREFIX,
-                            pca_dims=3,
-                            pca_common=pca_common)
-
-                    # eig animations/plots
-                    eig_df = archu.get_eig_df_episode(net, row['log'])
-                    fname_suffix = f"{fprefix}_ep{row['idx']}"
-                    archu.animate_Jh_episode(eig_df, 
-                        fname_suffix=fname_suffix, 
-                        outprefix=OUTPREFIX)
-                    eig_vals, eig_vecs = np.linalg.eig(J0)
-                    archu.plot_eigvec_projections(eig_vals, 
-                        eig_vecs, 
-                        ep_activity, 
-                        fname_suffix=fname_suffix, 
-                        outprefix=OUTPREFIX)
-
-                except Exception as e:
-                    print(f"Exception: {e}", traceback.print_exc())
 
 
 ### MAIN ###
@@ -273,17 +266,12 @@ if __name__ == "__main__":
     parser.add_argument('--model_dir', default=None)
     parser.add_argument('--viz_episodes', type=int, default=2)
     parser.add_argument('--walking', type=bool, default=False)
-    parser.add_argument('--birthxs', type=str, nargs='+', default=None)
+    parser.add_argument('--birthxs', type=float, nargs='+', default=None)
     parser.add_argument('--diffusionx',  type=float, default=1.0)
+    parser.add_argument('--out_reldir', type=str, default='2_videos')
+    parser.add_argument('--use_datasets', type=str, default=['constantx5b5', 'switch45x5b5', 'noisy3x5b5'])
 
     args = parser.parse_args()
     print(args)
-    use_datasets = ['constantx5b5', 'switch45x5b5', 'noisy3x5b5']
-    n_episodes_home = 30
-    n_episodes_other = 30
 
-    post_eval(args.model_dir, 
-        use_datasets, 
-        n_episodes_home, 
-        n_episodes_other, 
-        args.viz_episodes)
+    post_eval(args)

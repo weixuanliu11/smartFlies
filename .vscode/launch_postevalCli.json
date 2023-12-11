@@ -1,0 +1,24 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["--birthxs",
+            "None",
+            "--diffusionx",
+            "1.0",
+            "--model_dir",
+            "'/data/TrainingCurriculum/sw_dist/birthx_nsteps4/continued/plume_plume_20231108_VRNN_constantx5b5_stepoob_bx0.3_t1000000_q2.0_dmx0.8_dmn0.7_h64_wd0.0001_n4_codeVRNN_seed24299f2continued_31329_noisy3x5b5.noisy3x5b5'",
+            "--viz_episodes",
+            "10",
+            "--walking",
+            "False"
+            ]
+        }
+    ]
+}
