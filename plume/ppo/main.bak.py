@@ -1,4 +1,6 @@
 """
+# 121423 created this snapshot
+
 # Adapted from: https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail
 
 ENV=BipedalWalker-v3
