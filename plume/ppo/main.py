@@ -418,28 +418,25 @@ def main():
     if len(args.dataset) > 1:
         env_collection = []
         for i in range(len(args.dataset)):
-            datasets = args.dataset[i]
-            birthxs = args.birthx[i]
-            qvars = args.qvar[i]
-            diff_maxs = args.diff_max[i]
-            diff_mins = args.diff_min[i]
-            num_env_stepss = args.num_env_steps[i]
-            envs = make_vec_envs(args.env_name, 
-                    args.seed, 
-                    args.num_processes,
-                    args.gamma, 
-                    args.log_dir, 
-                    device, 
-                    False, # allow_early_resets? 
-                    args)
+            curriculum_vars = {
+                'datasets': args.dataset[i],
+                'birthxs': args.birthx[i],
+                'qvars': args.qvar[i],
+                'diff_maxs': args.diff_max[i],
+                'diff_mins': args.diff_min[i]
+            }
+            envs = make_vec_envs(
+                args.env_name,
+                args.seed,
+                args.num_processes,
+                args.gamma,
+                args.log_dir,
+                device,
+                False,  # allow_early_resets?
+                args,
+                curriculum_vars # set these envs vars according to the curriculum
+            )
             env_collection.append(envs)
-
-
-    stage_idx = 0
-    training_log = None
-    eval_log = None
-
-
 
     eval_env = make_vec_envs(
         args.env_name,
@@ -480,7 +477,6 @@ def main():
     with open(fname, 'w') as fp:
         json.dump(vars(args), fp)
 
-
     # Save model at START of training
     fname = f'{args.save_dir}/{args.env_name}_{args.outsuffix}.pt.start'
     torch.save([
@@ -489,6 +485,9 @@ def main():
     ], fname)
     print('Saved', fname)
 
+    training_log, eval_log = training_loop(agent, envs, args, device, actor_critic, 
+        training_log=training_log, eval_log=eval_log, eval_env=eval_env)  
+    
 
     # Curriculum hack
     num_stages = len(datasets)
