@@ -1,126 +1,16 @@
 """
 # Adapted from: https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail
-
-ENV=BipedalWalker-v3
-NUMPROC=4 # 1800 FPS for 12, 3000 FPS for 24
-python main.py --env-name $ENV --algo ppo --use-gae --log-interval 1 --num-steps 2048 --num-processes $NUMPROC --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch 10 --num-mini-batch 32 --gamma 0.99 --gae-lambda 0.95 --num-env-steps 1000000 --use-linear-lr-decay --use-proper-time-limits
-
-ENV=BipedalWalkerHardcore-v3
-NUMPROC=4
-python main.py --env-name $ENV --algo ppo --recurrent-policy --num-mini-batch $NUMPROC --use-gae --log-interval 1 --num-steps 2048 --num-processes $NUMPROC --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch 10 --gamma 0.99 --gae-lambda 0.95 --num-env-steps 1000000 --use-linear-lr-decay --use-proper-time-limits
-
-###### DryRun Plume ###### 
-SHAPE="step oob stray"
-SHAPE=end
-SHAPE=step
-SHAPE="step stray"
-SHAPE="xstep stray"
-SHAPE=xstep
-SHAPE="xstep ystray"
-SHAPE="xstep stray_abs"
-SHAPE="step oob"
-SHAPE="step end"
-ALGO=ppo
-DATASET=constantx5b5
-DATASET=noisy3x5b5
-NUMPROC=4 # Walle... ~4h/model
-NUMPROC=1 # Walle... ~4h/model
-
-#  --eval_type short \
-#  --eval_type skip \
-#  --eval_type fixed \
-
-
-RNNTYPE=VRNN
-OUTSUFFIX=Test${RNNTYPE}$RANDOM
-SAVEDIR=./trained_models/Test${RNNTYPE}/
-mkdir -p $SAVEDIR
-python -u main.py --env-name plume \
- --num-env-steps 10000 \
- --dataset $DATASET \
- --seed $RANDOM \
- --eval-interval 1 \
- --eval_type skip \
- --eval_episodes 3 \
- --hidden_size 64 \
- --r_shaping $SHAPE \
- --diff_max 0.9 \
- --diff_min 0.4 \
- --diffusion_max 1.0 \
- --diffusion_min 0.33 \
- --odor_scaling True \
- --flipping True \
- --qvar 0.0 \
- --birthx 0.2 \
- --weight_decay 0.01 \
- --obs_noise 0.025 \
- --act_noise 0.025 \
- --algo $ALGO \
- --recurrent-policy \
- --squash_action True \
- --test_episodes 10 \
- --viz_episodes 10 \
- --log-interval 1 \
- --save-interval 1 \
- --save-dir $SAVEDIR \
- --rnn_type ${RNNTYPE} \
- --num-processes $NUMPROC \
- --num-mini-batch $NUMPROC \
- --outsuffix $OUTSUFFIX \
- --use-gae --num-steps 2000 --lr 3e-4 --entropy-coef 0.005 --value-loss-coef 0.5 --ppo-epoch 10 --gamma 0.997 --gae-lambda 0.95 --use-linear-lr-decay
- --use-gae --num-steps 2000 --lr 3e-4 --entropy-coef 0.005 --value-loss-coef 0.5 --ppo-epoch 10 --gamma 0.99 --gae-lambda 0.95 --use-linear-lr-decay
- --use-gae --num-steps 500 --lr 3e-4 --entropy-coef 0.01 --value-loss-coef 0.5 --ppo-epoch 10 --gamma 0.99 --gae-lambda 0.95 --use-linear-lr-decay
- --use-gae --num-steps 100 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch 10 --gamma 0.99 --gae-lambda 0.95 --use-linear-lr-decay
- --use-gae --num-steps 2000 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch 10 --gamma 0.99 --gae-lambda 0.95 --use-linear-lr-decay
-
-NUMPROC=2
-OUTSUFFIX=TestMLPs10$RANDOM
-SAVEDIR=./trained_models/${OUTSUFFIX}/
-mkdir -p $SAVEDIR
-python -u main.py --env-name plume \
- --stacking 10 \
-  --save-dir $SAVEDIR \
- --squash_action True \
- --dataset $DATASET \
- --num-env-steps 10000 \
- --log-interval 1 \
- --save-interval 1 \
- --r_shaping $SHAPE \
- --algo $ALGO \
- --diff_max 0.5 \
- --num-processes $NUMPROC \
- --num-mini-batch $NUMPROC \
- --test_episodes 1 \
- --outsuffix $OUTSUFFIX \
- --odor_scaling True \
- --flipping True \
- --qvar 1.5 \
- --weight_decay 0.01 \
- --use-gae --num-steps 128 --lr 3e-4 --entropy-coef 0.01 --value-loss-coef 0.5 --ppo-epoch 10 --gamma 0.97 --gae-lambda 0.95 --use-linear-lr-decay
-
- --use-gae --num-steps 2048 --lr 3e-4 --entropy-coef 0 --value-loss-coef 0.5 --ppo-epoch 10 --gamma 0.99 --gae-lambda 0.95 --use-linear-lr-decay 
-
- --masking odor \
- --stride 5 \
-
+# take out the TC hack
 """
 
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-
-
-import copy
-import glob
 import os
 import time
 from collections import deque
 
-import gym
 import numpy as np
 import pandas as pd
 
@@ -245,6 +135,12 @@ def get_args():
     parser.add_argument('--act_noise', type=float, default=0.0)
 
     args = parser.parse_args()
+    
+    assert len(args.datasets) == len(args.birthxs) 
+    assert len(args.datasets) == len(args.qvars) 
+    assert len(args.datasets) == len(args.diff_maxs) 
+    assert len(args.datasets) == len(args.diff_mins) 
+    assert len(args.datasets) == len(args.num_env_stepss) 
 
     # args.cuda = not args.no_cuda and 
     cuda_available = torch.cuda.is_available()
@@ -485,15 +381,11 @@ def training_loop(agent, envs, args, device, actor_critic,
                 eval_log.append(eval_record)
                 print("eval_lite:", eval_record)
 
-                save_path = args.save_dir # os.path.join(args.save_dir, args.algo)
+                save_path = args.save_dir
                 os.makedirs(save_path, exist_ok=True)
                 fname = os.path.join(save_path, f'{args.env_name}_{args.outsuffix}_{args.dataset}_eval.csv')
                 pd.DataFrame(eval_log).to_csv(fname)
-        #     # ob_rms = utils.get_vec_normalize(envs).ob_rms
-        #     ob_rms = None
-        #     # evaluate(actor_critic, ob_rms, args.env_name, args.seed,
-        #     #          args.num_processes, args.eval_log_dir, device)
-        #     evaluate(actor_critic, args, device)
+                
     return training_log, eval_log
 
 def main():
@@ -519,7 +411,6 @@ def main():
     utils.cleanup_log_dir(args.eval_log_dir)
 
     torch.set_num_threads(1)
-    # gpu_idx = np.random.choice([i for i in range(torch.cuda.device_count())])
     gpu_idx = 0
     device = torch.device(f"cuda:{gpu_idx}" if args.cuda else "cpu")
 
@@ -530,11 +421,7 @@ def main():
     diff_maxs = args.diff_max
     diff_mins = args.diff_min
     num_env_stepss = args.num_env_steps
-    assert len(datasets) == len(birthxs) 
-    assert len(datasets) == len(qvars) 
-    assert len(datasets) == len(diff_maxs) 
-    assert len(datasets) == len(diff_mins) 
-    assert len(datasets) == len(num_env_stepss) 
+
     stage_idx = 0
     training_log = None
     eval_log = None
