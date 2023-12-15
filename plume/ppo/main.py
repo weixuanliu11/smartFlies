@@ -414,33 +414,32 @@ def main():
     gpu_idx = 0
     device = torch.device(f"cuda:{gpu_idx}" if args.cuda else "cpu")
 
-    # Curriculum hack
-    datasets = args.dataset
-    birthxs = args.birthx
-    qvars = args.qvar
-    diff_maxs = args.diff_max
-    diff_mins = args.diff_min
-    num_env_stepss = args.num_env_steps
+    # Build envs for training
+    if len(args.dataset) > 1:
+        env_collection = []
+        for i in range(len(args.dataset)):
+            datasets = args.dataset[i]
+            birthxs = args.birthx[i]
+            qvars = args.qvar[i]
+            diff_maxs = args.diff_max[i]
+            diff_mins = args.diff_min[i]
+            num_env_stepss = args.num_env_steps[i]
+            envs = make_vec_envs(args.env_name, 
+                    args.seed, 
+                    args.num_processes,
+                    args.gamma, 
+                    args.log_dir, 
+                    device, 
+                    False, # allow_early_resets? 
+                    args)
+            env_collection.append(envs)
+
 
     stage_idx = 0
     training_log = None
     eval_log = None
-    args.dataset = datasets[stage_idx] 
-    args.birthx = birthxs[stage_idx] 
-    args.qvar = qvars[stage_idx] 
-    args.diff_max = diff_maxs[stage_idx] 
-    args.diff_min = diff_mins[stage_idx] 
-    args.num_env_steps = num_env_stepss[stage_idx] 
 
 
-    envs = make_vec_envs(args.env_name, 
-                        args.seed, 
-                        args.num_processes,
-                        args.gamma, 
-                        args.log_dir, 
-                        device, 
-                        False, 
-                        args)
 
     eval_env = make_vec_envs(
         args.env_name,
