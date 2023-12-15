@@ -17,7 +17,7 @@ sys.path.append('../../')
 
 import importlib
 
-def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None):
+def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs):
     # both seed info is redundant... seed args and provided separately
     if args.dynamic:
         import plume_env_dynamic as plume_env
@@ -35,34 +35,64 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None):
         if 'plume' in env_id:
             # hard coded to be plume in evalCli: env_name=plume. Only instance of env_id found so far
             if args.recurrent_policy or (args.stacking == 0):
-                print("Using PlumeEnvironment...", flush=True, file=sys.stdout)
-                env = plume_env.PlumeEnvironment(
-                    dataset=args.dataset,
-                    turnx=args.turnx,
-                    movex=args.movex,
-                    birthx=args.birthx,
-                    birthx_max=args.birthx_max,
-                    env_dt=args.env_dt,
-                    loc_algo=args.loc_algo,
-                    time_algo=args.time_algo,
-                    diff_max=args.diff_max,
-                    diff_min=args.diff_min,
-                    auto_movex=args.auto_movex,
-                    auto_reward=args.auto_reward,
-                    walking=args.walking,
-                    radiusx=args.radiusx,
-                    r_shaping=args.r_shaping,
-                    wind_rel=args.wind_rel,
-                    action_feedback=args.action_feedback,
-                    squash_action=args.squash_action,
-                    flipping=args.flipping,
-                    odor_scaling=args.odor_scaling,
-                    qvar=args.qvar,
-                    stray_max=args.stray_max,
-                    obs_noise=args.obs_noise,
-                    act_noise=args.act_noise,
-                    seed=args.seed, 
-                    )
+                if kwargs:
+                    print("kwargs ON", flush=True, file=sys.stdout)
+                    env = plume_env.PlumeEnvironment(
+                        dataset=kwargs['dataset'],
+                        birthx=kwargs['birthx'],
+                        qvar=kwargs['qvar'],
+                        diff_max=kwargs['diff_max'],
+                        diff_min=kwargs['diff_min'],
+                        turnx=args.turnx,
+                        movex=args.movex,
+                        birthx_max=args.birthx_max,
+                        env_dt=args.env_dt,
+                        loc_algo=args.loc_algo,
+                        time_algo=args.time_algo,
+                        auto_movex=args.auto_movex,
+                        auto_reward=args.auto_reward,
+                        walking=args.walking,
+                        radiusx=args.radiusx,
+                        r_shaping=args.r_shaping,
+                        wind_rel=args.wind_rel,
+                        action_feedback=args.action_feedback,
+                        squash_action=args.squash_action,
+                        flipping=args.flipping,
+                        odor_scaling=args.odor_scaling,
+                        stray_max=args.stray_max,
+                        obs_noise=args.obs_noise,
+                        act_noise=args.act_noise,
+                        seed=args.seed, 
+                        )
+                else:
+                    # bkw compat before cleaning up TC hack
+                    env = plume_env.PlumeEnvironment(
+                        dataset=args.dataset,
+                        turnx=args.turnx,
+                        movex=args.movex,
+                        birthx=args.birthx,
+                        birthx_max=args.birthx_max,
+                        env_dt=args.env_dt,
+                        loc_algo=args.loc_algo,
+                        time_algo=args.time_algo,
+                        diff_max=args.diff_max,
+                        diff_min=args.diff_min,
+                        auto_movex=args.auto_movex,
+                        auto_reward=args.auto_reward,
+                        walking=args.walking,
+                        radiusx=args.radiusx,
+                        r_shaping=args.r_shaping,
+                        wind_rel=args.wind_rel,
+                        action_feedback=args.action_feedback,
+                        squash_action=args.squash_action,
+                        flipping=args.flipping,
+                        odor_scaling=args.odor_scaling,
+                        qvar=args.qvar,
+                        stray_max=args.stray_max,
+                        obs_noise=args.obs_noise,
+                        act_noise=args.act_noise,
+                        seed=args.seed, 
+                        )
             else:
                 # Dont ever see this in logs so far
                 print("Using PlumeFrameStackEnvironment...", flush=True, file=sys.stdout)
