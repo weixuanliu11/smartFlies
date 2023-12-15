@@ -242,28 +242,51 @@ def build_tc_schedule_dict(schedule_dict, total_number_trials):
     return dict
 
 
-def training_loop(agent, envs, args, device, actor_critic, 
-    training_log=None, eval_log=None, eval_env=None):
-    # each stage of the training loop gets thrown in this 
-    rollouts = RolloutStorage(args.num_steps, args.num_processes,
-                          envs.observation_space.shape, envs.action_space,
-                          actor_critic.recurrent_hidden_state_size)
+def training_loop(agent, env_collection, args, device, actor_critic, 
+    training_log=None, eval_log=None, eval_env=None, rollouts=None):
+    
+    # setting up
+    if not rollouts: 
+        rollouts = RolloutStorage(args.num_steps, args.num_processes,
+                        env_collection[0].observation_space.shape, 
+                        env_collection[0].action_space,
+                        actor_critic.recurrent_hidden_state_size)
     num_updates = int(
         args.num_env_steps) // args.num_steps // args.num_processes # args.num_env_steps 1M for constant 4M for noisy (found in logs) # args.num_steps=2048 (found in logs) # args.num_processes=4=mini_batch (found in logs)
-    if args.birthx_linear_tc_steps:
-        birthx_specs = {"birthx":[(0.9, args.birthx), args.birthx_linear_tc_steps]}
-        schedule = build_tc_schedule_dict(birthx_specs, num_updates)
-        update_by_schedule(envs, schedule, 0)
-        
-    obs = envs.reset()
-    rollouts.obs[0].copy_(obs)
-    rollouts.to(device)
-
+    
     episode_rewards = deque(maxlen=50) 
     best_mean = 0.0
 
     training_log = training_log if training_log is not None else []
     eval_log = eval_log if eval_log is not None else []
+    
+    
+    # TODO a simple test to see if environments can be swapped out
+    
+    # TODO: store if this env has not been called upon previously
+    obs = envs.reset()
+    rollouts.obs[0].copy_(obs)
+    rollouts.to(device)
+
+    if args.birthx_linear_tc_steps:
+        birthx_specs = {"birthx":[(0.9, args.birthx), args.birthx_linear_tc_steps]}
+        schedule = build_tc_schedule_dict(birthx_specs, num_updates)
+        update_by_schedule(envs, schedule, 0)
+    
+    # at each bout of update
+        
+        # update environments according to the curriculum
+        # TODO: select wind conditions that are represented by the envs 
+    
+    # start training    
+        # at each step of training 
+        
+        # run training 
+        
+        # TODO: when an environment has finished. select another according to the curriculum
+        
+        # save and log
+
 
     start = time.time()
     for j in range(num_updates):
@@ -415,28 +438,27 @@ def main():
     device = torch.device(f"cuda:{gpu_idx}" if args.cuda else "cpu")
 
     # Build envs for training
-    if len(args.dataset) > 1:
-        env_collection = []
-        for i in range(len(args.dataset)):
-            curriculum_vars = {
-                'datasets': args.dataset[i],
-                'birthxs': args.birthx[i],
-                'qvars': args.qvar[i],
-                'diff_maxs': args.diff_max[i],
-                'diff_mins': args.diff_min[i]
-            }
-            envs = make_vec_envs(
-                args.env_name,
-                args.seed,
-                args.num_processes,
-                args.gamma,
-                args.log_dir,
-                device,
-                False,  # allow_early_resets?
-                args,
-                curriculum_vars # set these envs vars according to the curriculum
-            )
-            env_collection.append(envs)
+    env_collection = []
+    for i in range(len(args.dataset)):
+        curriculum_vars = {
+            'datasets': args.dataset[i],
+            'birthxs': args.birthx[i],
+            'qvars': args.qvar[i],
+            'diff_maxs': args.diff_max[i],
+            'diff_mins': args.diff_min[i]
+        }
+        envs = make_vec_envs(
+            args.env_name,
+            args.seed,
+            args.num_processes,
+            args.gamma,
+            args.log_dir,
+            device,
+            False,  # allow_early_resets?
+            args,
+            curriculum_vars # set these envs vars according to the curriculum
+        )
+        env_collection.append(envs)
 
     eval_env = make_vec_envs(
         args.env_name,
@@ -449,7 +471,7 @@ def main():
         allow_early_resets=True)
 
     actor_critic = Policy(
-        envs.observation_space.shape,
+        envs.observation_space.shape, 
         envs.action_space,
         base_kwargs={
                      'recurrent': args.recurrent_policy,
@@ -484,38 +506,17 @@ def main():
         getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
     ], fname)
     print('Saved', fname)
-
-    training_log, eval_log = training_loop(agent, envs, args, device, actor_critic, 
-        training_log=training_log, eval_log=eval_log, eval_env=eval_env)  
     
+    # keeping these for backwards compatibility
+    training_log = None
+    eval_log = None
 
-    # Curriculum hack
-    num_stages = len(datasets)
-    fname = f'{args.save_dir}/{args.env_name}_{args.outsuffix}.pt'
-    for stage_idx in range(num_stages):
-        args.dataset = datasets[stage_idx] 
-        args.birthx = birthxs[stage_idx] 
-        args.qvar = qvars[stage_idx] 
-        args.diff_max = diff_maxs[stage_idx] 
-        args.diff_min = diff_mins[stage_idx] 
-        args.num_env_steps = num_env_stepss[stage_idx] 
-        print(f"Stage: {stage_idx}/{num_stages} - {args.dataset} b{args.birthx} q{args.qvar} n{args.num_env_steps}")
-
-        if stage_idx > 0: # already made one above
-            envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                         args.gamma, args.log_dir, device, False, args)
-        training_log, eval_log = training_loop(agent, envs, args, device, actor_critic, 
-            training_log=training_log, eval_log=eval_log, eval_env=eval_env)  
-        
-        # Save model after each stage of training
-        fname = fname.replace('.pt', f'.{args.dataset}.pt')
-        torch.save([
-            actor_critic,
-            # TODO save optimizer weights
-            getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
-        ], fname)
-        print('Saved', fname)
-    
+    # run training loop
+    rollouts = RolloutStorage(args.num_steps, args.num_processes,
+                        envs.observation_space.shape, envs.action_space,
+                        actor_critic.recurrent_hidden_state_size)
+    training_log, eval_log = training_loop(agent, env_collection, args, device, actor_critic, 
+        training_log=training_log, eval_log=eval_log, eval_env=eval_env, rollouts=rollouts)  
 
     #### -------------- Done training - now Evaluate -------------- ####
     if args.eval_type == 'skip':
