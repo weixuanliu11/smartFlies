@@ -348,16 +348,54 @@ def training_loop(agent, env_collection, args, device, actor_critic,
                     envs.venv.venv.work_remotes[i] = tobe_swapped.venv.venv.work_remotes[i]
                     
                     tmp1.send(("get_attr", 'dataset'))
-                    print(tmp1.recv())
-                    tobe_swapped.remotes[i].send(("get_attr", 'dataset'))
-                    print(tobe_swapped.remotes[i].recv())
-                    envs.remotes[i].send(("get_attr", 'dataset'))
-                    print(envs.remotes[i].recv())
-                    envs.get_attr('dataset', indices=[0,1]) # works now!
+                    print(f"prev env dataset at {i} {tmp1.recv()}")
+                    tmp1.send(("get_attr", 'data_puffs'))
+                    print(f"with puffs shape: {tmp1.recv().shape}")
                     
+                    tobe_swapped.remotes[i].send(("get_attr", 'dataset'))
+                    print(f"to be swapped with dataset {tobe_swapped.remotes[i].recv()}")
+                    tobe_swapped.remotes[i].send(("get_attr", 'data_puffs'))
+                    print(f"with puffs shape: {tobe_swapped.remotes[i].recv().shape}")
+                    
+                    envs.remotes[i].send(("get_attr", 'dataset'))
+                    print(f"now dataset {envs.remotes[i].recv()}")
+                    envs.remotes[i].send(("get_attr", 'data_puffs'))
+                    print(f"with puffs shape: {envs.remotes[i].recv().shape}")
+                    print(f"now var contains {envs.get_attr('dataset', indices=[0,1])}")# works now!
+                    
+                    
+                    # pass in reset for new env
+                    print('resetting...')
+                    envs.remotes[i].send(("reset", None))
+                    new_obs = envs.remotes[i].recv()
+                    envs.remotes[i].send(("get_attr", 'data_puffs'))
+                    print(f"new puffs shape: {envs.remotes[i].recv().shape}")
+                    print('has this impacted the tob_swapped?') # yes
+                    tobe_swapped.remotes[i].send(("get_attr", 'data_puffs'))
+                    print(f"tobe_swapped puffs shape: {tobe_swapped.remotes[i].recv().shape}")
+                    # envs.remotes[i] still the same as tobe_swapped?
+                    # envs.remotes[i].send(("get_attr", 'data_puffs'))
+                    # x = tobe_swapped.remotes[i].recv()
+                    
+                    # since no deep copy opf the envs are made. 
+                    # AND that envs reset automatically after done 
+                    # ADN that envs are reset mannuall after swapping
+                    # AND that resetting an env twice in a row gives an error 
+                    # would their be a conflict?
+                    
+                    # test: reset the env that just finished... should have been reset after DONE
+                    
+                    tmp1.send(("reset", None))
+                    tmp1_reset_obs = tmp1.recv()
+                    tmp1.send(("get_attr", 'data_puffs'))
+                    print(f"after resetting, old env data_pluffs shape: {tmp1.recv().shape}")
+                    # answer EOFError... indeed errored out
+                    
+                    # exchange old obs with new 
+                    rollouts.obs[step][i].copy_(new_obs[i])
                     # TODO: insert new obs
                     # TODO: test run one step 
-                    # new_obs = envs.reset()
+                    
                     
             for info in infos:
                 if 'episode' in info.keys():
