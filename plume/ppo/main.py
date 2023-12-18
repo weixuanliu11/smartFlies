@@ -366,20 +366,10 @@ def training_loop(agent, env_collection, args, device, actor_critic,
                     tobe_swapped.remotes[i].send(("get_attr", 'data_puffs'))
                     print(f"tobe_swapped puffs shape: {tobe_swapped.remotes[i].recv().shape}")
 
-                    
-                    # since no deep copy opf the envs are made. 
-                    # AND that envs reset automatically after done 
-                    # ADN that envs are reset mannuall after swapping
-                    # AND that resetting an env twice in a row gives an error 
-                    # would their be a conflict?
-                    
-                    # test: reset the env that just finished... should have been reset after DONE
-                    
                     tmp1.send(("reset", None))
                     tmp1_reset_obs = tmp1.recv()
                     tmp1.send(("get_attr", 'data_puffs'))
                     print(f"after resetting, old env data_pluffs shape: {tmp1.recv().shape}")
-                    # answer EOFError... indeed errored out
                     
                     # exchange old obs with new 
                     rollouts.obs[step][i].copy_(new_obs[i])
