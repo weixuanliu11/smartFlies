@@ -99,7 +99,8 @@ def get_args():
 
     # Curriculum hack
     parser.add_argument('--dataset', type=str, nargs='+', default=['constantx5b5'])
-    parser.add_argument('--num-env-steps', type=int, nargs='+', default=[10e6])
+    parser.add_argument('--num-env-steps', type=int, default=10e6)
+    # parser.add_argument('--num-env-steps', type=int, nargs='+', default=[10e6]) # save for bkwds compat
     parser.add_argument('--qvar', type=float, nargs='+', default=[0.0])
     parser.add_argument('--birthx',  type=float, nargs='+', default=[1.0])
     parser.add_argument('--diff_max',  type=float, nargs='+', default=[0.8])
@@ -136,11 +137,10 @@ def get_args():
 
     args = parser.parse_args()
     
-    assert len(args.datasets) == len(args.birthxs) 
-    assert len(args.datasets) == len(args.qvars) 
-    assert len(args.datasets) == len(args.diff_maxs) 
-    assert len(args.datasets) == len(args.diff_mins) 
-    assert len(args.datasets) == len(args.num_env_stepss) 
+    assert len(args.dataset) == len(args.birthx) 
+    assert len(args.dataset) == len(args.qvar) 
+    assert len(args.dataset) == len(args.diff_max) 
+    assert len(args.dataset) == len(args.diff_min) 
 
     # args.cuda = not args.no_cuda and 
     cuda_available = torch.cuda.is_available()
@@ -260,18 +260,18 @@ def training_loop(agent, env_collection, args, device, actor_critic,
     training_log = training_log if training_log is not None else []
     eval_log = eval_log if eval_log is not None else []
     
-    
+    envs = env_collection[0]
     # TODO a simple test to see if environments can be swapped out
     
     # TODO: store if this env has not been called upon previously
     obs = envs.reset()
-    rollouts.obs[0].copy_(obs)
+    rollouts.obs[0].copy_(obs) # https://discuss.pytorch.org/t/which-copy-is-better/56393
     rollouts.to(device)
 
-    if args.birthx_linear_tc_steps:
-        birthx_specs = {"birthx":[(0.9, args.birthx), args.birthx_linear_tc_steps]}
-        schedule = build_tc_schedule_dict(birthx_specs, num_updates)
-        update_by_schedule(envs, schedule, 0)
+    # if args.birthx_linear_tc_steps:
+    #     birthx_specs = {"birthx":[(0.9, args.birthx), args.birthx_linear_tc_steps]}
+    #     schedule = build_tc_schedule_dict(birthx_specs, num_updates)
+    #     update_by_schedule(envs, schedule, 0)
     
     # at each bout of update
         
@@ -296,8 +296,8 @@ def training_loop(agent, env_collection, args, device, actor_critic,
             # decrease learning rate linearly
             utils.update_linear_schedule(
                 agent.optimizer, j, num_updates, args.lr)
-        if args.birthx_linear_tc_steps:
-            update_by_schedule(envs, schedule, j)
+        # if args.birthx_linear_tc_steps:
+        #     update_by_schedule(envs, schedule, j)
 
         for step in range(args.num_steps):
             # Sample actions
@@ -309,15 +309,63 @@ def training_loop(agent, env_collection, args, device, actor_critic,
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
+            for i, d in enumerate(done):
+                if d:
+                    print(envs.get_attr('dataset', indices=i))
+                    print(f"Env {i} done at step {step}")
+                    # envs[i] = env_collection[1][i]
+                    
+                    env_collection[1].get_attr('dataset', indices=i)
+                    tobe_swapped = env_collection[1]
+                    
+                    print(envs.get_attr('dataset', indices=i))
 
+                    tmp0 = envs.processes[i]
+                    tmp1 = envs.remotes[i]
+                    tmp2 = envs.work_remotes[i]
+                    # when calling envs.get_attr('dataset', indices=[0,1])
+                    # envs.venv.venv.remotes get used
+                    v_tmp0 = envs.venv.venv.processes[i]
+                    v_tmp1 = envs.venv.venv.remotes[i]
+                    v_tmp2 = envs.venv.venv.work_remotes[i]
+                    
+                    # swap out the envs
+                    envs.processes = list(envs.processes) # already a list
+                    envs.remotes = list(envs.remotes)
+                    envs.work_remotes = list(envs.work_remotes)
+                    envs.processes[i] = tobe_swapped.processes[i]
+                    envs.remotes[i] = tobe_swapped.remotes[i]
+                    envs.work_remotes[i] = tobe_swapped.work_remotes[i]
+                    envs.remotes = tuple(envs.remotes)
+                    envs.work_remotes = tuple(envs.work_remotes)
+                    
+                    # swap out the venvs
+                    envs.venv.venv.processes = list(envs.venv.venv.processes) # already a list
+                    envs.venv.venv.remotes = list(envs.venv.venv.remotes)
+                    envs.venv.venv.work_remotes = list(envs.venv.venv.work_remotes)
+                    envs.venv.venv.processes[i] = tobe_swapped.venv.venv.processes[i]
+                    envs.venv.venv.remotes[i] = tobe_swapped.venv.venv.remotes[i]
+                    envs.venv.venv.work_remotes[i] = tobe_swapped.venv.venv.work_remotes[i]
+                    
+                    tmp1.send(("get_attr", 'dataset'))
+                    print(tmp1.recv())
+                    tobe_swapped.remotes[i].send(("get_attr", 'dataset'))
+                    print(tobe_swapped.remotes[i].recv())
+                    envs.remotes[i].send(("get_attr", 'dataset'))
+                    print(envs.remotes[i].recv())
+                    envs.get_attr('dataset', indices=[0,1]) # works now!
+                    
+                    # TODO: insert new obs
+                    # TODO: test run one step 
+                    # new_obs = envs.reset()
+                    
             for info in infos:
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
-
             # If done then clean the history of observations.
             masks = torch.FloatTensor(
                 [[0.0] if done_ else [1.0] for done_ in done])
-            # TODO unsure what this is
+            # TODO unsure what this is [may be about if done and self.env._max_episode_steps == self.env._elapsed_steps:]
             bad_masks = torch.FloatTensor(
                 [[0.0] if 'bad_transition' in info.keys() else [1.0]
                  for info in infos])
@@ -441,11 +489,11 @@ def main():
     env_collection = []
     for i in range(len(args.dataset)):
         curriculum_vars = {
-            'datasets': args.dataset[i],
-            'birthxs': args.birthx[i],
-            'qvars': args.qvar[i],
-            'diff_maxs': args.diff_max[i],
-            'diff_mins': args.diff_min[i]
+            'dataset': args.dataset[i],
+            'birthx': args.birthx[i],
+            'qvar': args.qvar[i],
+            'diff_max': args.diff_max[i],
+            'diff_min': args.diff_min[i]
         }
         envs = make_vec_envs(
             args.env_name,
@@ -455,20 +503,21 @@ def main():
             args.log_dir,
             device,
             False,  # allow_early_resets?
-            args,
-            curriculum_vars # set these envs vars according to the curriculum
-        )
+            args = args,
+            **curriculum_vars) # set these envs vars according to the curriculum
+    
         env_collection.append(envs)
 
-    eval_env = make_vec_envs(
-        args.env_name,
-        args.seed + 1000,
-        num_processes=1,
-        gamma=args.gamma, 
-        log_dir=args.log_dir, 
-        device=device,
-        args=args,
-        allow_early_resets=True)
+    # TODO clean up. not supported with args.dataset as a list 
+    # eval_env = make_vec_envs(
+    #     args.env_name,
+    #     args.seed + 1000,
+    #     num_processes=1,
+    #     gamma=args.gamma, 
+    #     log_dir=args.log_dir, 
+    #     device=device,
+    #     args=args,
+    #     allow_early_resets=True)
 
     actor_critic = Policy(
         envs.observation_space.shape, 
@@ -495,17 +544,17 @@ def main():
 
     # Save args and config info
     # https://stackoverflow.com/questions/16878315/what-is-the-right-way-to-treat-argparse-namespace-as-a-dictionary
-    fname = f"{args.save_dir}/{args.env_name}_{args.outsuffix}_args.json"
-    with open(fname, 'w') as fp:
-        json.dump(vars(args), fp)
+    # fname = f"{args.save_dir}/{args.env_name}_{args.outsuffix}_args.json"
+    # with open(fname, 'w') as fp:
+    #     json.dump(vars(args), fp)
 
-    # Save model at START of training
-    fname = f'{args.save_dir}/{args.env_name}_{args.outsuffix}.pt.start'
-    torch.save([
-        actor_critic,
-        getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
-    ], fname)
-    print('Saved', fname)
+    # # Save model at START of training
+    # fname = f'{args.save_dir}/{args.env_name}_{args.outsuffix}.pt.start'
+    # torch.save([
+    #     actor_critic,
+    #     getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
+    # ], fname)
+    # print('Saved', fname)
     
     # keeping these for backwards compatibility
     training_log = None
@@ -516,7 +565,7 @@ def main():
                         envs.observation_space.shape, envs.action_space,
                         actor_critic.recurrent_hidden_state_size)
     training_log, eval_log = training_loop(agent, env_collection, args, device, actor_critic, 
-        training_log=training_log, eval_log=eval_log, eval_env=eval_env, rollouts=rollouts)  
+        training_log=training_log, eval_log=eval_log, eval_env=None, rollouts=rollouts)  
 
     #### -------------- Done training - now Evaluate -------------- ####
     if args.eval_type == 'skip':
