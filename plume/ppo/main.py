@@ -309,7 +309,12 @@ def training_loop(agent, env_collection, args, device, actor_critic,
                     rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])
 
-            # Obser reward and next obs # TODO envs.step... calls wrapper or the nested venv? 
+            # Obser reward and next obs # TODO envs.step... calls wrapper or the nested venv?
+            # envs.step() -> VecEnv.step -> VecEnv.step_async (undefined) -> VecPyTorch.step_async -> 
+            # VecNormalize self.venv.step_async() -> VecEnvWrapper self.venv.step_async -> 
+            # finally subprocVecEnv.step_async -> subprocVecEnv.remotes.send(('step', action)) 
+            
+            # Ultimately step takes a step through the remote in the nested venv, not the outermost remote
             obs, reward, done, infos = envs.step(action)
             for i, d in enumerate(done):
                 if d:
