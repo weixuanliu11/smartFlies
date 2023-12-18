@@ -156,9 +156,11 @@ def make_vec_envs(env_name,
                   device,
                   allow_early_resets,
                   args=None,
-                  num_frame_stack=None):
+                  num_frame_stack=None, 
+                  **kwargs
+                  ):
     envs = [
-        make_env(env_name, seed, i, log_dir, allow_early_resets, args)
+        make_env(env_name, seed, i, log_dir, allow_early_resets, args, **kwargs)
         for i in range(num_processes)
     ]
 
