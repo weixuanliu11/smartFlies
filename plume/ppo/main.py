@@ -339,22 +339,21 @@ def training_loop(agent, env_collection, args, device, actor_critic,
                     envs.venv.venv.remotes[i] = tobe_swapped.venv.venv.remotes[i]
                     envs.venv.venv.work_remotes[i] = tobe_swapped.venv.venv.work_remotes[i]
                     
-                    tmp1.send(("get_attr", 'dataset'))
-                    print(f"prev env dataset at {i} {tmp1.recv()}")
-                    tmp1.send(("get_attr", 'data_puffs'))
-                    print(f"with puffs shape: {tmp1.recv().shape}")
+                    # tmp1.send(("get_attr", 'dataset'))
+                    # print(f"prev env dataset at {i} {tmp1.recv()}")
+                    # tmp1.send(("get_attr", 'data_puffs'))
+                    # print(f"with puffs shape: {tmp1.recv().shape}")
                     
-                    tobe_swapped.remotes[i].send(("get_attr", 'dataset'))
-                    print(f"to be swapped with dataset {tobe_swapped.remotes[i].recv()}")
-                    tobe_swapped.remotes[i].send(("get_attr", 'data_puffs'))
-                    print(f"with puffs shape: {tobe_swapped.remotes[i].recv().shape}")
+                    # tobe_swapped.remotes[i].send(("get_attr", 'dataset'))
+                    # print(f"to be swapped with dataset {tobe_swapped.remotes[i].recv()}")
+                    # tobe_swapped.remotes[i].send(("get_attr", 'data_puffs'))
+                    # print(f"with puffs shape: {tobe_swapped.remotes[i].recv().shape}")
                     
-                    envs.remotes[i].send(("get_attr", 'dataset'))
-                    print(f"now dataset {envs.remotes[i].recv()}")
-                    envs.remotes[i].send(("get_attr", 'data_puffs'))
-                    print(f"with puffs shape: {envs.remotes[i].recv().shape}")
-                    print(f"now var contains {envs.get_attr('dataset', indices=[0,1])}")# works now!
-                    
+                    # envs.remotes[i].send(("get_attr", 'dataset'))
+                    # print(f"now dataset {envs.remotes[i].recv()}")
+                    # envs.remotes[i].send(("get_attr", 'data_puffs'))
+                    # print(f"with puffs shape: {envs.remotes[i].recv().shape}")
+                    # print(f"now var contains {envs.get_attr('dataset', indices=[0,1])}")
                     
                     # pass in reset for new env
                     print('resetting...')
@@ -362,7 +361,7 @@ def training_loop(agent, env_collection, args, device, actor_critic,
                     new_obs = envs.remotes[i].recv()
                     envs.remotes[i].send(("get_attr", 'data_puffs'))
                     print(f"new puffs shape: {envs.remotes[i].recv().shape}")
-                    print('has this impacted the tob_swapped?') # yes
+                    print('has this impacted the tob_swapped? yes if the same puffs shapes') # yes
                     tobe_swapped.remotes[i].send(("get_attr", 'data_puffs'))
                     print(f"tobe_swapped puffs shape: {tobe_swapped.remotes[i].recv().shape}")
 
@@ -372,15 +371,15 @@ def training_loop(agent, env_collection, args, device, actor_critic,
                     print(f"after resetting, old env data_pluffs shape: {tmp1.recv().shape}")
                     
                     # exchange old obs with new 
-                    rollouts.obs[step][i].copy_(new_obs[i])
-                    # TODO: insert new obs
-                    # TODO: test run one step 
-                    
+                    print(f"swapping obs... new obs {new_obs}")
+                    print(f"swapping obs... old obs {obs[i]}")
+                    obs[i] = torch.from_numpy(new_obs)
+
                     
             for info in infos:
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
-            # If done then clean the history of observations.
+            # If done then clean the history of observations in the recurrent_hidden_states. Done in the MLPBase forward method
             masks = torch.FloatTensor(
                 [[0.0] if done_ else [1.0] for done_ in done])
             # TODO unsure what this is [may be about if done and self.env._max_episode_steps == self.env._elapsed_steps:]
