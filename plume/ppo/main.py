@@ -309,7 +309,7 @@ def training_loop(agent, env_collection, args, device, actor_critic,
                     rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])
 
-            # Obser reward and next obs
+            # Obser reward and next obs # TODO envs.step... calls wrapper or the nested venv? 
             obs, reward, done, infos = envs.step(action)
             for i, d in enumerate(done):
                 if d:
@@ -343,6 +343,10 @@ def training_loop(agent, env_collection, args, device, actor_critic,
                     # envs.work_remotes = tuple(envs.work_remotes)
                     
                     # swap out the venvs
+                    # NOTE: has to set venv because get_attribute is is def'd in wrappers, which all refers to venv! 
+                        # swapping the out most processes and remotes does not influence get_attr 
+                            # but what about envs.remotes[i].send(("get_attr", 'dataset'))?
+                            # I already swapped out the remote. it should be what I want...
                     envs.venv.venv.processes = list(envs.venv.venv.processes) # already a list
                     envs.venv.venv.remotes = list(envs.venv.venv.remotes)
                     envs.venv.venv.work_remotes = list(envs.venv.venv.work_remotes)
