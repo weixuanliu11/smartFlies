@@ -260,10 +260,12 @@ def training_loop(agent, env_collection, args, device, actor_critic,
     training_log = training_log if training_log is not None else []
     eval_log = eval_log if eval_log is not None else []
     
-    envs = env_collection[0]
-    # TODO a simple test to see if environments can be swapped out
+    envs = env_collection[0] # TODO: make env_collection the reservour of envs. 
+                                # modify what's contained in envs.
+    # TODO a simple test to see if environments can be swapped out # yes!!!!
     
-    # TODO: store if this env has not been called upon previously
+    # TODO: store if this env has not been called upon previously # just hard reset every time a new one goes into the envs
+
     obs = envs.reset()
     rollouts.obs[0].copy_(obs) # https://discuss.pytorch.org/t/which-copy-is-better/56393
     rollouts.to(device)
@@ -329,15 +331,16 @@ def training_loop(agent, env_collection, args, device, actor_critic,
                     v_tmp1 = envs.venv.venv.remotes[i]
                     v_tmp2 = envs.venv.venv.work_remotes[i]
                     
-                    # swap out the envs
-                    envs.processes = list(envs.processes) # already a list
-                    envs.remotes = list(envs.remotes)
-                    envs.work_remotes = list(envs.work_remotes)
-                    envs.processes[i] = tobe_swapped.processes[i]
-                    envs.remotes[i] = tobe_swapped.remotes[i]
-                    envs.work_remotes[i] = tobe_swapped.work_remotes[i]
-                    envs.remotes = tuple(envs.remotes)
-                    envs.work_remotes = tuple(envs.work_remotes)
+                    # TODO: does it still work when only swapping out the venvs? Venvs makes the difference in envs.get_attr('dataset', indices=[0,1])
+                    # # swap out the envs
+                    # envs.processes = list(envs.processes) # already a list
+                    # envs.remotes = list(envs.remotes)
+                    # envs.work_remotes = list(envs.work_remotes)
+                    # envs.processes[i] = tobe_swapped.processes[i]
+                    # envs.remotes[i] = tobe_swapped.remotes[i]
+                    # envs.work_remotes[i] = tobe_swapped.work_remotes[i]
+                    # envs.remotes = tuple(envs.remotes)
+                    # envs.work_remotes = tuple(envs.work_remotes)
                     
                     # swap out the venvs
                     envs.venv.venv.processes = list(envs.venv.venv.processes) # already a list
@@ -540,7 +543,7 @@ def main():
             args.gamma,
             args.log_dir,
             device,
-            False,  # allow_early_resets?
+            True,  # allow_early_resets? This is to support resetting an env twice in a row. Twice in a row happens because one auto reset after done and another after swapping.
             args = args,
             **curriculum_vars) # set these envs vars according to the curriculum
     
