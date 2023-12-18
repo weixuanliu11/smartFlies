@@ -6,11 +6,12 @@ import matplotlib
 
 import socket
 MACHINE = socket.gethostname().lower()
-datadir = '/data/published_results/reproduce/'
-if MACHINE == 'mycroft':
-	datadir = '/data/users/satsingh/plumedata/'
-if (MACHINE == 'salarian') or (MACHINE == 'cylon'):
-	datadir = '/data1/users/satsingh/plumedata/'
+# datadir = '/data/published_results/reproduce/'
+datadir = '/src/data/published_results/reproduce/'
+# if MACHINE == 'mycroft':
+# 	datadir = '/data/users/satsingh/plumedata/'
+# if (MACHINE == 'salarian') or (MACHINE == 'cylon'):
+# 	datadir = '/data1/users/satsingh/plumedata/'
 
 seed_global = 137
 
