@@ -327,33 +327,11 @@ def training_loop(agent, env_collection, args, device, actor_critic,
                     
                     print(envs.get_attr('dataset', indices=i))
 
-                    tmp0 = envs.processes[i]
-                    tmp1 = envs.remotes[i]
-                    tmp2 = envs.work_remotes[i]
-                    # when calling envs.get_attr('dataset', indices=[0,1])
-                    # envs.venv.venv.remotes get used
-                    v_tmp0 = envs.venv.venv.processes[i]
-                    v_tmp1 = envs.venv.venv.remotes[i]
-                    v_tmp2 = envs.venv.venv.work_remotes[i]
-                    
-                    # TODO: does it still work when only swapping out the venvs? Venvs makes the difference in envs.get_attr('dataset', indices=[0,1])
-                    # # swap out the envs
-                    # envs.processes = list(envs.processes) # already a list
-                    # envs.remotes = list(envs.remotes)
-                    # envs.work_remotes = list(envs.work_remotes)
-                    # envs.processes[i] = tobe_swapped.processes[i]
-                    # envs.remotes[i] = tobe_swapped.remotes[i]
-                    # envs.work_remotes[i] = tobe_swapped.work_remotes[i]
-                    # envs.remotes = tuple(envs.remotes)
-                    # envs.work_remotes = tuple(envs.work_remotes)
-                    
+                    tmp0 = envs.venv.venv.processes[i]
+                    tmp1 = envs.venv.venv.remotes[i]
+                    tmp2 = envs.venv.venv.work_remotes[i]
+
                     # swap out the venvs
-                    # NOTE: has to set venv because get_attribute is is def'd in wrappers, which all refers to venv! 
-                        # swapping the out most processes and remotes does not influence get_attr 
-                            # but what about envs.remotes[i].send(("get_attr", 'dataset'))?
-                            # I already swapped out the remote. it should be what I want...
-                            # swapping out the venvs automatically swaps out the remotes and processes
-                    
                     envs.venv.venv.processes = list(envs.venv.venv.processes) # already a list
                     envs.venv.venv.remotes = list(envs.venv.venv.remotes)
                     envs.venv.venv.work_remotes = list(envs.venv.venv.work_remotes)
@@ -387,9 +365,7 @@ def training_loop(agent, env_collection, args, device, actor_critic,
                     print('has this impacted the tob_swapped?') # yes
                     tobe_swapped.remotes[i].send(("get_attr", 'data_puffs'))
                     print(f"tobe_swapped puffs shape: {tobe_swapped.remotes[i].recv().shape}")
-                    # envs.remotes[i] still the same as tobe_swapped?
-                    # envs.remotes[i].send(("get_attr", 'data_puffs'))
-                    # x = tobe_swapped.remotes[i].recv()
+
                     
                     # since no deep copy opf the envs are made. 
                     # AND that envs reset automatically after done 
