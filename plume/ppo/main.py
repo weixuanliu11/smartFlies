@@ -309,7 +309,7 @@ def training_loop(agent, env_collection, args, device, actor_critic,
                     rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])
 
-            # Obser reward and next obs # TODO envs.step... calls wrapper or the nested venv?
+            # Obser reward and next obs
             # envs.step() -> VecEnv.step -> VecEnv.step_async (undefined) -> VecPyTorch.step_async -> 
             # VecNormalize self.venv.step_async() -> VecEnvWrapper self.venv.step_async -> 
             # finally subprocVecEnv.step_async -> subprocVecEnv.remotes.send(('step', action)) 
@@ -352,6 +352,8 @@ def training_loop(agent, env_collection, args, device, actor_critic,
                         # swapping the out most processes and remotes does not influence get_attr 
                             # but what about envs.remotes[i].send(("get_attr", 'dataset'))?
                             # I already swapped out the remote. it should be what I want...
+                            # swapping out the venvs automatically swaps out the remotes and processes
+                    
                     envs.venv.venv.processes = list(envs.venv.venv.processes) # already a list
                     envs.venv.venv.remotes = list(envs.venv.venv.remotes)
                     envs.venv.venv.work_remotes = list(envs.venv.venv.work_remotes)
