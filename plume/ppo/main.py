@@ -242,6 +242,49 @@ def build_tc_schedule_dict(schedule_dict, total_number_trials):
     return dict
 
 
+def swap_envs(envs, tobe_swapped, obs, i, verbose=0):
+    if tobe_swapped:
+        # make a copy
+        tmp0 = envs.venv.venv.processes[i]
+        tmp1 = envs.venv.venv.remotes[i]
+        tmp2 = envs.venv.venv.work_remotes[i]
+        # turn tuple into list
+        envs.venv.venv.processes = list(envs.venv.venv.processes) # already a list. keep just in case...
+        envs.venv.venv.remotes = list(envs.venv.venv.remotes)
+        envs.venv.venv.work_remotes = list(envs.venv.venv.work_remotes)
+        # swap out the old env
+        envs.venv.venv.processes[i] = tobe_swapped.venv.venv.processes[i]
+        envs.venv.venv.remotes[i] = tobe_swapped.venv.venv.remotes[i]
+        envs.venv.venv.work_remotes[i] = tobe_swapped.venv.venv.work_remotes[i]
+        # pass in reset for new env
+        envs.remotes[i].send(("reset", None))
+        new_obs = envs.remotes[i].recv()
+        envs.remotes[i].send(("get_attr", 'data_puffs'))
+        # exchange old obs with new 
+        obs[i] = torch.from_numpy(new_obs)
+        if verbose:
+            tmp1.send(("get_attr", 'dataset'))
+            print(f"prev env dataset at {i} {tmp1.recv()}")
+            tmp1.send(("get_attr", 'data_puffs'))
+            print(f"with puffs shape: {tmp1.recv().shape}")
+            
+            tobe_swapped.remotes[i].send(("get_attr", 'dataset'))
+            print(f"to be swapped with dataset {tobe_swapped.remotes[i].recv()}")
+            tobe_swapped.remotes[i].send(("get_attr", 'data_puffs'))
+            print(f"with puffs shape: {tobe_swapped.remotes[i].recv().shape}")
+            
+            envs.remotes[i].send(("get_attr", 'dataset'))
+            print(f"now dataset {envs.remotes[i].recv()}")
+            envs.remotes[i].send(("get_attr", 'data_puffs'))
+            print(f"with puffs shape: {envs.remotes[i].recv().shape}")
+            print(f"now var contains {envs.get_attr('dataset', indices=[0,1])}")
+            print(f"swapping obs... old obs {obs[i]}")
+            print(f"swapping obs... new obs {new_obs}")
+        return envs, obs
+    else:
+        return envs, obs
+                        
+                        
 def training_loop(agent, env_collection, args, device, actor_critic, 
     training_log=None, eval_log=None, eval_env=None, rollouts=None):
     
@@ -262,9 +305,6 @@ def training_loop(agent, env_collection, args, device, actor_critic,
     
     envs = env_collection[0] # TODO: make env_collection the reservour of envs. 
                                 # modify what's contained in envs.
-    # TODO a simple test to see if environments can be swapped out # yes!!!!
-    
-    # TODO: store if this env has not been called upon previously # just hard reset every time a new one goes into the envs
 
     obs = envs.reset()
     rollouts.obs[0].copy_(obs) # https://discuss.pytorch.org/t/which-copy-is-better/56393
@@ -308,74 +348,14 @@ def training_loop(agent, env_collection, args, device, actor_critic,
                     rollouts.obs[step], 
                     rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])
-
-            # Obser reward and next obs
-            # envs.step() -> VecEnv.step -> VecEnv.step_async (undefined) -> VecPyTorch.step_async -> 
-            # VecNormalize self.venv.step_async() -> VecEnvWrapper self.venv.step_async -> 
-            # finally subprocVecEnv.step_async -> subprocVecEnv.remotes.send(('step', action)) 
-            
-            # Ultimately step takes a step through the remote in the nested venv, not the outermost remote
             obs, reward, done, infos = envs.step(action)
-            for i, d in enumerate(done):
+            for i, d in enumerate(done): # TC: if done, decide if changing the envs
                 if d:
-                    print(envs.get_attr('dataset', indices=i))
-                    print(f"Env {i} done at step {step}")
-                    # envs[i] = env_collection[1][i]
-                    
-                    env_collection[1].get_attr('dataset', indices=i)
-                    tobe_swapped = env_collection[1]
-                    
-                    print(envs.get_attr('dataset', indices=i))
-
-                    tmp0 = envs.venv.venv.processes[i]
-                    tmp1 = envs.venv.venv.remotes[i]
-                    tmp2 = envs.venv.venv.work_remotes[i]
-
-                    # swap out the venvs
-                    envs.venv.venv.processes = list(envs.venv.venv.processes) # already a list
-                    envs.venv.venv.remotes = list(envs.venv.venv.remotes)
-                    envs.venv.venv.work_remotes = list(envs.venv.venv.work_remotes)
-                    envs.venv.venv.processes[i] = tobe_swapped.venv.venv.processes[i]
-                    envs.venv.venv.remotes[i] = tobe_swapped.venv.venv.remotes[i]
-                    envs.venv.venv.work_remotes[i] = tobe_swapped.venv.venv.work_remotes[i]
-                    
-                    # tmp1.send(("get_attr", 'dataset'))
-                    # print(f"prev env dataset at {i} {tmp1.recv()}")
-                    # tmp1.send(("get_attr", 'data_puffs'))
-                    # print(f"with puffs shape: {tmp1.recv().shape}")
-                    
-                    # tobe_swapped.remotes[i].send(("get_attr", 'dataset'))
-                    # print(f"to be swapped with dataset {tobe_swapped.remotes[i].recv()}")
-                    # tobe_swapped.remotes[i].send(("get_attr", 'data_puffs'))
-                    # print(f"with puffs shape: {tobe_swapped.remotes[i].recv().shape}")
-                    
-                    # envs.remotes[i].send(("get_attr", 'dataset'))
-                    # print(f"now dataset {envs.remotes[i].recv()}")
-                    # envs.remotes[i].send(("get_attr", 'data_puffs'))
-                    # print(f"with puffs shape: {envs.remotes[i].recv().shape}")
-                    # print(f"now var contains {envs.get_attr('dataset', indices=[0,1])}")
-                    
-                    # pass in reset for new env
-                    print('resetting...')
-                    envs.remotes[i].send(("reset", None))
-                    new_obs = envs.remotes[i].recv()
-                    envs.remotes[i].send(("get_attr", 'data_puffs'))
-                    print(f"new puffs shape: {envs.remotes[i].recv().shape}")
-                    print('has this impacted the tob_swapped? yes if the same puffs shapes') # yes
-                    tobe_swapped.remotes[i].send(("get_attr", 'data_puffs'))
-                    print(f"tobe_swapped puffs shape: {tobe_swapped.remotes[i].recv().shape}")
-
-                    tmp1.send(("reset", None))
-                    tmp1_reset_obs = tmp1.recv()
-                    tmp1.send(("get_attr", 'data_puffs'))
-                    print(f"after resetting, old env data_pluffs shape: {tmp1.recv().shape}")
-                    
-                    # exchange old obs with new 
-                    print(f"swapping obs... new obs {new_obs}")
-                    print(f"swapping obs... old obs {obs[i]}")
-                    obs[i] = torch.from_numpy(new_obs)
-
-                    
+                    # select a new env from the curriculum TODO
+                    tobe_swapped = whether_to_swap(xyz)
+                        
+                    # put in the new env and update obs under the new env
+                    envs, obs = swap_envs(envs, tobe_swapped, obs, i, verbose=1)                    
             for info in infos:
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
