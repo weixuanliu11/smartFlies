@@ -2,7 +2,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+# path append for debugging ...
+import sys
+sys.path.append('/src/TrainigCurriculum/plume/ppo/')
 from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian, BetaCustom
 from a2c_ppo_acktr.utils import init
 
