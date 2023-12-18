@@ -243,6 +243,22 @@ def build_tc_schedule_dict(schedule_dict, total_number_trials):
 
 
 def swap_envs(envs, tobe_swapped, obs, i, verbose=0):
+    """
+    Swaps out the environment at index `i` in `envs` with the environment at index `i` in `tobe_swapped`.
+    Updates the observation `obs` with the new observation from the swapped environment.
+    
+
+    Args:
+        envs (object): The VecEnv object that is used in training.
+        tobe_swapped (object): The VecEnv object to be swapped in.
+        obs (list): The list of observations from the end of the current step. The obs needs to be updated since the environment has changed.
+        i (int): The index of the environment to be swapped.
+        verbose (int, optional): Verbosity level. Defaults to 0.
+
+    Returns:
+        tuple: A tuple containing the updated `envs` and `obs`.
+        Returns the same `envs` and `obs` if `tobe_swapped` is None.
+    """
     if tobe_swapped:
         # make a copy
         tmp0 = envs.venv.venv.processes[i]
