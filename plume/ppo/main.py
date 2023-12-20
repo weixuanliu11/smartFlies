@@ -203,16 +203,6 @@ def eval_lite(agent, env, args, device, actor_critic):
     return eval_record
 
 
-def update_by_schedule(env, schedule_dict, curr_step):
-    for k in schedule_dict.keys():
-        _schedule_dict = schedule_dict[k]
-        # if the current step should be updated 
-        if curr_step in _schedule_dict:
-            env.env_method("update_env_param", {k: _schedule_dict[curr_step]})
-            print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
-    
-            
-
 def build_tc_schedule_dict(schedule_dict, total_number_trials):
     """
     Builds a training curriculum schedule dictionary.
@@ -240,6 +230,24 @@ def build_tc_schedule_dict(schedule_dict, total_number_trials):
             subdict[when_2_update[i]] = scheduled_value[i]
         dict[key] = subdict
     return dict
+
+
+def update_by_schedule(env_collection, schedule_dict, curr_step):
+    # updating the env_collection will change the currently running envs :o
+    for k in schedule_dict.keys():
+        _schedule_dict = schedule_dict[k]
+        # if the current step should be updated 
+        if curr_step in _schedule_dict:
+            # TODO: implement a density function over the probs of selecting a new TC value
+            if k == 'birthx': # update the birthx value in the envs. Sparsity is decided in each envs.reset() at each trial
+                for envs in env_collection:
+                    envs.env_method("update_env_param", {k: _schedule_dict[curr_step]})
+
+                print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
+            elif k == 'wind_cond': 
+                print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
+            else:
+                raise NotImplementedError
 
 
 def swap_envs(envs, tobe_swapped, obs, i, verbose=0):
@@ -275,7 +283,6 @@ def swap_envs(envs, tobe_swapped, obs, i, verbose=0):
         # pass in reset for new env
         envs.remotes[i].send(("reset", None))
         new_obs = envs.remotes[i].recv()
-        envs.remotes[i].send(("get_attr", 'data_puffs'))
         # exchange old obs with new 
         obs[i] = torch.from_numpy(new_obs)
         if verbose:
@@ -318,8 +325,14 @@ def training_loop(agent, env_collection, args, device, actor_critic,
 
     training_log = training_log if training_log is not None else []
     eval_log = eval_log if eval_log is not None else []
-    
-    envs = env_collection[0] # TODO: make env_collection the reservour of envs. 
+    import sys, copy, pickle, time 
+    # sys.setrecursionlimit(10000)
+    start = time.time()
+    envs = pickle.loads(pickle.dumps(env_collection[0].venv.venv, -1)) # -1 is the latest protocol
+    end = time.time()
+    print(end - start)
+    envs = copy.deepcopy(env_collection[0].venv.venv)
+    # envs = env_collection[0] # TODO: make env_collection the reservour of envs. 
                                 # modify what's contained in envs.
 
     obs = envs.reset()
@@ -368,10 +381,12 @@ def training_loop(agent, env_collection, args, device, actor_critic,
             for i, d in enumerate(done): # TC: if done, decide if changing the envs
                 if d:
                     # select a new env from the curriculum TODO
-                    tobe_swapped = whether_to_swap(xyz)
+                    # def whether_to_swap(envs, env_collection, cirriculum_vars):
                         
+                    # tobe_swapped = whether_to_swap(xyz)
+                    tobe_swapped = env_collection[1]
                     # put in the new env and update obs under the new env
-                    envs, obs = swap_envs(envs, tobe_swapped, obs, i, verbose=1)                    
+                    envs, obs = swap_envs(envs, tobe_swapped, obs, i, verbose=1)
             for info in infos:
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
