@@ -325,14 +325,8 @@ def training_loop(agent, env_collection, args, device, actor_critic,
 
     training_log = training_log if training_log is not None else []
     eval_log = eval_log if eval_log is not None else []
-    import sys, copy, pickle, time 
-    # sys.setrecursionlimit(10000)
-    start = time.time()
-    envs = pickle.loads(pickle.dumps(env_collection[0].venv.venv, -1)) # -1 is the latest protocol
-    end = time.time()
-    print(end - start)
-    envs = copy.deepcopy(env_collection[0].venv.venv)
-    # envs = env_collection[0] # TODO: make env_collection the reservour of envs. 
+
+    envs = env_collection[0] # TODO: make env_collection the reservour of envs. 
                                 # modify what's contained in envs.
 
     obs = envs.reset()
@@ -371,6 +365,8 @@ def training_loop(agent, env_collection, args, device, actor_critic,
         #     update_by_schedule(envs, schedule, j)
 
         for step in range(args.num_steps):
+            # if step == 171:
+            #     print("wanna be here")
             # Sample actions
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states, activities = actor_critic.act(
@@ -380,13 +376,7 @@ def training_loop(agent, env_collection, args, device, actor_critic,
             obs, reward, done, infos = envs.step(action)
             for i, d in enumerate(done): # TC: if done, decide if changing the envs
                 if d:
-                    # select a new env from the curriculum TODO
-                    # def whether_to_swap(envs, env_collection, cirriculum_vars):
-                        
-                    # tobe_swapped = whether_to_swap(xyz)
-                    tobe_swapped = env_collection[1]
-                    # put in the new env and update obs under the new env
-                    envs, obs = swap_envs(envs, tobe_swapped, obs, i, verbose=1)
+                    print(step)
             for info in infos:
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])

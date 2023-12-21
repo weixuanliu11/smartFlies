@@ -7,7 +7,9 @@ from gym.spaces.box import Box
 # from gymnasium.spaces import Box
 
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import VecEnvWrapper, DummyVecEnv, SubprocVecEnv
+# from stable_baselines3.common.vec_env import VecEnvWrapper, DummyVecEnv, SubprocVecEnv
+from stable_baselines3.common.vec_env import VecEnvWrapper, DummyVecEnv, _flatten_obs
+from stable_baselines3.common.vec_env import SubprocVecEnv as SubprocVecEnv_
 from stable_baselines3.common.vec_env.vec_normalize import \
     VecNormalize as VecNormalize_
 
@@ -146,6 +148,192 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs
         return env
 
     return _thunk
+
+import multiprocessing as mp
+from typing import Any, Callable, List, Optional, Sequence, Tuple, Type, Union
+from stable_baselines3.common.vec_env.base_vec_env import (
+    CloudpickleWrapper,
+    VecEnv,
+    VecEnvIndices,
+    VecEnvObs,
+    VecEnvStepReturn,
+)
+
+
+def _worker(
+    remote: mp.connection.Connection, parent_remote: mp.connection.Connection, env_fn_wrapper: CloudpickleWrapper
+) -> None:
+    # Import here to avoid a circular import
+    from stable_baselines3.common.env_util import is_wrapped
+
+    parent_remote.close()
+    env = env_fn_wrapper.var()
+    while True:
+        try:
+            cmd, data = remote.recv()
+            if cmd == "step":
+                # no longer resets if done. Moved to step_async_wait in my SubprocVecEnv
+                observation, reward, done, info = env.step(data)
+                remote.send((observation, reward, done, info))
+            elif cmd == "seed":
+                remote.send(env.seed(data))
+            elif cmd == "reset":
+                observation = env.reset()
+                remote.send(observation)
+            elif cmd == "render":
+                remote.send(env.render(data))
+            elif cmd == "close":
+                env.close()
+                remote.close()
+                break
+            elif cmd == "get_spaces":
+                remote.send((env.observation_space, env.action_space))
+            elif cmd == "env_method":
+                method = getattr(env, data[0])
+                remote.send(method(*data[1], **data[2]))
+            elif cmd == "get_attr":
+                remote.send(getattr(env, data))
+            elif cmd == "set_attr":
+                remote.send(setattr(env, data[0], data[1]))
+            elif cmd == "is_wrapped":
+                remote.send(is_wrapped(env, data))
+            else:
+                raise NotImplementedError(f"`{cmd}` is not implemented in the worker")
+        except EOFError:
+            break
+
+
+def SubprocVecEnv(SubprocVecEnv_):
+    # my version that supports running only a subset of envs 
+    
+    def __init__(self, env_fns: List[Callable[[], gym.Env]], start_method: Optional[str] = None):
+        # inherit __init__ from Gym SubprocVecEnv
+        SubprocVecEnv_.__init__(self, env_fns, start_method)
+        # lists of remotes and processes that are currently deployed
+        self.deployed_remotes = list(self.remotes)
+        self.deployed_processes = self.processes
+        
+    def deploy(self, indices: VecEnvIndices = None) -> None:
+        """
+        Deploy envs in subprocesses.
+        :param indices: refers to indices of envs.
+        """
+        indices = self._get_indices(indices)
+        self.deployed_remotes = [self.remotes[i] for i in indices]
+        self.deployed_processes = [self.processes[i] for i in indices]
+        
+    def swap(self, idx: int, idx_replacement_item: int) -> None:
+        """
+        Swap envs in subprocesses.
+        :param indices: refers to indices of envs.
+        """
+
+        self.deployed_remotes[idx] = self.remotes[idx_replacement_item]
+        self.deployed_processes[idx] = self.processes[idx_replacement_item]
+        
+    def step_async(self, actions: np.ndarray) -> None:
+        for remote, action in zip(self.deployed_remotes, actions):
+            remote.send(("step", action))
+        self.waiting = True
+
+    def step_wait(self) -> VecEnvStepReturn:
+        results = [remote.recv() for remote in self.deployed_remotes]
+        self.waiting = False
+        obs, rews, dones, infos = zip(*results)
+        for i, d in enumerate(dones): 
+            if d:
+                self.get_attr('datasets')
+                self.swap(i, 3)
+                self.get_attr('datasets')
+                infos[i]["terminal_observation"] = obs[i]
+                obs[i] = self.reset_at(i)
+        return _flatten_obs(obs, self.observation_space), np.stack(rews), np.stack(dones), infos
+
+    def seed(self, seed: Optional[int] = None) -> List[Union[None, int]]:
+        if seed is None:
+            seed = np.random.randint(0, 2**32 - 1)
+        for idx, remote in enumerate(self.deployed_remotes):
+            remote.send(("seed", seed + idx))
+        return [remote.recv() for remote in self.deployed_remotes]
+
+    def reset(self) -> VecEnvObs:
+        # only reset deployed envs
+        # TODO is this problematic?
+        for remote in self.deployed_remotes:
+            remote.send(("reset", None))
+        obs = [remote.recv() for remote in self.deployed_remotes]
+        return _flatten_obs(obs, self.observation_space)
+    
+    def reset_at(self, indices: VecEnvIndices = None) -> VecEnvObs:
+        # reset only envs at indices
+        indices = self._get_indices(indices)
+        for i in indices:
+            self.deployed_remotes[i].send(("reset", None))
+        obs = [self.deployed_remotes[i].recv() for i in indices]
+        return _flatten_obs(obs, self.observation_space)
+
+    def close(self) -> None:
+        # unchanged. Not sure when it is called automatically. Never called manually
+        if self.closed:
+            return
+        if self.waiting:
+            for remote in self.remotes:
+                remote.recv()
+        for remote in self.remotes:
+            remote.send(("close", None))
+        for process in self.processes:
+            process.join()
+        self.closed = True
+
+    def get_images(self) -> Sequence[np.ndarray]:
+        # unchanged. Not sure when it is called automatically. Never called manually
+        for pipe in self.remotes:
+            # gather images from subprocesses
+            # `mode` will be taken into account later
+            pipe.send(("render", "rgb_array"))
+        imgs = [pipe.recv() for pipe in self.remotes]
+        return imgs
+
+    def get_attr(self, attr_name: str, indices: VecEnvIndices = None) -> List[Any]:
+        """Return attribute from vectorized environment (see base class)."""
+        target_remotes = self._get_target_remotes(indices)
+        for remote in target_remotes:
+            remote.send(("get_attr", attr_name))
+        return [remote.recv() for remote in target_remotes]
+
+    def set_attr(self, attr_name: str, value: Any, indices: VecEnvIndices = None) -> None:
+        """Set attribute inside vectorized environments (see base class)."""
+        target_remotes = self._get_target_remotes(indices)
+        for remote in target_remotes:
+            remote.send(("set_attr", (attr_name, value)))
+        for remote in target_remotes:
+            remote.recv()
+
+    def env_method(self, method_name: str, *method_args, indices: VecEnvIndices = None, **method_kwargs) -> List[Any]:
+        """Call instance methods of vectorized environments."""
+        target_remotes = self._get_target_remotes(indices)
+        for remote in target_remotes:
+            remote.send(("env_method", (method_name, method_args, method_kwargs)))
+        return [remote.recv() for remote in target_remotes]
+
+    def env_is_wrapped(self, wrapper_class: Type[gym.Wrapper], indices: VecEnvIndices = None) -> List[bool]:
+        """Check if worker environments are wrapped with a given wrapper"""
+        target_remotes = self._get_target_remotes(indices)
+        for remote in target_remotes:
+            remote.send(("is_wrapped", wrapper_class))
+        return [remote.recv() for remote in target_remotes]
+
+    def _get_target_remotes(self, indices: VecEnvIndices) -> List[Any]:
+        """
+        Get the connection object needed to communicate with the wanted
+        envs that are in subprocesses.
+
+        :param indices: refers to indices of envs.
+        :return: Connection object to communicate between processes.
+        """
+        indices = self._get_indices(indices)
+        return [self.remotes[i] for i in indices]
+
 
 
 def make_vec_envs(env_name,
