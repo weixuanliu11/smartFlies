@@ -408,8 +408,9 @@ class PlumeEnvironment(gym.Env):
     # Dynamic birthx for each episode
     if self.birthx < 0.99:
         puff_sparsity = np.clip(np.random.uniform(low=self.birthx, high=1.0), 0.0, 1.0)
+        self.puff_density = 1 - puff_sparsity
         drop_idxs = self.data_puffs['puff_number'].unique()
-        drop_idxs = pd.Series(drop_idxs).sample(frac=(1.00-puff_sparsity))
+        drop_idxs = pd.Series(drop_idxs).sample(frac=(self.puff_density))
         self.data_puffs = self.data_puffs.query("puff_number not in @drop_idxs") # No deep copy being made
 
     if self.diffusion_min < (self.diffusion_max - 0.01):
@@ -689,6 +690,9 @@ class PlumeEnvironment(gym.Env):
     
     if done:
         info['episode'] = {'r': self.episode_reward }
+        info['dataset'] = self.dataset
+        info['num_puffs'] = self.data_puffs.puff_number.nunique()
+        info['plume_density'] = self.puff_density
 
 
     if self.verbose > 0:
