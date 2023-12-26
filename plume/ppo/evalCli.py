@@ -317,7 +317,6 @@ def eval_loop(args, actor_critic, test_sparsity=True):
             allow_early_resets=False)
 
         if 'switch' in args.dataset: 
-            print('[Debug] switch in args.dataset', file=sys.stderr, flush=True)
             venv = env.unwrapped.envs[0].venv
             venv.qvar = 0.0
             venv.t_val_min = 58.0
