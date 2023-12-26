@@ -308,14 +308,14 @@ def swap_envs(envs, tobe_swapped, obs, i, verbose=0):
         return envs, obs
                         
                         
-def training_loop(agent, env_collection, args, device, actor_critic, 
+def training_loop(agent, envs, args, device, actor_critic, 
     training_log=None, eval_log=None, eval_env=None, rollouts=None):
     
     # setting up
     if not rollouts: 
         rollouts = RolloutStorage(args.num_steps, args.num_processes,
-                        env_collection[0].observation_space.shape, 
-                        env_collection[0].action_space,
+                        envs[0].observation_space.shape, 
+                        envs[0].action_space,
                         actor_critic.recurrent_hidden_state_size)
     num_updates = int(
         args.num_env_steps) // args.num_steps // args.num_processes # args.num_env_steps 1M for constant 4M for noisy (found in logs) # args.num_steps=2048 (found in logs) # args.num_processes=4=mini_batch (found in logs)
@@ -325,10 +325,7 @@ def training_loop(agent, env_collection, args, device, actor_critic,
 
     training_log = training_log if training_log is not None else []
     eval_log = eval_log if eval_log is not None else []
-
-    envs = env_collection[0] # TODO: make env_collection the reservour of envs. 
-                                # modify what's contained in envs.
-
+    envs.deploy([0,1])
     obs = envs.reset()
     rollouts.obs[0].copy_(obs) # https://discuss.pytorch.org/t/which-copy-is-better/56393
     rollouts.to(device)
@@ -504,27 +501,25 @@ def main():
     device = torch.device(f"cuda:{gpu_idx}" if args.cuda else "cpu")
 
     # Build envs for training
-    env_collection = []
-    for i in range(len(args.dataset)):
-        curriculum_vars = {
-            'dataset': args.dataset[i],
-            'birthx': args.birthx[i],
-            'qvar': args.qvar[i],
-            'diff_max': args.diff_max[i],
-            'diff_min': args.diff_min[i]
-        }
-        envs = make_vec_envs(
-            args.env_name,
-            args.seed,
-            args.num_processes,
-            args.gamma,
-            args.log_dir,
-            device,
-            True,  # allow_early_resets? This is to support resetting an env twice in a row. Twice in a row happens because one auto reset after done and another after swapping.
-            args = args,
-            **curriculum_vars) # set these envs vars according to the curriculum
-    
-        env_collection.append(envs)
+    curriculum_vars = {
+        'dataset': args.dataset,
+        'birthx': args.birthx,
+        'qvar': args.qvar,
+        'diff_max': args.diff_max,
+        'diff_min': args.diff_min
+    }
+    envs = make_vec_envs(
+        args.env_name,
+        args.seed,
+        args.num_processes,
+        args.gamma,
+        args.log_dir,
+        device,
+        True,  # allow_early_resets? This is to support resetting an env twice in a row. Twice in a row happens because one auto reset after done and another after swapping.
+        args = args,
+        **curriculum_vars) # set these envs vars according to the curriculum
+
+
 
     # TODO clean up. not supported with args.dataset as a list 
     # eval_env = make_vec_envs(
@@ -582,7 +577,7 @@ def main():
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
                         actor_critic.recurrent_hidden_state_size)
-    training_log, eval_log = training_loop(agent, env_collection, args, device, actor_critic, 
+    training_log, eval_log = training_loop(agent, envs, args, device, actor_critic, 
         training_log=training_log, eval_log=eval_log, eval_env=None, rollouts=rollouts)  
 
     #### -------------- Done training - now Evaluate -------------- ####

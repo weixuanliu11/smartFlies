@@ -8,16 +8,57 @@ from gym.spaces.box import Box
 
 from stable_baselines3.common.monitor import Monitor
 # from stable_baselines3.common.vec_env import VecEnvWrapper, DummyVecEnv, SubprocVecEnv
-from stable_baselines3.common.vec_env import VecEnvWrapper, DummyVecEnv, _flatten_obs
+from stable_baselines3.common.vec_env import VecEnvWrapper, DummyVecEnv
 from stable_baselines3.common.vec_env import SubprocVecEnv as SubprocVecEnv_
 from stable_baselines3.common.vec_env.vec_normalize import \
     VecNormalize as VecNormalize_
 
-import sys, os
+import sys, os, importlib
 sys.path.append('../')
 sys.path.append('../../')
 
-import importlib
+
+def make_vec_envs(env_name,
+                  seed,
+                  num_processes,
+                  gamma,
+                  log_dir,
+                  device,
+                  allow_early_resets,
+                  args=None,
+                  num_frame_stack=None, 
+                  **kwargs
+                  ):
+    envs = []
+    for env_idx in range(len(kwargs['dataset'])):
+        now_curriculum = {}
+        for k, v in kwargs.items():
+            now_curriculum[k] = v[env_idx]
+        for i in range(num_processes):
+            envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args, **now_curriculum))
+
+    if len(envs) > 1:
+        envs = SubprocVecEnv(envs)
+        envs.num_envs = num_processes
+        envs.deploy(range(num_processes))
+    else:
+        envs = DummyVecEnv(envs)
+        
+    if len(envs.observation_space.shape) == 1:
+        if gamma is None:
+            envs = VecNormalize(envs, ret=False)
+        else:
+            envs = VecNormalize(envs, gamma=gamma) # type(envs.action_space) = <class 'gym.spaces.box.Box'>
+        
+    envs = VecPyTorch(envs, device)
+
+    if num_frame_stack is not None:
+        envs = VecPyTorchFrameStack(envs, num_frame_stack, device)
+    elif len(envs.observation_space.shape) == 3:
+        envs = VecPyTorchFrameStack(envs, 4, device)
+
+    return envs
+
 
 def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs):
     # both seed info is redundant... seed args and provided separately
@@ -39,6 +80,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs
             if args.recurrent_policy or (args.stacking == 0):
                 if kwargs:
                     print("kwargs ON", flush=True, file=sys.stdout)
+                    # TODO make this cleaner. auto read kwargs keys and overwrite args to keep args.X format
                     env = plume_env.PlumeEnvironment(
                         dataset=kwargs['dataset'],
                         birthx=kwargs['birthx'],
@@ -149,7 +191,10 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs
 
     return _thunk
 
+
+from gym import spaces
 import multiprocessing as mp
+from collections import OrderedDict
 from typing import Any, Callable, List, Optional, Sequence, Tuple, Type, Union
 from stable_baselines3.common.vec_env.base_vec_env import (
     CloudpickleWrapper,
@@ -158,6 +203,32 @@ from stable_baselines3.common.vec_env.base_vec_env import (
     VecEnvObs,
     VecEnvStepReturn,
 )
+
+
+def _flatten_obs(obs: Union[List[VecEnvObs], Tuple[VecEnvObs]], space: spaces.Space) -> VecEnvObs:
+    """
+    Flatten observations, depending on the observation space.
+
+    :param obs: observations.
+                A list or tuple of observations, one per environment.
+                Each environment observation may be a NumPy array, or a dict or tuple of NumPy arrays.
+    :return: flattened observations.
+            A flattened NumPy array or an OrderedDict or tuple of flattened numpy arrays.
+            Each NumPy array has the environment index as its first axis.
+    """
+    assert isinstance(obs, (list, tuple)), "expected list or tuple of observations per environment"
+    assert len(obs) > 0, "need observations from at least one environment"
+
+    if isinstance(space, spaces.Dict):
+        assert isinstance(space.spaces, OrderedDict), "Dict space must have ordered subspaces"
+        assert isinstance(obs[0], dict), "non-dict observation for environment with Dict observation space"
+        return OrderedDict([(k, np.stack([o[k] for o in obs])) for k in space.spaces.keys()])
+    elif isinstance(space, spaces.Tuple):
+        assert isinstance(obs[0], tuple), "non-tuple observation for environment with Tuple observation space"
+        obs_len = len(space.spaces)
+        return tuple(np.stack([o[i] for o in obs]) for i in range(obs_len))
+    else:
+        return np.stack(obs)
 
 
 def _worker(
@@ -203,7 +274,7 @@ def _worker(
             break
 
 
-def SubprocVecEnv(SubprocVecEnv_):
+class SubprocVecEnv(SubprocVecEnv_):
     # my version that supports running only a subset of envs 
     
     def __init__(self, env_fns: List[Callable[[], gym.Env]], start_method: Optional[str] = None):
@@ -221,6 +292,7 @@ def SubprocVecEnv(SubprocVecEnv_):
         indices = self._get_indices(indices)
         self.deployed_remotes = [self.remotes[i] for i in indices]
         self.deployed_processes = [self.processes[i] for i in indices]
+        assert len(indices) == self.num_envs, "cannot deploy more envs than the predetermined num_processes "
         
     def swap(self, idx: int, idx_replacement_item: int) -> None:
         """
@@ -242,11 +314,12 @@ def SubprocVecEnv(SubprocVecEnv_):
         obs, rews, dones, infos = zip(*results)
         for i, d in enumerate(dones): 
             if d:
-                self.get_attr('datasets')
+                print(self.get_attr('dataset'))
                 self.swap(i, 3)
-                self.get_attr('datasets')
+                print(self.get_attr('dataset'))
                 infos[i]["terminal_observation"] = obs[i]
-                obs[i] = self.reset_at(i)
+                list(obs)[i] = self.reset_deployed_at(i)
+                obs = tuple(obs)
         return _flatten_obs(obs, self.observation_space), np.stack(rews), np.stack(dones), infos
 
     def seed(self, seed: Optional[int] = None) -> List[Union[None, int]]:
@@ -264,7 +337,7 @@ def SubprocVecEnv(SubprocVecEnv_):
         obs = [remote.recv() for remote in self.deployed_remotes]
         return _flatten_obs(obs, self.observation_space)
     
-    def reset_at(self, indices: VecEnvIndices = None) -> VecEnvObs:
+    def reset_deployed_at(self, indices: VecEnvIndices = None) -> VecEnvObs:
         # reset only envs at indices
         indices = self._get_indices(indices)
         for i in indices:
@@ -296,6 +369,14 @@ def SubprocVecEnv(SubprocVecEnv_):
 
     def get_attr(self, attr_name: str, indices: VecEnvIndices = None) -> List[Any]:
         """Return attribute from vectorized environment (see base class)."""
+        target_remotes = self._get_target_remotes(indices, deployed=True)
+        for remote in target_remotes:
+            remote.send(("get_attr", attr_name))
+        return [remote.recv() for remote in target_remotes]
+    
+    def get_attr_all_envs(self, attr_name: str) -> List[Any]:
+        """Return attribute from vectorized environment (see base class)."""
+        indices = len(self.remotes)
         target_remotes = self._get_target_remotes(indices)
         for remote in target_remotes:
             remote.send(("get_attr", attr_name))
@@ -303,6 +384,15 @@ def SubprocVecEnv(SubprocVecEnv_):
 
     def set_attr(self, attr_name: str, value: Any, indices: VecEnvIndices = None) -> None:
         """Set attribute inside vectorized environments (see base class)."""
+        target_remotes = self._get_target_remotes(indices, deployed=True)
+        for remote in target_remotes:
+            remote.send(("set_attr", (attr_name, value)))
+        for remote in target_remotes:
+            remote.recv()
+            
+    def set_attr_all_env(self, attr_name: str, value: Any) -> None:
+        """Set attribute inside vectorized environments (see base class)."""
+        indices = len(self.remotes)
         target_remotes = self._get_target_remotes(indices)
         for remote in target_remotes:
             remote.send(("set_attr", (attr_name, value)))
@@ -323,7 +413,7 @@ def SubprocVecEnv(SubprocVecEnv_):
             remote.send(("is_wrapped", wrapper_class))
         return [remote.recv() for remote in target_remotes]
 
-    def _get_target_remotes(self, indices: VecEnvIndices) -> List[Any]:
+    def _get_target_remotes(self, indices: VecEnvIndices, deployed: bool = False) -> List[Any]:
         """
         Get the connection object needed to communicate with the wanted
         envs that are in subprocesses.
@@ -332,45 +422,9 @@ def SubprocVecEnv(SubprocVecEnv_):
         :return: Connection object to communicate between processes.
         """
         indices = self._get_indices(indices)
+        if deployed:
+            return [self.deployed_remotes[i] for i in indices]
         return [self.remotes[i] for i in indices]
-
-
-
-def make_vec_envs(env_name,
-                  seed,
-                  num_processes,
-                  gamma,
-                  log_dir,
-                  device,
-                  allow_early_resets,
-                  args=None,
-                  num_frame_stack=None, 
-                  **kwargs
-                  ):
-    envs = [
-        make_env(env_name, seed, i, log_dir, allow_early_resets, args, **kwargs)
-        for i in range(num_processes)
-    ]
-
-    if len(envs) > 1:
-        envs = SubprocVecEnv(envs)
-    else:
-        envs = DummyVecEnv(envs)
-
-    if len(envs.observation_space.shape) == 1:
-        if gamma is None:
-            envs = VecNormalize(envs, ret=False)
-        else:
-            envs = VecNormalize(envs, gamma=gamma) # type(envs.action_space) = <class 'gym.spaces.box.Box'>
-        
-    envs = VecPyTorch(envs, device)
-
-    if num_frame_stack is not None:
-        envs = VecPyTorchFrameStack(envs, num_frame_stack, device)
-    elif len(envs.observation_space.shape) == 3:
-        envs = VecPyTorchFrameStack(envs, 4, device)
-
-    return envs
 
 
 # Checks whether done was caused my timit limits or not
