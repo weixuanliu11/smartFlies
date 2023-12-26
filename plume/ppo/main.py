@@ -249,7 +249,66 @@ def update_by_schedule(env_collection, schedule_dict, curr_step):
             else:
                 raise NotImplementedError
 
-                        
+import itertools
+
+def build_tc_schedule_dict(total_number_periods, **kwargs):
+    """Builds a training curriculum schedule dictionary. 
+    Args:
+        total_number_periods: number of updates 
+        **kwargs: A dictionary containing the schedule information. 
+            Each key is an env variable and each value is a dict that specifies how the env variable should be scheduled.
+    
+    Returns:
+        schedule_dict: A dictionary of dicts. Each key is an env variable which contains the schedule information.
+            The schedule information is a dict with key: which "episode" to update, and value: update by how much.
+    """
+    # initialize the default course directory 
+    course_dirctory = {'density': {'num_classes': 6, 'difficulty_range': [0.7,0.001], 'dtype': 'float', 'step_type': 'log'}, 
+                   'wind_cond': {'num_classes': 3, 'difficulty_range': [1, 3], 'dtype': 'int', 'step_type': 'linear'}} 
+    
+    # update the default course directory with the input kwargs
+    for course in kwargs:
+        now_kwargs = kwargs[course]
+        for k in now_kwargs:
+            course_dirctory[course][k] = now_kwargs[k]
+            
+    # calculate the scheduled value for each class, given the number of updates and the difficulty range
+    tmp_schedule = []
+    for course in course_dirctory:
+        now_course = course_dirctory[course]
+        # set the scheduled diffuclty value for each class
+        assert len(now_course['difficulty_range']) == 2
+        if now_course['step_type'] == 'log':
+            scheduled_value = np.logspace(np.log10(now_course['difficulty_range'][0]),
+                                        np.log10(now_course['difficulty_range'][1]),
+                                        now_course['num_classes'], endpoint=True) 
+        elif now_course['step_type'] == 'linear':
+            scheduled_value = np.linspace(now_course['difficulty_range'][0],
+                                    now_course['difficulty_range'][1],
+                                    now_course['num_classes'], endpoint=True) 
+        else: 
+            raise ValueError("step_type must be 'log' or 'linear'")
+        now_course['scheduled_value'] = scheduled_value
+        tmp_schedule.append(zip(itertools.cycle([course]), scheduled_value))
+
+    # interleave the scheduled values for each class
+    course_schedule = itertools.chain.from_iterable(itertools.zip_longest(*tmp_schedule))
+    course_schedule = [c for c in course_schedule if c]
+    
+    # build the schedule dictionary - when/how to update the env variable according to the course schedule
+    schedule_dict = {}
+    for k in course_dirctory.keys():
+        schedule_dict[k] = {}
+    total_num_classes = len(course_schedule)
+    when_2_update = np.linspace(0, total_number_periods, total_num_classes, endpoint=False, dtype=int)
+
+    for i, course in enumerate(course_schedule):
+        course_name, scheduled_value = course
+        schedule_dict[course_name][when_2_update[i]] = scheduled_value
+
+    return schedule_dict
+    
+
 def training_loop(agent, envs, args, device, actor_critic, 
     training_log=None, eval_log=None, eval_env=None, rollouts=None):
     ##############################################################################################################
@@ -277,10 +336,10 @@ def training_loop(agent, envs, args, device, actor_critic,
     rollouts.obs[0].copy_(obs) # https://discuss.pytorch.org/t/which-copy-is-better/56393
     rollouts.to(device)
 
-    # if args.birthx_linear_tc_steps:
-    #     birthx_specs = {"birthx":[(0.9, args.birthx), args.birthx_linear_tc_steps]}
-    #     schedule = build_tc_schedule_dict(birthx_specs, num_updates)
-    #     update_by_schedule(envs, schedule, 0)
+    if args.birthx_linear_tc_steps:
+        birthx_specs = {"birthx":[(0.9, args.birthx), args.birthx_linear_tc_steps]}
+        schedule = build_tc_schedule_dict(birthx_specs, num_updates)
+        update_by_schedule(envs, schedule, 0)
 
     start = time.time()
     # at each bout of update
@@ -299,8 +358,11 @@ def training_loop(agent, envs, args, device, actor_critic,
         # at each step of training 
         ##############################################################################################################
         for step in range(args.num_steps):
-            # if step == 171:
-            #     print("wanna be here")
+            if step == 170:
+                # TODO use this to update the wind direction
+                # TODO add switch (config switch by evalCli.py, line 319)
+                envs.update_wind_direction(2)
+                print("wanna be here... step 171 is when the first DONE occurs")
             # Sample actions
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states, activities = actor_critic.act(
@@ -317,7 +379,7 @@ def training_loop(agent, envs, args, device, actor_critic,
                         episode_rewards.append(infos[i]['episode']['r'])
                         episode_plume_densities.append(infos[i]['plume_density']) # plume_density and num_puffs are expected to be similar across different agents. Tracking to confirm. 
                         episode_puffs.append(infos[i]['num_puffs'])
-                        episode_wind_directions.append(envs.ds2_wind(infos[i]['dataset'])) # density and dataset are logged to see eps. statistics implemented by the curriculum
+                        episode_wind_directions.append(envs.ds2wind(infos[i]['dataset'])) # density and dataset are logged to see eps. statistics implemented by the curriculum
                     except KeyError:
                         raise KeyError("Logging info not found... check why it's not here when done")
 
