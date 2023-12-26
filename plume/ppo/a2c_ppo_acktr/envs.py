@@ -352,11 +352,12 @@ class SubprocVecEnv(SubprocVecEnv_):
                 infos[i]["terminal_observation"] = obs[i]
                 # decide if swap
                 new_wind_direction = self.sample_wind_dirction()
-                current_wind_direction = self.get_attr('dataset', i)
-                # print(self.get_attr('dataset'))
-                self.swap(i, 3)
-                # print(self.get_attr('dataset'))
-
+                current_wind_direction = self.ds2_wind(self.get_attr('dataset', i))
+                if new_wind_direction != current_wind_direction:
+                    print(self.get_attr('dataset'))
+                    self.swap(i, 3)
+                    print(self.get_attr('dataset'))
+                # this was not uptomaticallly updated, so now do it
                 list(obs)[i] = self.reset_deployed_at(i)
                 obs = tuple(obs)
         return _flatten_obs(obs, self.observation_space), np.stack(rews), np.stack(dones), infos
