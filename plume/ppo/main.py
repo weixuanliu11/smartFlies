@@ -252,8 +252,9 @@ def update_by_schedule(env_collection, schedule_dict, curr_step):
                         
 def training_loop(agent, envs, args, device, actor_critic, 
     training_log=None, eval_log=None, eval_env=None, rollouts=None):
-    
+    ##############################################################################################################
     # setting up
+    ##############################################################################################################
     if not rollouts: 
         rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs[0].observation_space.shape, 
@@ -280,33 +281,23 @@ def training_loop(agent, envs, args, device, actor_critic,
     #     birthx_specs = {"birthx":[(0.9, args.birthx), args.birthx_linear_tc_steps]}
     #     schedule = build_tc_schedule_dict(birthx_specs, num_updates)
     #     update_by_schedule(envs, schedule, 0)
-    
-    # at each bout of update
-        
-        # update environments according to the curriculum
-        # TODO: select wind conditions that are represented by the envs 
-    
-    # start training    
-        # at each step of training 
-        
-        # run training 
-        
-        # TODO: when an environment has finished. select another according to the curriculum
-        
-        # save and log
-
 
     start = time.time()
+    # at each bout of update
     for j in range(num_updates):
         print(f"On update {j} of {num_updates}")
 
+        # decrease learning rate linearly
         if args.use_linear_lr_decay:
-            # decrease learning rate linearly
             utils.update_linear_schedule(
                 agent.optimizer, j, num_updates, args.lr)
+        # TODO update environments according to the curriculum
         # if args.birthx_linear_tc_steps:
         #     update_by_schedule(envs, schedule, j)
-
+        
+        ##############################################################################################################
+        # at each step of training 
+        ##############################################################################################################
         for step in range(args.num_steps):
             # if step == 171:
             #     print("wanna be here")
@@ -317,6 +308,8 @@ def training_loop(agent, envs, args, device, actor_critic,
                     rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])
             obs, reward, done, infos = envs.step(action)
+            
+            # save and log
             for i, d in enumerate(done): # if done, log the episode info. Care about what kind of env is encountered
                 if d:
                     try:
@@ -337,7 +330,9 @@ def training_loop(agent, envs, args, device, actor_critic,
                  for info in infos])
             rollouts.insert(obs, recurrent_hidden_states, action,
                             action_log_prob, value, reward, masks, bad_masks)
-
+        ##############################################################################################################
+        # UPDATE AGENT
+        ##############################################################################################################
         with torch.no_grad():
             next_value = actor_critic.get_value(
                 rollouts.obs[-1], rollouts.recurrent_hidden_states[-1],
@@ -350,7 +345,9 @@ def training_loop(agent, envs, args, device, actor_critic,
 
         rollouts.after_update()
         total_num_steps = (j + 1) * args.num_processes * args.num_steps
+        ##############################################################################################################
         # save for every interval-th episode or for the last epoch
+        ##############################################################################################################
         if (j % args.save_interval == 0
                 or j == num_updates - 1) and args.save_dir != "":
             save_path = args.save_dir # os.path.join(args.save_dir, args.algo)
