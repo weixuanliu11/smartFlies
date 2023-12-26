@@ -317,7 +317,7 @@ def training_loop(agent, envs, args, device, actor_critic,
                         episode_rewards.append(infos[i]['episode']['r'])
                         episode_plume_densities.append(infos[i]['plume_density']) # plume_density and num_puffs are expected to be similar across different agents. Tracking to confirm. 
                         episode_puffs.append(infos[i]['num_puffs'])
-                        episode_wind_directions.append(ds2_wind(infos[i]['dataset'])) # density and dataset are logged to see eps. statistics implemented by the curriculum
+                        episode_wind_directions.append(envs.ds2_wind(infos[i]['dataset'])) # density and dataset are logged to see eps. statistics implemented by the curriculum
                     except KeyError:
                         raise KeyError("Logging info not found... check why it's not here when done")
 

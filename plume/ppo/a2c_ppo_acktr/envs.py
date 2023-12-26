@@ -13,6 +13,7 @@ from stable_baselines3.common.vec_env import SubprocVecEnv as SubprocVecEnv_
 from stable_baselines3.common.vec_env.vec_normalize import \
     VecNormalize as VecNormalize_
 
+
 import sys, os, importlib
 sys.path.append('../')
 sys.path.append('../../')
@@ -27,15 +28,15 @@ def make_vec_envs(env_name,
                   allow_early_resets,
                   args=None,
                   num_frame_stack=None, 
-                  **kwargs
+                  **all_curriculum_params
                   ):
     envs = []
-    for env_idx in range(len(kwargs['dataset'])):
-        now_curriculum = {}
-        for k, v in kwargs.items():
-            now_curriculum[k] = v[env_idx]
+    for env_idx in range(len(all_curriculum_params['dataset'])):
+        now_curriculum_params = {}
+        for k, v in all_curriculum_params.items():
+            now_curriculum_params[k] = v[env_idx]
         for i in range(num_processes):
-            envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args, **now_curriculum))
+            envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args, **now_curriculum_params))
 
     if len(envs) > 1:
         envs = SubprocVecEnv(envs)
@@ -276,6 +277,8 @@ def _worker(
 
 class SubprocVecEnv(SubprocVecEnv_):
     # my version that supports running only a subset of envs 
+    # also manages swapping of environments 
+    # also manages current MAX delta wind direction
     
     def __init__(self, env_fns: List[Callable[[], gym.Env]], start_method: Optional[str] = None):
         # inherit __init__ from Gym SubprocVecEnv
@@ -283,6 +286,24 @@ class SubprocVecEnv(SubprocVecEnv_):
         # lists of remotes and processes that are currently deployed
         self.deployed_remotes = list(self.remotes)
         self.deployed_processes = self.processes
+        self.wind_directions = 0 # the MAX number of switches in wind direction
+        self.remote_directory = {} # key: index of remote, value: dataset name and deployment status
+        available_datasets = self.get_attr_all_envs('dataset') # list of all available datasets 
+        
+        for i, ds in enumerate(available_datasets):
+            self.remote_directory[i] = {'dataset': ds, 'deployed': True}
+        
+    def sample_wind_dirction(self):
+        wind_dir = np.random.randint(0, self.wind_directions)
+        return wind_dir
+    
+    def refresh_deployment_status(self):
+        # check all processes and update deployment status
+        for i, r in enumerate(self.remotes):
+            if r in self.deployed_remotes:
+                self.remote_directory[i]['deployed'] = True
+            else:
+                self.remote_directory[i]['deployed'] = False
         
     def deploy(self, indices: VecEnvIndices = None) -> None:
         """
@@ -293,13 +314,26 @@ class SubprocVecEnv(SubprocVecEnv_):
         self.deployed_remotes = [self.remotes[i] for i in indices]
         self.deployed_processes = [self.processes[i] for i in indices]
         assert len(indices) == self.num_envs, "cannot deploy more envs than the predetermined num_processes "
+        self.refresh_deployment_status()
+        
+    def ds2_wind(ds):
+        # translate dataset name to number of changes in wind direction
+        # input: dataset name
+        # output: number of changes in wind direction (3 as in the agent may encounter up to 3 different wind directions)
+        if 'noisy' in ds:
+            return 3
+        elif 'constant' in ds:
+            return 1
+        elif 'switch' in ds:
+            return 2
+        else:
+            raise NotImplementedError
         
     def swap(self, idx: int, idx_replacement_item: int) -> None:
         """
         Swap envs in subprocesses.
         :param indices: refers to indices of envs.
         """
-
         self.deployed_remotes[idx] = self.remotes[idx_replacement_item]
         self.deployed_processes[idx] = self.processes[idx_replacement_item]
         
@@ -314,10 +348,15 @@ class SubprocVecEnv(SubprocVecEnv_):
         obs, rews, dones, infos = zip(*results)
         for i, d in enumerate(dones): 
             if d:
-                print(self.get_attr('dataset'))
-                self.swap(i, 3)
-                print(self.get_attr('dataset'))
+                # log the final observation
                 infos[i]["terminal_observation"] = obs[i]
+                # decide if swap
+                new_wind_direction = self.sample_wind_dirction()
+                current_wind_direction = self.get_attr('dataset', i)
+                # print(self.get_attr('dataset'))
+                self.swap(i, 3)
+                # print(self.get_attr('dataset'))
+
                 list(obs)[i] = self.reset_deployed_at(i)
                 obs = tuple(obs)
         return _flatten_obs(obs, self.observation_space), np.stack(rews), np.stack(dones), infos
@@ -368,7 +407,7 @@ class SubprocVecEnv(SubprocVecEnv_):
         return imgs
 
     def get_attr(self, attr_name: str, indices: VecEnvIndices = None) -> List[Any]:
-        """Return attribute from vectorized environment (see base class)."""
+        """Return attribute from the DEPLOYED environments."""
         target_remotes = self._get_target_remotes(indices, deployed=True)
         for remote in target_remotes:
             remote.send(("get_attr", attr_name))
