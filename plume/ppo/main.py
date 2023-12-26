@@ -459,6 +459,7 @@ def training_loop(agent, envs, args, device, actor_critic,
     return training_log, eval_log
 
 def log_episode(training_log, j, total_num_steps, start, episode_rewards, episode_puffs, episode_plume_densities, episode_wind_directions, num_updates):
+    # update the training log with the current episode's statistics
     end = time.time()
     print(
         "Update {}/{}, T {}, FPS {}, {}-training-episode: mean/median {:.1f}/{:.1f}, \
