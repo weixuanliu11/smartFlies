@@ -286,16 +286,21 @@ class SubprocVecEnv(SubprocVecEnv_):
         # lists of remotes and processes that are currently deployed
         self.deployed_remotes = list(self.remotes)
         self.deployed_processes = self.processes
-        self.wind_directions = 0 # the MAX number of switches in wind direction
+        self.wind_directions = 1 # the MAX number of directions of wind in the environment
         self.remote_directory = {} # key: index of remote, value: dataset name and deployment status
         available_datasets = self.get_attr_all_envs('dataset') # list of all available datasets 
         
         for i, ds in enumerate(available_datasets):
-            self.remote_directory[i] = {'dataset': ds, 'deployed': True, 'wind_condition': self.ds2wind(ds)}
+            self.remote_directory[i] = {'dataset': ds, 'deployed': True, 'wind_direction': self.ds2wind(ds)}
         
-    def sample_wind_dirction(self):
-        # wind_dir = np.random.randint(0, self.wind_directions)
-        wind_dir = self.wind_directions
+    def update_wind_direction(self, new_max_wind_direction: int):
+        # only support 1, 2, 3 which correspons to constant, switch, noisy
+        assert new_max_wind_direction <= 3 
+        assert new_max_wind_direction > 0 
+        self.wind_directions = new_max_wind_direction
+    
+    def sample_wind_direction(self):
+        wind_dir = np.random.randint(1, self.wind_directions+1) # +1 because randint is end-exclusive
         return wind_dir
     
     def refresh_deployment_status(self):
@@ -322,11 +327,11 @@ class SubprocVecEnv(SubprocVecEnv_):
         # input: dataset name
         # output: number of changes in wind direction (3 as in the agent may encounter up to 3 different wind directions)
         if 'noisy' in ds:
-            return 2
+            return 3
         elif 'constant' in ds:
-            return 0
-        elif 'switch' in ds:
             return 1
+        elif 'switch' in ds:
+            return 2
         else:
             raise NotImplementedError
         
@@ -353,17 +358,21 @@ class SubprocVecEnv(SubprocVecEnv_):
                 infos[i]["terminal_observation"] = obs[i]
                 
                 # sample a new wind condition
-                new_wind_direction = self.sample_wind_dirction()
-                current_wind_direction = self.ds2wind(self.get_attr('dataset', i))
+                new_wind_direction = self.sample_wind_direction()
+                current_wind_direction = self.ds2wind(self.get_attr('dataset', i)[0])
                 # if wind condtion changed, then swap
                 if new_wind_direction != current_wind_direction:
-                    print(self.get_attr('dataset'))
+                    print(f"[DEBUG] new wind dir selected... pre swap {self.get_attr('dataset')}")
                     # check the remote_directory to swap with an undeployed env with the condition of interest
                     for remote_idx, status in self.remote_directory.items():
-                        if status['deployed'] == False and status['wind_condition'] == new_wind_direction:
+                        print(status)
+                        if status['deployed'] == False and status['wind_direction'] == new_wind_direction:
                             self.swap(i, remote_idx)
+                            swapped = True
                             break
-                    print(self.get_attr('dataset'))
+                    print(f"[DEBUG] new wind dir selected... post swap {self.get_attr('dataset')}")
+                else:
+                    print(f"[DEBUG] same wind dir selected. no change {self.get_attr('dataset')}")
             
                 # update the newest observation
                 list(obs)[i] = self.reset_deployed_at(i)
