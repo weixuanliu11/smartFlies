@@ -321,6 +321,10 @@ def training_loop(agent, envs, args, device, actor_critic,
         args.num_env_steps) // args.num_steps // args.num_processes # args.num_env_steps 1M for constant 4M for noisy (found in logs) # args.num_steps=2048 (found in logs) # args.num_processes=4=mini_batch (found in logs)
     
     episode_rewards = deque(maxlen=50) 
+    episode_plume_densities = deque(maxlen=50)
+    episode_puffs = deque(maxlen=50)
+    episode_wind_directions = deque(maxlen=50)
+    
     best_mean = 0.0
 
     training_log = training_log if training_log is not None else []
@@ -371,12 +375,17 @@ def training_loop(agent, envs, args, device, actor_critic,
                     rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])
             obs, reward, done, infos = envs.step(action)
-            for i, d in enumerate(done): # TC: if done, decide if changing the envs
+            for i, d in enumerate(done): # TC: if done, decide if changing the envs, and log the episode info. Care about what kind of env is encountered
                 if d:
-                    print(step)
-            for info in infos:
-                if 'episode' in info.keys():
-                    episode_rewards.append(info['episode']['r'])
+                    try:
+                        # Note: only ouput these to infos when done
+                        episode_rewards.append(infos[i]['episode']['r'])
+                        episode_plume_densities.append(infos[i]['plume_density']) # plume_density and num_puffs are expected to be similar across different agents. Tracking to confirm. 
+                        episode_puffs.append(infos[i]['num_puffs'])
+                        episode_wind_directions.append(ds2_wind(infos[i]['dataset'])) # density and dataset are logged to see eps. statistics implemented by the curriculum
+                    except KeyError:
+                        raise KeyError("Logging info not found... check why it's not here when done")
+
             # If done then clean the history of observations in the recurrent_hidden_states. Done in the MLPBase forward method
             masks = torch.FloatTensor(
                 [[0.0] if done_ else [1.0] for done_ in done])
@@ -398,7 +407,7 @@ def training_loop(agent, envs, args, device, actor_critic,
         value_loss, action_loss, dist_entropy = agent.update(rollouts)
 
         rollouts.after_update()
-
+        total_num_steps = (j + 1) * args.num_processes * args.num_steps
         # save for every interval-th episode or for the last epoch
         if (j % args.save_interval == 0
                 or j == num_updates - 1) and args.save_dir != "":
@@ -426,32 +435,7 @@ def training_loop(agent, envs, args, device, actor_critic,
                 print('Saved', fname)
 
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
-            total_num_steps = (j + 1) * args.num_processes * args.num_steps
-            end = time.time()
-            print(
-                "Update {}/{}, T {}, FPS {}, {}-training-episode: mean/median {:.1f}/{:.1f}, min/max {:.1f}/{:.1f}, std {:.2f}"
-                .format(j, num_updates, 
-                        total_num_steps,
-                        int(total_num_steps / (end - start)),
-                        len(episode_rewards), np.mean(episode_rewards),
-                        np.median(episode_rewards), 
-                        np.min(episode_rewards),
-                        np.max(episode_rewards),
-                        np.std(episode_rewards))) 
-
-            training_log.append({
-                    'update': j,
-                    'total_updates': num_updates,
-                    'T': total_num_steps,
-                    'FPS': int(total_num_steps / (end - start)),
-                    'window': len(episode_rewards), 
-                    'mean': np.mean(episode_rewards),
-                    'median': np.median(episode_rewards), 
-                    'min': np.min(episode_rewards),
-                    'max': np.max(episode_rewards),
-                    'std': np.std(episode_rewards),
-                })
-
+            training_log = log_episode(training_log, j, total_num_steps, start, episode_rewards, episode_puffs, episode_plume_densities, episode_wind_directions, num_updates)
             # Save training curve
             save_path = args.save_dir # os.path.join(args.save_dir, args.algo)
             os.makedirs(save_path, exist_ok=True)
@@ -473,6 +457,61 @@ def training_loop(agent, envs, args, device, actor_critic,
                 pd.DataFrame(eval_log).to_csv(fname)
                 
     return training_log, eval_log
+
+def log_episode(training_log, j, total_num_steps, start, episode_rewards, episode_puffs, episode_plume_densities, episode_wind_directions, num_updates):
+    end = time.time()
+    print(
+        "Update {}/{}, T {}, FPS {}, {}-training-episode: mean/median {:.1f}/{:.1f}, \
+            min/max {:.1f}/{:.1f}, std {:.2f}, num_puffs mean/std {:.2f}/{:.2f}, \
+            plume_densities {:.2f}/{:.2f}, wind_dir mean/std {:.2f}/{:.2f} "
+        .format(j, num_updates, 
+                total_num_steps,
+                int(total_num_steps / (end - start)),
+                len(episode_rewards), np.mean(episode_rewards),
+                np.median(episode_rewards), 
+                np.min(episode_rewards),
+                np.max(episode_rewards),
+                np.std(episode_rewards),                    
+                np.mean(episode_puffs),
+                np.std(episode_puffs),
+                np.mean(episode_plume_densities),
+                np.std(episode_plume_densities),
+                np.mean(episode_wind_directions),
+                np.std(episode_wind_directions),)) 
+
+    training_log.append({
+            'update': j,
+            'total_updates': num_updates,
+            'T': total_num_steps,
+            'FPS': int(total_num_steps / (end - start)),
+            'window': len(episode_rewards), 
+            'mean': np.mean(episode_rewards),
+            'median': np.median(episode_rewards), 
+            'min': np.min(episode_rewards),
+            'max': np.max(episode_rewards),
+            'std': np.std(episode_rewards),
+            'num_puffs_mean': np.mean(episode_puffs),
+            'num_puffs_std': np.std(episode_puffs),
+            'plume_density_mean': np.mean(episode_plume_densities),
+            'plume_density_std': np.std(episode_plume_densities),
+            'wind_direction_mean': np.mean(episode_wind_directions),
+            'wind_direction_std': np.std(episode_wind_directions),
+        })
+    return training_log
+
+
+def ds2_wind(ds):
+    # translate dataset name to number of changes in wind direction
+    # input: dataset name
+    # output: number of changes in wind direction (3 as in the agent may encounter up to 3 different wind directions)
+    if 'noisy' in ds:
+        return 3
+    elif 'constant' in ds:
+        return 1
+    elif 'switch' in ds:
+        return 2
+    else:
+        raise NotImplementedError
 
 def main():
     args = get_args()
