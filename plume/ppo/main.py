@@ -440,19 +440,6 @@ def log_episode(training_log, j, total_num_steps, start, episode_rewards, episod
     return training_log
 
 
-def ds2_wind(ds):
-    # translate dataset name to number of changes in wind direction
-    # input: dataset name
-    # output: number of changes in wind direction (3 as in the agent may encounter up to 3 different wind directions)
-    if 'noisy' in ds:
-        return 3
-    elif 'constant' in ds:
-        return 1
-    elif 'switch' in ds:
-        return 2
-    else:
-        raise NotImplementedError
-
 def main():
     args = get_args()
     print("PPO Args --->", args)

@@ -28,6 +28,20 @@ def get_vec_normalize(venv):
     return None
 
 
+def ds2_wind(ds):
+    # translate dataset name to number of changes in wind direction
+    # input: dataset name
+    # output: number of changes in wind direction (3 as in the agent may encounter up to 3 different wind directions)
+    if 'noisy' in ds:
+        return 3
+    elif 'constant' in ds:
+        return 1
+    elif 'switch' in ds:
+        return 2
+    else:
+        raise NotImplementedError
+    
+    
 # Necessary for my KFAC implementation.
 class AddBias(nn.Module):
     def __init__(self, bias):
