@@ -249,64 +249,6 @@ def update_by_schedule(env_collection, schedule_dict, curr_step):
             else:
                 raise NotImplementedError
 
-
-def swap_envs(envs, tobe_swapped, obs, i, verbose=0):
-    """
-    Swaps out the environment at index `i` in `envs` with the environment at index `i` in `tobe_swapped`.
-    Updates the observation `obs` with the new observation from the swapped environment.
-    
-
-    Args:
-        envs (object): The VecEnv object that is used in training.
-        tobe_swapped (object): The VecEnv object to be swapped in.
-        obs (list): The list of observations from the end of the current step. The obs needs to be updated since the environment has changed.
-        i (int): The index of the environment to be swapped.
-        verbose (int, optional): Verbosity level. Defaults to 0.
-
-    Returns:
-        tuple: A tuple containing the updated `envs` and `obs`.
-        Returns the same `envs` and `obs` if `tobe_swapped` is None.
-    """
-    if tobe_swapped:
-        # make a copy
-        tmp0 = envs.venv.venv.processes[i]
-        tmp1 = envs.venv.venv.remotes[i]
-        tmp2 = envs.venv.venv.work_remotes[i]
-        # turn tuple into list
-        envs.venv.venv.processes = list(envs.venv.venv.processes) # already a list. keep just in case...
-        envs.venv.venv.remotes = list(envs.venv.venv.remotes)
-        envs.venv.venv.work_remotes = list(envs.venv.venv.work_remotes)
-        # swap out the old env
-        envs.venv.venv.processes[i] = tobe_swapped.venv.venv.processes[i]
-        envs.venv.venv.remotes[i] = tobe_swapped.venv.venv.remotes[i]
-        envs.venv.venv.work_remotes[i] = tobe_swapped.venv.venv.work_remotes[i]
-        # pass in reset for new env
-        envs.remotes[i].send(("reset", None))
-        new_obs = envs.remotes[i].recv()
-        # exchange old obs with new 
-        obs[i] = torch.from_numpy(new_obs)
-        if verbose:
-            tmp1.send(("get_attr", 'dataset'))
-            print(f"prev env dataset at {i} {tmp1.recv()}")
-            tmp1.send(("get_attr", 'data_puffs'))
-            print(f"with puffs shape: {tmp1.recv().shape}")
-            
-            tobe_swapped.remotes[i].send(("get_attr", 'dataset'))
-            print(f"to be swapped with dataset {tobe_swapped.remotes[i].recv()}")
-            tobe_swapped.remotes[i].send(("get_attr", 'data_puffs'))
-            print(f"with puffs shape: {tobe_swapped.remotes[i].recv().shape}")
-            
-            envs.remotes[i].send(("get_attr", 'dataset'))
-            print(f"now dataset {envs.remotes[i].recv()}")
-            envs.remotes[i].send(("get_attr", 'data_puffs'))
-            print(f"with puffs shape: {envs.remotes[i].recv().shape}")
-            print(f"now var contains {envs.get_attr('dataset', indices=[0,1])}")
-            print(f"swapping obs... old obs {obs[i]}")
-            print(f"swapping obs... new obs {new_obs}")
-        return envs, obs
-    else:
-        return envs, obs
-                        
                         
 def training_loop(agent, envs, args, device, actor_critic, 
     training_log=None, eval_log=None, eval_env=None, rollouts=None):
@@ -375,7 +317,7 @@ def training_loop(agent, envs, args, device, actor_critic,
                     rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])
             obs, reward, done, infos = envs.step(action)
-            for i, d in enumerate(done): # TC: if done, decide if changing the envs, and log the episode info. Care about what kind of env is encountered
+            for i, d in enumerate(done): # if done, log the episode info. Care about what kind of env is encountered
                 if d:
                     try:
                         # Note: only ouput these to infos when done
