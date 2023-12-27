@@ -103,7 +103,7 @@ def get_args():
     parser.add_argument('--num-env-steps', type=int, default=10e6)
     # parser.add_argument('--num-env-steps', type=int, nargs='+', default=[10e6]) # save for bkwds compat
     parser.add_argument('--qvar', type=float, nargs='+', default=[0.0])
-    parser.add_argument('--birthx',  type=float, nargs='+', default=[1.0])
+    parser.add_argument('--birthx',  type=float, default=1.0)
     parser.add_argument('--diff_max',  type=float, nargs='+', default=[0.8])
     parser.add_argument('--diff_min',  type=float, nargs='+', default=[0.4])
     parser.add_argument('--birthx_linear_tc_steps', type=int, default=0) # if on, birthx will linearly decrease over time, reachinig the birthx value gradually
@@ -138,7 +138,6 @@ def get_args():
 
     args = parser.parse_args()
     
-    assert len(args.dataset) == len(args.birthx) 
     assert len(args.dataset) == len(args.qvar) 
     assert len(args.dataset) == len(args.diff_max) 
     assert len(args.dataset) == len(args.diff_min) 
@@ -298,7 +297,7 @@ def training_loop(agent, envs, args, device, actor_critic,
                         envs[0].action_space,
                         actor_critic.recurrent_hidden_state_size)
     num_updates = int(
-        args.num_env_steps) // args.num_steps // args.num_processes # args.num_env_steps 1M for constant 4M for noisy (found in logs) # args.num_steps=2048 (found in logs) # args.num_processes=4=mini_batch (found in logs)
+        args.num_env_steps) // args.num_steps // args.num_processes # args.num_env_steps 20M for all # args.num_steps=2048 (found in logs) # args.num_processes=4=mini_batch (found in logs)
     
     episode_rewards = deque(maxlen=50) 
     episode_plume_densities = deque(maxlen=50)
@@ -319,8 +318,6 @@ def training_loop(agent, envs, args, device, actor_critic,
                                                      'dtype': 'int', 'step_type': 'linear'}) # wind_cond: 1 is constant, 2 is switch, 3 is noisy
         update_by_schedule(envs, schedule, 0)
     
-    # deploy envs and reset for the first env observations
-    envs.deploy(range(args.num_processes)) # HACK: deploy the first set of envs... always will be the constant wind envs
     obs = envs.reset()
     rollouts.obs[0].copy_(obs) # https://discuss.pytorch.org/t/which-copy-is-better/56393
     rollouts.to(device)
@@ -513,11 +510,14 @@ def main():
     # Build envs for training
     curriculum_vars = {
         'dataset': args.dataset,
-        'birthx': args.birthx,
         'qvar': args.qvar,
         'diff_max': args.diff_max,
-        'diff_min': args.diff_min
+        'diff_min': args.diff_min,
+        'reset_offset_tmax': [30, 3], # 3 for switch condition, according to evalCli 
+        't_val_min': [60, 58] # start time of plume data. 58 for switch condition, at around when the switching happens
     }
+    
+    # creates the envs and deploys the first 'num_processes' envs 
     envs = make_vec_envs(
         args.env_name,
         args.seed,
