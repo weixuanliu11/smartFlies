@@ -202,19 +202,17 @@ def eval_lite(agent, env, args, device, actor_critic):
     }
     return eval_record
 
-def update_by_schedule(env_collection, schedule_dict, curr_step):
+def update_by_schedule(envs, schedule_dict, curr_step):
     # updating the env_collection will change the currently running envs :o
-    for k in schedule_dict.keys():
-        _schedule_dict = schedule_dict[k]
+    for k, _schedule_dict in schedule_dict.items():
         # if the current step should be updated 
         if curr_step in _schedule_dict:
-            # TODO: implement a density function over the probs of selecting a new TC value
+            # different update functions since birthx is managed by each process, while wind_cond is managed by my custom SubprocVecEnv
             if k == 'birthx': # update the birthx value in the envs. Sparsity is decided in each envs.reset() at each trial
-                for envs in env_collection:
-                    envs.env_method("update_env_param", {k: _schedule_dict[curr_step]})
-
+                envs.set_attr_all_env(k, _schedule_dict[curr_step])
                 print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
             elif k == 'wind_cond': 
+                envs.update_wind_direction(_schedule_dict[curr_step])
                 print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
             else:
                 raise NotImplementedError
@@ -240,7 +238,7 @@ def build_tc_schedule_dict(total_number_periods, **kwargs):
             
     """
     # initialize the default course directory 
-    course_dirctory = {'density': {'num_classes': 6, 'difficulty_range': [0.7,0.001], 'dtype': 'float', 'step_type': 'log'}, 
+    course_dirctory = {'birthx': {'num_classes': 6, 'difficulty_range': [0.7,0.001], 'dtype': 'float', 'step_type': 'log'}, 
                    'wind_cond': {'num_classes': 2, 'difficulty_range': [1, 3], 'dtype': 'int', 'step_type': 'linear'}} 
     
     # update the default course directory with the input kwargs
@@ -314,7 +312,7 @@ def training_loop(agent, envs, args, device, actor_critic,
     
     # initialize the curriculum schedule
     if args.birthx_linear_tc_steps:
-        schedule = build_tc_schedule_dict(num_updates, density={'num_classes': args.birthx_linear_tc_steps, 
+        schedule = build_tc_schedule_dict(num_updates, birthx={'num_classes': args.birthx_linear_tc_steps, 
                                                                 'difficulty_range': [0.7, args.birthx], 
                                                                 'dtype': 'float', 'step_type': 'log'}, 
                                           wind_cond={'num_classes': 2, 'difficulty_range': [1, 3], 
@@ -531,19 +529,6 @@ def main():
         True,  # allow_early_resets? This is to support resetting an env twice in a row. Twice in a row happens because one auto reset after done and another after swapping.
         args = args,
         **curriculum_vars) # set these envs vars according to the curriculum
-
-
-
-    # TODO clean up. not supported with args.dataset as a list 
-    # eval_env = make_vec_envs(
-    #     args.env_name,
-    #     args.seed + 1000,
-    #     num_processes=1,
-    #     gamma=args.gamma, 
-    #     log_dir=args.log_dir, 
-    #     device=device,
-    #     args=args,
-    #     allow_early_resets=True)
 
     actor_critic = Policy(
         envs.observation_space.shape, 
