@@ -554,17 +554,17 @@ def main():
 
     # Save args and config info
     # https://stackoverflow.com/questions/16878315/what-is-the-right-way-to-treat-argparse-namespace-as-a-dictionary
-    # fname = f"{args.save_dir}/{args.env_name}_{args.outsuffix}_args.json"
-    # with open(fname, 'w') as fp:
-    #     json.dump(vars(args), fp)
+    fname = f"{args.save_dir}/{args.env_name}_{args.outsuffix}_args.json"
+    with open(fname, 'w') as fp:
+        json.dump(vars(args), fp)
 
-    # # Save model at START of training
-    # fname = f'{args.save_dir}/{args.env_name}_{args.outsuffix}.pt.start'
-    # torch.save([
-    #     actor_critic,
-    #     getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
-    # ], fname)
-    # print('Saved', fname)
+    # Save model at START of training
+    fname = f'{args.save_dir}/{args.env_name}_{args.outsuffix}.pt.start'
+    torch.save([
+        actor_critic,
+        getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
+    ], fname)
+    print('Saved', fname)
     
     # keeping these for backwards compatibility
     training_log = None
