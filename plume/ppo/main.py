@@ -311,22 +311,25 @@ def training_loop(agent, envs, args, device, actor_critic,
 
     training_log = training_log if training_log is not None else []
     eval_log = eval_log if eval_log is not None else []
+    
+    # initialize the curriculum schedule
+    if args.birthx_linear_tc_steps:
+        schedule = build_tc_schedule_dict(num_updates, density={'num_classes': args.birthx_linear_tc_steps, 
+                                                                'difficulty_range': [0.7, args.birthx], 
+                                                                'dtype': 'float', 'step_type': 'log'}, 
+                                          wind_cond={'num_classes': 2, 'difficulty_range': [1, 3], 
+                                                     'dtype': 'int', 'step_type': 'linear'}) # wind_cond: 1 is constant, 2 is switch, 3 is noisy
+        update_by_schedule(envs, schedule, 0)
+    
+    # deploy envs and reset for the first env observations
     envs.deploy([0,1])
     obs = envs.reset()
     rollouts.obs[0].copy_(obs) # https://discuss.pytorch.org/t/which-copy-is-better/56393
     rollouts.to(device)
-
-    if args.birthx_linear_tc_steps:
-        build_tc_schedule_dict
-        # birthx_specs = {"birthx":[(0.9, args.birthx), args.birthx_linear_tc_steps]}
-        schedule = build_tc_schedule_dict(num_updates, density={'num_classes': args.birthx_linear_tc_steps, 
-                                                                'difficulty_range': [0.7,args.birthx], 
-                                                                'dtype': 'float', 'step_type': 'log'}, 
-                                          wind_cond={'num_classes': 2, 'difficulty_range': [2, 3], 
-                                                     'dtype': 'int', 'step_type': 'linear'})
-        update_by_schedule(envs, schedule, 0)
-
     start = time.time()
+    # TODO use this to update the wind direction
+    # TODO add switch (config switch by evalCli.py, line 319)
+    envs.update_wind_direction(2)
     # at each bout of update
     for j in range(num_updates):
         print(f"On update {j} of {num_updates}")
@@ -344,9 +347,6 @@ def training_loop(agent, envs, args, device, actor_critic,
         ##############################################################################################################
         for step in range(args.num_steps):
             if step == 170:
-                # TODO use this to update the wind direction
-                # TODO add switch (config switch by evalCli.py, line 319)
-                envs.update_wind_direction(2)
                 print("wanna be here... step 171 is when the first DONE occurs")
             # Sample actions
             with torch.no_grad():
