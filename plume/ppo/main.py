@@ -202,36 +202,6 @@ def eval_lite(agent, env, args, device, actor_critic):
     }
     return eval_record
 
-
-def build_tc_schedule_dict(schedule_dict, total_number_trials):
-    """
-    Builds a training curriculum schedule dictionary.
-
-    Args:
-        schedule_dict (dict): A dictionary containing the schedule information. 
-            Each key is an env variable and each value contains (min, max), n_step_bt_minmax.
-        total_number_updates (int): The total number of updates.
-
-    Returns:
-        dict: A dictionary of dicts. Each key is an env variable which contains the schedule information.
-    """
-
-    dict = {}
-    for key, value in schedule_dict.items():
-        subdict = {}
-        tupl_minMax, n_step_bt_minmax = value
-        print("n_step_bt_minmax", n_step_bt_minmax)
-        # TODO support switching on and off log space
-        scheduled_value = np.linspace(tupl_minMax[0], tupl_minMax[1], n_step_bt_minmax)
-        # scheduled_value = np.logspace(np.log10(0.9), np.log10(0.001), n_step_bt_minmax, endpoint=True)
-        print("scheduled_value", len(scheduled_value))
-        when_2_update = np.linspace(0, total_number_trials, n_step_bt_minmax, endpoint=False, dtype=int)
-        for i in range(len(when_2_update)):
-            subdict[when_2_update[i]] = scheduled_value[i]
-        dict[key] = subdict
-    return dict
-
-
 def update_by_schedule(env_collection, schedule_dict, curr_step):
     # updating the env_collection will change the currently running envs :o
     for k in schedule_dict.keys():
@@ -250,6 +220,7 @@ def update_by_schedule(env_collection, schedule_dict, curr_step):
                 raise NotImplementedError
 
 import itertools
+
 
 def build_tc_schedule_dict(total_number_periods, **kwargs):
     """Builds a training curriculum schedule dictionary. 
@@ -271,7 +242,7 @@ def build_tc_schedule_dict(total_number_periods, **kwargs):
         now_kwargs = kwargs[course]
         for k in now_kwargs:
             course_dirctory[course][k] = now_kwargs[k]
-            
+
     # calculate the scheduled value for each class, given the number of updates and the difficulty range
     tmp_schedule = []
     for course in course_dirctory:
@@ -281,27 +252,30 @@ def build_tc_schedule_dict(total_number_periods, **kwargs):
         if now_course['step_type'] == 'log':
             scheduled_value = np.logspace(np.log10(now_course['difficulty_range'][0]),
                                         np.log10(now_course['difficulty_range'][1]),
-                                        now_course['num_classes'], endpoint=True) 
+                                        now_course['num_classes'] +1 , endpoint=True) 
         elif now_course['step_type'] == 'linear':
             scheduled_value = np.linspace(now_course['difficulty_range'][0],
                                     now_course['difficulty_range'][1],
-                                    now_course['num_classes'], endpoint=True) 
+                                    now_course['num_classes'] +1 , endpoint=True) 
         else: 
             raise ValueError("step_type must be 'log' or 'linear'")
-        now_course['scheduled_value'] = scheduled_value
-        tmp_schedule.append(zip(itertools.cycle([course]), scheduled_value))
-
+        now_course['scheduled_value'] = scheduled_value 
+        tmp_schedule.append(zip(itertools.cycle([course]), scheduled_value[1:])) # the lower bound is the first value -> set at the beginning
+        
     # interleave the scheduled values for each class
     course_schedule = itertools.chain.from_iterable(itertools.zip_longest(*tmp_schedule))
     course_schedule = [c for c in course_schedule if c]
-    
+
     # build the schedule dictionary - when/how to update the env variable according to the course schedule
     schedule_dict = {}
     for k in course_dirctory.keys():
         schedule_dict[k] = {}
-    total_num_classes = len(course_schedule)
+    total_num_classes = len(course_schedule) + 1 # +1 since the first step is at 0, which is not an actual step... 
     when_2_update = np.linspace(0, total_number_periods, total_num_classes, endpoint=False, dtype=int)
-
+    when_2_update = when_2_update[1:] # take out the first step which is at 0, not an actual step
+    
+    for course in course_dirctory.keys():
+        schedule_dict[course][0] = course_dirctory[course]['scheduled_value'][0]
     for i, course in enumerate(course_schedule):
         course_name, scheduled_value = course
         schedule_dict[course_name][when_2_update[i]] = scheduled_value
@@ -337,8 +311,13 @@ def training_loop(agent, envs, args, device, actor_critic,
     rollouts.to(device)
 
     if args.birthx_linear_tc_steps:
-        birthx_specs = {"birthx":[(0.9, args.birthx), args.birthx_linear_tc_steps]}
-        schedule = build_tc_schedule_dict(birthx_specs, num_updates)
+        build_tc_schedule_dict
+        # birthx_specs = {"birthx":[(0.9, args.birthx), args.birthx_linear_tc_steps]}
+        schedule = build_tc_schedule_dict(num_updates, density={'num_classes': args.birthx_linear_tc_steps, 
+                                                                'difficulty_range': [0.7,args.birthx], 
+                                                                'dtype': 'float', 'step_type': 'log'}, 
+                                          wind_cond={'num_classes': 2, 'difficulty_range': [2, 3], 
+                                                     'dtype': 'int', 'step_type': 'linear'})
         update_by_schedule(envs, schedule, 0)
 
     start = time.time()
