@@ -389,7 +389,7 @@ class SubprocVecEnv(SubprocVecEnv_):
 
     def reset(self) -> VecEnvObs:
         # only reset deployed envs
-        # TODO is this problematic?
+        # TODO is this problematic? NOPE since auto reset happens in step_async_wait
         for remote in self.deployed_remotes:
             remote.send(("reset", None))
         obs = [remote.recv() for remote in self.deployed_remotes]
@@ -434,7 +434,7 @@ class SubprocVecEnv(SubprocVecEnv_):
     
     def get_attr_all_envs(self, attr_name: str) -> List[Any]:
         """Return attribute from vectorized environment (see base class)."""
-        indices = None # None means all envs -> range(len(remotes))
+        indices = range(len(self.remotes))
         target_remotes = self._get_target_remotes(indices)
         for remote in target_remotes:
             remote.send(("get_attr", attr_name))
@@ -450,7 +450,7 @@ class SubprocVecEnv(SubprocVecEnv_):
             
     def set_attr_all_env(self, attr_name: str, value: Any) -> None:
         """Set attribute inside vectorized environments (see base class)."""
-        indices = None # None means all envs -> range(len(remotes))
+        indices = range(len(self.remotes))
         target_remotes = self._get_target_remotes(indices)
         for remote in target_remotes:
             remote.send(("set_attr", (attr_name, value)))
