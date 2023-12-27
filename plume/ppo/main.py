@@ -228,14 +228,20 @@ def build_tc_schedule_dict(total_number_periods, **kwargs):
         total_number_periods: number of updates 
         **kwargs: A dictionary containing the schedule information. 
             Each key is an env variable and each value is a dict that specifies how the env variable should be scheduled.
+            num_classes: number of steps to take to reahc max difficulty.
+            difficulty range: a list of two values, the first is the starting value, the second is the max value.
+            dtype: the type of the env variable.
+            step_type: the type of step to take to reach the max value. Either 'log' or 'linear'.
     
     Returns:
-        schedule_dict: A dictionary of dicts. Each key is an env variable which contains the schedule information.
-            The schedule information is a dict with key: which "episode" to update, and value: update by how much.
+        schedule_dict: A dictionary of dicts. Each key is an env variable to be updated according to its schedule information.
+            The schedule information is stored a dict with key: at which "episode" to update, and value: update the value to what.
+            
+            
     """
     # initialize the default course directory 
     course_dirctory = {'density': {'num_classes': 6, 'difficulty_range': [0.7,0.001], 'dtype': 'float', 'step_type': 'log'}, 
-                   'wind_cond': {'num_classes': 3, 'difficulty_range': [1, 3], 'dtype': 'int', 'step_type': 'linear'}} 
+                   'wind_cond': {'num_classes': 2, 'difficulty_range': [1, 3], 'dtype': 'int', 'step_type': 'linear'}} 
     
     # update the default course directory with the input kwargs
     for course in kwargs:
