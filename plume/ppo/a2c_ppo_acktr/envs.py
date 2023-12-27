@@ -84,10 +84,12 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs
                     # TODO make this cleaner. auto read kwargs keys and overwrite args to keep args.X format
                     env = plume_env.PlumeEnvironment(
                         dataset=kwargs['dataset'],
-                        birthx=kwargs['birthx'],
+                        birthx=args.birthx, 
                         qvar=kwargs['qvar'],
                         diff_max=kwargs['diff_max'],
                         diff_min=kwargs['diff_min'],
+                        reset_offset_tmax=kwargs['reset_offset_tmax'],
+                        t_val_min=kwargs['t_val_min'],
                         turnx=args.turnx,
                         movex=args.movex,
                         birthx_max=args.birthx_max,
