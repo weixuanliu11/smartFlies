@@ -389,7 +389,6 @@ class SubprocVecEnv(SubprocVecEnv_):
 
     def reset(self) -> VecEnvObs:
         # only reset deployed envs
-        # TODO is this problematic? NOPE since auto reset happens in step_async_wait
         for remote in self.deployed_remotes:
             remote.send(("reset", None))
         obs = [remote.recv() for remote in self.deployed_remotes]

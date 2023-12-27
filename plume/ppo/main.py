@@ -26,6 +26,7 @@ import time
 
 from setproctitle import setproctitle as ptitle
 import evalCli 
+import itertools
 
 def get_args():
     parser = argparse.ArgumentParser(description='PPO for Plume')
@@ -203,6 +204,7 @@ def eval_lite(agent, env, args, device, actor_critic):
     return eval_record
 
 def update_by_schedule(envs, schedule_dict, curr_step):
+    # TODO: implement a density function over the probs of selecting a new TC value
     # updating the env_collection will change the currently running envs :o
     for k, _schedule_dict in schedule_dict.items():
         # if the current step should be updated 
@@ -216,8 +218,6 @@ def update_by_schedule(envs, schedule_dict, curr_step):
                 print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
             else:
                 raise NotImplementedError
-
-import itertools
 
 
 def build_tc_schedule_dict(total_number_periods, **kwargs):
@@ -320,14 +320,12 @@ def training_loop(agent, envs, args, device, actor_critic,
         update_by_schedule(envs, schedule, 0)
     
     # deploy envs and reset for the first env observations
-    envs.deploy([0,1])
+    envs.deploy(range(args.num_processes)) # HACK: deploy the first set of envs... always will be the constant wind envs
     obs = envs.reset()
     rollouts.obs[0].copy_(obs) # https://discuss.pytorch.org/t/which-copy-is-better/56393
     rollouts.to(device)
     start = time.time()
-    # TODO use this to update the wind direction
-    # TODO add switch (config switch by evalCli.py, line 319)
-    envs.update_wind_direction(2)
+    
     # at each bout of update
     for j in range(num_updates):
         print(f"On update {j} of {num_updates}")
@@ -336,9 +334,10 @@ def training_loop(agent, envs, args, device, actor_critic,
         if args.use_linear_lr_decay:
             utils.update_linear_schedule(
                 agent.optimizer, j, num_updates, args.lr)
-        # TODO update environments according to the curriculum
-        # if args.birthx_linear_tc_steps:
-        #     update_by_schedule(envs, schedule, j)
+        
+        # update envs according to the curriculum schedule
+        if args.birthx_linear_tc_steps:
+            update_by_schedule(envs, schedule, j)
         
         ##############################################################################################################
         # at each step of training 
