@@ -416,7 +416,8 @@ def training_loop(agent, envs, args, device, actor_critic,
             args.model_fname = os.path.join(save_path, f'{args.env_name}_{args.outsuffix}.pt')
             torch.save([
                 actor_critic,
-                getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
+                getattr(utils.get_vec_normalize(envs), 'ob_rms', None),
+                agent.optimizer.state_dict(),
             ], args.model_fname)
             print('Saved', args.model_fname)
 
