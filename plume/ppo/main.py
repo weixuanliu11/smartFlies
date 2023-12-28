@@ -210,7 +210,8 @@ def update_by_schedule(envs, schedule_dict, curr_step):
         if curr_step in _schedule_dict:
             # different update functions since birthx is managed by each process, while wind_cond is managed by my custom SubprocVecEnv
             if k == 'birthx': # update the birthx value in the envs. Sparsity is decided in each envs.reset() at each trial
-                envs.set_attr_all_env(k, _schedule_dict[curr_step])
+                envs.env_method("update_env_param", {k: _schedule_dict[curr_step]})
+                # envs.set_attr_all_env(k, _schedule_dict[curr_step])
                 print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
             elif k == 'wind_cond': 
                 envs.update_wind_direction(_schedule_dict[curr_step])
@@ -283,6 +284,7 @@ def build_tc_schedule_dict(total_number_periods, **kwargs):
         course_name, scheduled_value = course
         schedule_dict[course_name][when_2_update[i]] = scheduled_value
 
+    print("[DEBUG] schedule_dict:", schedule_dict)
     return schedule_dict
     
 
@@ -326,6 +328,7 @@ def training_loop(agent, envs, args, device, actor_critic,
     # at each bout of update
     for j in range(num_updates):
         print(f"On update {j} of {num_updates}")
+        start1 = time.time()
 
         # decrease learning rate linearly
         if args.use_linear_lr_decay:
@@ -340,15 +343,20 @@ def training_loop(agent, envs, args, device, actor_critic,
         # at each step of training 
         ##############################################################################################################
         for step in range(args.num_steps):
-            if step == 170:
-                print("wanna be here... step 171 is when the first DONE occurs")
-            # Sample actions
+            if step < 10:
+                start2 = time.time()
+            
+            # Sample actions ~0.008 seconds
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states, activities = actor_critic.act(
                     rollouts.obs[step], 
                     rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])
             obs, reward, done, infos = envs.step(action)
+            
+            if step < 10:
+                end2 = time.time()
+                print(f"Step {step} took {end2-start2} seconds")
             
             # save and log
             for i, d in enumerate(done): # if done, log the episode info. Care about what kind of env is encountered
@@ -369,11 +377,18 @@ def training_loop(agent, envs, args, device, actor_critic,
             bad_masks = torch.FloatTensor(
                 [[0.0] if 'bad_transition' in info.keys() else [1.0]
                  for info in infos])
+            if step < 10:
+                start3 = time.time()
+                
             rollouts.insert(obs, recurrent_hidden_states, action,
-                            action_log_prob, value, reward, masks, bad_masks)
+                            action_log_prob, value, reward, masks, bad_masks) # ~0.0006s
+            if step < 10:
+                end3 = time.time()
+                print(f"Step {step} took {end3-start3} seconds")
         ##############################################################################################################
-        # UPDATE AGENT
+        # UPDATE AGENT ~ 0.48s
         ##############################################################################################################
+        start4 = time.time()
         with torch.no_grad():
             next_value = actor_critic.get_value(
                 rollouts.obs[-1], rollouts.recurrent_hidden_states[-1],
@@ -386,6 +401,8 @@ def training_loop(agent, envs, args, device, actor_critic,
 
         rollouts.after_update()
         total_num_steps = (j + 1) * args.num_processes * args.num_steps
+        end4 = time.time()
+        print(f"Update {j} took {end4-start4} seconds")
         ##############################################################################################################
         # save for every interval-th episode or for the last epoch
         ##############################################################################################################
@@ -435,6 +452,8 @@ def training_loop(agent, envs, args, device, actor_critic,
                 os.makedirs(save_path, exist_ok=True)
                 fname = os.path.join(save_path, f'{args.env_name}_{args.outsuffix}_{args.dataset}_eval.csv')
                 pd.DataFrame(eval_log).to_csv(fname)
+        end1 = time.time()
+        print(f"Update {j} took {end1-start1} seconds")
                 
     return training_log, eval_log
 
@@ -513,8 +532,8 @@ def main():
         'qvar': args.qvar,
         'diff_max': args.diff_max,
         'diff_min': args.diff_min,
-        'reset_offset_tmax': [30, 3], # 3 for switch condition, according to evalCli 
-        't_val_min': [60, 58] # start time of plume data. 58 for switch condition, at around when the switching happens
+        'reset_offset_tmax': [30, 3, 30], # 3 for switch condition, according to evalCli 
+        't_val_min': [60, 58, 60] # start time of plume data. 58 for switch condition, at around when the switching happens
     }
     
     # creates the envs and deploys the first 'num_processes' envs 
@@ -554,17 +573,17 @@ def main():
 
     # Save args and config info
     # https://stackoverflow.com/questions/16878315/what-is-the-right-way-to-treat-argparse-namespace-as-a-dictionary
-    fname = f"{args.save_dir}/{args.env_name}_{args.outsuffix}_args.json"
-    with open(fname, 'w') as fp:
-        json.dump(vars(args), fp)
+    # fname = f"{args.save_dir}/{args.env_name}_{args.outsuffix}_args.json"
+    # with open(fname, 'w') as fp:
+    #     json.dump(vars(args), fp)
 
-    # Save model at START of training
-    fname = f'{args.save_dir}/{args.env_name}_{args.outsuffix}.pt.start'
-    torch.save([
-        actor_critic,
-        getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
-    ], fname)
-    print('Saved', fname)
+    # # Save model at START of training
+    # fname = f'{args.save_dir}/{args.env_name}_{args.outsuffix}.pt.start'
+    # torch.save([
+    #     actor_critic,
+    #     getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
+    # ], fname)
+    # print('Saved', fname)
     
     # keeping these for backwards compatibility
     training_log = None
