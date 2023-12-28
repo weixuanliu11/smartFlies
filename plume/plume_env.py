@@ -390,7 +390,7 @@ class PlumeEnvironment(gym.Env):
     """
     return Gym.Observation
     """
-    # print(f'reset() called; self.birthx = {self.birthx}', flush=True)
+    print(f'reset() called; self.birthx = {self.birthx}', flush=True)
     self.episode_reward = 0
     self.episode_step = 0 # skip_steps already done during loading
     # Add randomness to start time PER TRIAL!
@@ -404,14 +404,17 @@ class PlumeEnvironment(gym.Env):
     # SPEEDUP (subset puffs to those only needed for episode)
     # self.data_puffs = self.data_puffs_all.query('(time > @self.t_val-1) and (time < @self.t_val_max_episode)') # Speeds up queries!
     self.data_puffs = self.data_puffs_all.query('(tidx >= @self.tidx-1) and (tidx <= @self.tidx_max_episode)') # Speeds up queries!
-
+    # print("puff_number_all", self.data_puffs['puff_number'].nunique())
     # Dynamic birthx for each episode
     if self.birthx < 0.99:
-        puff_sparsity = np.clip(np.random.uniform(low=self.birthx, high=1.0), 0.0, 1.0)
-        self.puff_density = 1 - puff_sparsity
+        puff_density = np.clip(np.random.uniform(low=self.birthx, high=1.0), 0.0, 1.0)
+        self.puff_density = puff_density
+        # print("puff_density", self.puff_density)
         drop_idxs = self.data_puffs['puff_number'].unique()
-        drop_idxs = pd.Series(drop_idxs).sample(frac=(self.puff_density))
+        drop_idxs = pd.Series(drop_idxs).sample(frac=(1 - self.puff_density))
         self.data_puffs = self.data_puffs.query("puff_number not in @drop_idxs") # No deep copy being made
+        # print("puff_number", self.data_puffs['puff_number'].nunique())
+        
 
     if self.diffusion_min < (self.diffusion_max - 0.01):
         diffx = np.random.uniform(low=self.diffusion_min, high=self.diffusion_max)
