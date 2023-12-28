@@ -342,7 +342,7 @@ def training_loop(agent, envs, args, device, actor_critic,
         # at each step of training 
         ##############################################################################################################
         for step in range(args.num_steps):
-            if step < 10:
+            if step < 3:
                 start2 = time.time()
             
             # Sample actions ~0.008 seconds
@@ -353,7 +353,7 @@ def training_loop(agent, envs, args, device, actor_critic,
                     rollouts.masks[step])
             obs, reward, done, infos = envs.step(action)
             
-            if step < 10:
+            if step < 3:
                 end2 = time.time()
                 print(f"Step {step} took {end2-start2} seconds")
             
@@ -376,12 +376,12 @@ def training_loop(agent, envs, args, device, actor_critic,
             bad_masks = torch.FloatTensor(
                 [[0.0] if 'bad_transition' in info.keys() else [1.0]
                  for info in infos])
-            if step < 10:
+            if step < 3:
                 start3 = time.time()
                 
             rollouts.insert(obs, recurrent_hidden_states, action,
                             action_log_prob, value, reward, masks, bad_masks) # ~0.0006s
-            if step < 10:
+            if step < 3:
                 end3 = time.time()
                 print(f"Step {step} took {end3-start3} seconds")
         ##############################################################################################################

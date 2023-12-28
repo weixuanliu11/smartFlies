@@ -390,7 +390,7 @@ class PlumeEnvironment(gym.Env):
     """
     return Gym.Observation
     """
-    print(f'reset() called; self.birthx = {self.birthx}', flush=True)
+    # print(f'reset() called; self.birthx = {self.birthx}', flush=True)
     self.episode_reward = 0
     self.episode_step = 0 # skip_steps already done during loading
     # Add randomness to start time PER TRIAL!
