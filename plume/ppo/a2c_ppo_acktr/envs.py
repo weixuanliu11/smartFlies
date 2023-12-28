@@ -345,41 +345,45 @@ class SubprocVecEnv(SubprocVecEnv_):
         """
         self.deployed_remotes[idx] = self.remotes[idx_replacement_item]
         self.deployed_processes[idx] = self.processes[idx_replacement_item]
+        self.refresh_deployment_status()
         
     def step_async(self, actions: np.ndarray) -> None:
         for remote, action in zip(self.deployed_remotes, actions):
             remote.send(("step", action))
         self.waiting = True
 
+    def check_remote_sanity(self):
+        # check if there are any duplicated remotes that are deployed
+        # actually won't be a problem since iterates over self.deployed_remotes
+        assert len(self.deployed_remotes) == len(set(self.deployed_processes)), "duplicated remotes"
+    
     def step_wait(self) -> VecEnvStepReturn:
         results = [remote.recv() for remote in self.deployed_remotes]
         self.waiting = False
+        swapped = False
         obs, rews, dones, infos = zip(*results)
         for i, d in enumerate(dones): 
             if d:
                 # log the final observation
                 infos[i]["terminal_observation"] = obs[i]
-                
                 # sample a new wind condition
                 new_wind_direction = self.sample_wind_direction()
                 current_wind_direction = self.ds2wind(self.get_attr('dataset', i)[0])
                 # if wind condtion changed, then swap
                 if new_wind_direction != current_wind_direction:
-                    print(f"[DEBUG] new wind dir selected... pre swap {self.get_attr('dataset')}")
+                    # print(f"[DEBUG] new wind dir selected... pre swap {self.get_attr('dataset')}")
                     # check the remote_directory to swap with an undeployed env with the condition of interest
                     for remote_idx, status in self.remote_directory.items():
-                        print(status)
                         if status['deployed'] == False and status['wind_direction'] == new_wind_direction:
                             self.swap(i, remote_idx)
                             swapped = True
                             break
-                    print(f"[DEBUG] new wind dir selected... post swap {self.get_attr('dataset')}")
-                else:
-                    print(f"[DEBUG] same wind dir selected. no change {self.get_attr('dataset')}")
-            
+                    # print(f"[DEBUG] new wind dir selected... post swap {self.get_attr('dataset')}")
+                
                 # update the newest observation
                 list(obs)[i] = self.reset_deployed_at(i)
                 obs = tuple(obs)
+        
         return _flatten_obs(obs, self.observation_space), np.stack(rews), np.stack(dones), infos
 
     def seed(self, seed: Optional[int] = None) -> List[Union[None, int]]:
@@ -443,6 +447,7 @@ class SubprocVecEnv(SubprocVecEnv_):
 
     def set_attr(self, attr_name: str, value: Any, indices: VecEnvIndices = None) -> None:
         """Set attribute inside vectorized environments (see base class)."""
+        raise NotImplementedError("set_attr is deprecated... can set attr but does not take effect. need to set via env_method!")
         target_remotes = self._get_target_remotes(indices, deployed=True)
         for remote in target_remotes:
             remote.send(("set_attr", (attr_name, value)))
@@ -451,6 +456,7 @@ class SubprocVecEnv(SubprocVecEnv_):
             
     def set_attr_all_env(self, attr_name: str, value: Any) -> None:
         """Set attribute inside vectorized environments (see base class)."""
+        raise NotImplementedError("set_attr_all_env is deprecated... can set attr but does not take effect. need to set via env_method!")
         indices = range(len(self.remotes))
         target_remotes = self._get_target_remotes(indices)
         for remote in target_remotes:
@@ -459,7 +465,15 @@ class SubprocVecEnv(SubprocVecEnv_):
             remote.recv()
 
     def env_method(self, method_name: str, *method_args, indices: VecEnvIndices = None, **method_kwargs) -> List[Any]:
-        """Call instance methods of vectorized environments."""
+        """Call instance methods of vectorized environments. Apply method to deployed envs only"""
+        target_remotes = self._get_target_remotes(indices) # get indices of deployed envs
+        for remote in target_remotes:
+            remote.send(("env_method", (method_name, method_args, method_kwargs)))
+        return [remote.recv() for remote in target_remotes]
+    
+    def env_method_apply_to_all(self, method_name: str, *method_args, indices: VecEnvIndices = None, **method_kwargs) -> List[Any]:
+        """Call instance methods of vectorized environments. Apply method to all environments"""
+        indices = range(len(self.remotes))
         target_remotes = self._get_target_remotes(indices)
         for remote in target_remotes:
             remote.send(("env_method", (method_name, method_args, method_kwargs)))
