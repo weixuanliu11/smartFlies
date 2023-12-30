@@ -435,7 +435,7 @@ def training_loop(agent, envs, args, device, actor_critic,
             # Save training curve
             save_path = args.save_dir # os.path.join(args.save_dir, args.algo)
             os.makedirs(save_path, exist_ok=True)
-            fname = os.path.join(save_path, f'{args.env_name}_{args.outsuffix}_{args.dataset}_train.csv')
+            fname = os.path.join(save_path, f'{args.env_name}_{args.outsuffix}_train.csv')
             pd.DataFrame(training_log).to_csv(fname)
 
 
@@ -449,7 +449,7 @@ def training_loop(agent, envs, args, device, actor_critic,
 
                 save_path = args.save_dir
                 os.makedirs(save_path, exist_ok=True)
-                fname = os.path.join(save_path, f'{args.env_name}_{args.outsuffix}_{args.dataset}_eval.csv')
+                fname = os.path.join(save_path, f'{args.env_name}_{args.outsuffix}_eval.csv')
                 pd.DataFrame(eval_log).to_csv(fname)
         end1 = time.time()
         print(f"Update {j} took {end1-start1} seconds")
