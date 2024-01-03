@@ -269,7 +269,7 @@ if __name__ == "__main__":
     parser.add_argument('--birthxs', type=float, nargs='+', default=None)
     parser.add_argument('--diffusionx',  type=float, default=1.0)
     parser.add_argument('--out_reldir', type=str, default='2_videos')
-    parser.add_argument('--use_datasets', type=str, default=['constantx5b5', 'switch45x5b5', 'noisy3x5b5'])
+    parser.add_argument('--use_datasets', type=str,  nargs='+', default=['constantx5b5', 'switch45x5b5', 'noisy3x5b5'])
 
     args = parser.parse_args()
     print(args)
