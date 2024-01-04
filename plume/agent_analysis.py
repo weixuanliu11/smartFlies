@@ -94,20 +94,25 @@ def evaluate_agent(agent,
 ## Behavior Analysis ##
 def visualize_single_episode(data_puffs, data_wind, traj_df, 
     episode_idx, zoom=1, t_val=None, title_text=None, output_fname=None, 
-    show=True, colorby=None, vmin=0, vmax=1, plotsize=None, xlims=None, ylims=None, legend=True):
+    show=True, colorby=None, vmin=0, vmax=1, plotsize=None, xlims=None, ylims=None, legend=True,
+    invert_colors=False):
     scatter_size = 15
     plotsize = (8,8) if plotsize is None else plotsize
 
     try:      
         fig, ax = sim_analysis.plot_puffs_and_wind_vectors(data_puffs, data_wind, t_val, 
-                                           fname='', plotsize=plotsize, show=show)
+                                           fname='', plotsize=plotsize, show=show, invert_colors=invert_colors)
     except Exception as e:
         print(episode_idx, e)
         return None, None
 
     # Crosshair at source
-    plt.plot([0, 0],[-0.3,+0.3],'k-', linestyle = ":", lw=2)
-    plt.plot([-0.3,+0.3],[0, 0],'k-', linestyle = ":", lw=2)
+    if invert_colors:
+        plt.plot([0, 0],[-0.3,+0.3],'w-', linestyle = ":", lw=2) # presentation black background, white lines
+        plt.plot([-0.3,+0.3],[0, 0],'w-', linestyle = ":", lw=2)
+    else:
+        plt.plot([0, 0],[-0.3,+0.3],'k-', linestyle = ":", lw=2) # manuscript white background, black lines
+        plt.plot([-0.3,+0.3],[0, 0],'k-', linestyle = ":", lw=2)
 
     # Handle custom colorby
     if colorby is not None and type(colorby) is not str:
@@ -126,7 +131,7 @@ def visualize_single_episode(data_puffs, data_wind, traj_df,
     # Default: colors indicate odor present/absent
     if colorby is None:
         colors = [config.traj_colormap['off'] if x <= config.env['odor_threshold'] else config.traj_colormap['on'] for x in traj_df['odor_obs']]
-        cm = plt.cm.get_cmap('winter')
+        cm = plt.cm.get_cmap('winter') # not sure if makes a difference
         plt.scatter(traj_df.iloc[:,0], traj_df.iloc[:,1], 
             c=colors, s=scatter_size, cmap=cm, vmin=vmin, vmax=vmax, alpha=1.0)
     if colorby is not None and colorby == 'complete': 
@@ -203,7 +208,18 @@ def visualize_single_episode(data_puffs, data_wind, traj_df,
         # https://stackoverflow.com/questions/12848808/set-legend-symbol-opacity-with-matplotlib
         for lh in leg.legendHandles: 
             lh.set_alpha(1)
-
+    if invert_colors:
+        # for Bing presentation... set background to black and text to white
+        ax.set_facecolor('black')
+        ax.spines['bottom'].set_color('white')
+        ax.spines['top'].set_color('white')
+        ax.spines['left'].set_color('white')
+        ax.spines['right'].set_color('white')
+        ax.xaxis.label.set_color('white')
+        ax.yaxis.label.set_color('white')
+        ax.tick_params(axis='x', colors='white')
+        ax.tick_params(axis='y', colors='white')
+        fig.set_facecolor('black')
     if output_fname is not None:
         plt.savefig(output_fname, bbox_inches='tight')
     return fig, ax
@@ -213,7 +229,7 @@ def animate_single_episode(
     data_puffs, data_wind, traj_df, 
     t_vals, t_vals_all,
     episode_idx, outprefix, fprefix, zoom, 
-    colorby=None, plotsize=None, legend=True):
+    colorby=None, plotsize=None, legend=True, invert_colors=False):
     
     n_tvals = len(t_vals) 
     if n_tvals == 0:
@@ -249,6 +265,7 @@ def animate_single_episode(
             colorby=None,
             plotsize=plotsize,
             legend=legend,
+            invert_colors=invert_colors
             )
         
     if skipped_frames > 0:
@@ -286,6 +303,7 @@ def visualize_episodes(episode_logs,
                        vmin=0, vmax=1,
                        plotsize=None,
                        legend=True,
+                       invert_colors=False
                        ):
 
     # Trim/preprocess loaded dataset!
@@ -371,14 +389,14 @@ def visualize_episodes(episode_logs,
             traj_df, episode_idx_title, zoom, t_val_end, 
             title_text, output_fname, colorby=colorby,
             vmin=vmin, vmax=vmax, plotsize=plotsize, 
-            xlims=xlims, ylims=ylims, legend=legend)
+            xlims=xlims, ylims=ylims, legend=legend, invert_colors=invert_colors)
         figs.append(fig)
         axs.append(ax)
 
         if animate:
             animate_single_episode(data_puffs, data_wind, traj_df, 
                 t_vals, t_vals_all, episode_idx_title, outprefix, 
-                fprefix, zoom, colorby=colorby, plotsize=plotsize, legend=legend) 
+                fprefix, zoom, colorby=colorby, plotsize=plotsize, legend=legend, invert_colors=invert_colors)
 
     return figs, axs
 

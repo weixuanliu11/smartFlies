@@ -18,13 +18,16 @@ seed_global = 137
 traj_colormap = { 
 	# 'on': 'lime',
 	# 'on': 'darkgreen',
-	'on': 'seagreen',
+	# 'on': 'seagreen', # manuscript
+	'on': 'gold', # Bing presentation
 	# 'on': 'mediumseagreen',
 	# 'on': 'royalblue',
 	# 'on': 'dodgerblue',
 	# 'on': 'blue',
 
-	'off': 'blue',
+	# 'off': 'blue', # manuscript	
+	# 'off': 'mediumorchid', # Bing presentation
+	'off': 'hotpink', # Bing presentation
 	# 'off': 'dodgerblue', # lighter than royalblue
 	# 'off': 'royalblue',
 	# 'off': 'brown',

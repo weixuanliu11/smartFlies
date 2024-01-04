@@ -537,7 +537,7 @@ def tsne_1episode(ep_activity, twoD=True, threeD=False, colnames=None):
 
 
 def animate_activity_1episode(ep_activity, traj_df, episode_idx, 
-    outprefix, fprefix, pca_dims=2, pca_common=None):
+    outprefix, fprefix, pca_dims=2, pca_common=None, invert_colors=False, title=True):
     assert pca_dims in [2, 3]
     # TODO implement 3D
 
@@ -571,17 +571,40 @@ def animate_activity_1episode(ep_activity, traj_df, episode_idx,
         else: 
             fig = plt.figure(figsize=(12,6))
             ax = fig.gca(projection='3d')
-            ax.plot(X_pca[:, 0], X_pca[:, 1], X_pca[:, 2], linewidth=0.6, c='grey', alpha=0.5)
-            sc = ax.scatter(X_pca[:t_idx, 0], X_pca[:t_idx, 1], X_pca[:t_idx, 2], s=15, 
-                c=np.arange(1, t_idx+1)/(t_idx+1), cmap=plt.cm.get_cmap('Reds'), vmin=0., vmax=1.)
+            if invert_colors: # white dynamic trajectories and bigger moment to moment dots against the black background
+                ax.plot(X_pca[:, 0], X_pca[:, 1], X_pca[:, 2], linewidth=1, c='white', alpha=1)
+                sc = ax.scatter(X_pca[:t_idx, 0], X_pca[:t_idx, 1], X_pca[:t_idx, 2], s=30, 
+                    c=np.arange(1, t_idx+1)/(t_idx+1), cmap=plt.cm.get_cmap('Reds'), vmin=0., vmax=1.)
+            else:
+                ax.plot(X_pca[:, 0], X_pca[:, 1], X_pca[:, 2], linewidth=0.6, c='grey', alpha=0.5)
+                sc = ax.scatter(X_pca[:t_idx, 0], X_pca[:t_idx, 1], X_pca[:t_idx, 2], s=15, 
+                    c=np.arange(1, t_idx+1)/(t_idx+1), cmap=plt.cm.get_cmap('Reds'), vmin=0., vmax=1.)
+
             ax.scatter(X_pca[0, 0], X_pca[0, 1], X_pca[0, 2], c='g', marker='o', s=100) # Start
             ax.scatter(X_pca[t_idx, 0], X_pca[t_idx, 1], X_pca[t_idx, 2], c='g', marker='x', s=150) # End
             ax.set_zlabel(f'PC3 (VarExp: {pca.explained_variance_ratio_[2]:0.2f})')
 
         ax.set_xlabel(f'PC1 (VarExp: {pca.explained_variance_ratio_[0]:0.2f})')
         ax.set_ylabel(f'PC2 (VarExp: {pca.explained_variance_ratio_[1]:0.2f})')
-        plt.title(title_text)
+        if title:
+            plt.title(title_text)
         # plt.tight_layout()
+        if invert_colors:
+            fig.set_facecolor('black')
+            ax.set_facecolor('black')
+            ax.xaxis.label.set_color('white')
+            ax.yaxis.label.set_color('white')
+            ax.zaxis.label.set_color('white')
+            ax.xaxis.pane.fill = False
+            ax.yaxis.pane.fill = False
+            ax.zaxis.pane.fill = False
+            plt.rcParams['grid.color'] = "dimgrey"
+            plt.rcParams['lines.linewidth'] = 0.1
+            ax.tick_params(color='black', labelcolor='black')
+            ax.grid(True)
+            ax.set_xlabel(f'PC1')
+            ax.set_ylabel(f'PC2')
+            ax.set_zlabel(f'PC3')
 
         common_suffix = '_common' if pca_common is not None else '' 
         output_fname = f'{outprefix}/tmp/{fprefix}_pca{pca_dims}d{common_suffix}_ep{episode_idx}_step{t_idx:05d}.png'

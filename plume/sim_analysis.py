@@ -382,7 +382,7 @@ def get_whiff_age(data, t_idx, x, y):
 ### Plotting
 
 # New version: One circle at hardcoded (x,y) with quiver 
-def plot_wind_vectors(data_puffs, data_wind, t_val, ax):
+def plot_wind_vectors(data_puffs, data_wind, t_val, ax, invert_colors=False):
     # Instantaneous wind velocity
     # Normalize wind (just care about angle)
     data_at_t = data_wind[data_wind.time==t_val]
@@ -393,13 +393,17 @@ def plot_wind_vectors(data_puffs, data_wind, t_val, ax):
 
     # Arrow
     x,y = -0.15, 0.6 # Arrow Center [Note usu. xlim=(-0.5, 8)]
-    ax.quiver(x, y, v_x, v_y, color='black', scale=2.5)
+    if invert_colors:
+        color='white'
+    else:
+        color='black'
+    ax.quiver(x, y, v_x, v_y, color=color, scale=2.5)
     # ax.quiver(x, y, v_x, v_y, color='black', scale=500)
 
     # Circle is 1 scatterplot point!
     ax.scatter(x, y, s=500, 
         facecolors='none', 
-        edgecolors='k',
+        edgecolors=color,
         linestyle='--')
 
 # Floris version: fills arena with quivers
@@ -427,6 +431,7 @@ def plot_wind_vectors(data_puffs, data_wind, t_val, ax):
 
 
 def plot_puffs(data, t_val, ax=None, show=True):
+    # TODO check color to concentration mapping
     if ax is None:
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -539,12 +544,11 @@ def plot_puffs(data, t_val, ax=None, show=True):
 #         plt.show()
 
 
-def plot_puffs_and_wind_vectors(data_puffs, data_wind, t_val, ax=None, fname='', plotsize=(10,10), show=True):
+def plot_puffs_and_wind_vectors(data_puffs, data_wind, t_val, ax=None, fname='', plotsize=(10,10), show=True, invert_colors=False):
     if ax is None:
         fig = plt.figure(figsize=plotsize)
         ax = fig.add_subplot(111)
-    
-    plot_wind_vectors(data_puffs, data_wind, t_val, ax)
+    plot_wind_vectors(data_puffs, data_wind, t_val, ax, invert_colors=invert_colors)
     plot_puffs(data_puffs, t_val, ax, show=False)
     
     if len(fname) > 0:
