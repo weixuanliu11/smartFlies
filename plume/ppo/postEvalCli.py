@@ -130,7 +130,12 @@ def post_eval(args):
     except Exception as e:
         print(f"Exception: {e}")
 
-    subset_df = selected_df.groupby(['dataset', 'outcome']).head(args.viz_episodes)
+    if args.viz_only_these_episodes:
+        print(f"Visualizing episodes {args.viz_only_these_episodes}...")
+        subset_df = selected_df[selected_df['idx'].isin(args.viz_only_these_episodes)]
+        print(f"Found these episodes {set(subset_df.idx)}...")
+    else:
+        subset_df = selected_df.groupby(['dataset', 'outcome']).head(args.viz_episodes)
 
     for idx, row in subset_df.iterrows():
         ep_activity = log_analysis.get_activity(row['log'], 
@@ -158,6 +163,9 @@ def post_eval(args):
                                               fprefix=fprefix,
                                               diffusionx=args.diffusionx,
                                               outprefix=OUTPREFIX,
+                                              title_text=False, # not supported anyway
+                                              legend=False,
+                                              invert_colors=True,
                                              )    
 
             log_analysis.animate_activity_1episode(ep_activity, 
@@ -166,7 +174,9 @@ def post_eval(args):
                     fprefix=fprefix,
                     outprefix=OUTPREFIX,
                     pca_dims=3,
-                    pca_common=pca_common)
+                    pca_common=pca_common,
+                    invert_colors=True,
+                    title=False)
 
             # eig animations/plots
             eig_df = archu.get_eig_df_episode(net, row['log'])
@@ -265,11 +275,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Common neural subspace plots/animations')
     parser.add_argument('--model_dir', default=None)
     parser.add_argument('--viz_episodes', type=int, default=2)
+    parser.add_argument('--viz_only_these_episodes', type=int, nargs='+', default=False)
     parser.add_argument('--walking', type=bool, default=False)
-    parser.add_argument('--birthxs', type=float, nargs='+', default=None)
+    parser.add_argument('--birthxs', type=float, nargs='+', default=[None])
     parser.add_argument('--diffusionx',  type=float, default=1.0)
     parser.add_argument('--out_reldir', type=str, default='2_videos')
-    parser.add_argument('--use_datasets', type=str,  nargs='+', default=['constantx5b5', 'switch45x5b5', 'noisy3x5b5'])
+    parser.add_argument('--use_datasets', type=str,  nargs='+', 
+                        default=['constantx5b5', 'switch45x5b5', 'noisy3x5b5'])
 
     args = parser.parse_args()
     print(args)
