@@ -491,8 +491,9 @@ def log_episode(training_log, j, total_num_steps, start, episode_rewards, episod
     return training_log
 
 
-def main():
-    args = get_args()
+def main(args=None):
+    if not args:
+        args = get_args()
     print("PPO Args --->", args)
 
     np.random.seed(args.seed)
