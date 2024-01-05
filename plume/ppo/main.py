@@ -407,24 +407,18 @@ def training_loop(agent, envs, args, device, actor_critic,
         ##############################################################################################################
         if (j % args.save_interval == 0
                 or j == num_updates - 1) and args.save_dir != "":
-            save_path = args.save_dir # os.path.join(args.save_dir, args.algo)
-            try:
-                os.makedirs(save_path)
-            except OSError:
-                pass
 
-            args.model_fname = os.path.join(save_path, f'{args.env_name}_{args.outsuffix}.pt')
             torch.save([
                 actor_critic,
                 getattr(utils.get_vec_normalize(envs), 'ob_rms', None),
                 agent.optimizer.state_dict(),
-            ], args.model_fname)
-            print('Saved', args.model_fname)
+            ], args.model_fpath)
+            print('Saved', args.model_fpath)
 
             current_mean = np.median(episode_rewards)
             if current_mean >= best_mean:
                 best_mean = current_mean
-                fname = os.path.join(save_path, f'{args.env_name}_{args.outsuffix}.pt.best')
+                fname = f'{args.model_fpath}.best'
                 torch.save([
                     actor_critic,
                     getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
@@ -434,10 +428,7 @@ def training_loop(agent, envs, args, device, actor_critic,
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
             training_log = log_episode(training_log, j, total_num_steps, start, episode_rewards, episode_puffs, episode_plume_densities, episode_wind_directions, num_updates)
             # Save training curve
-            save_path = args.save_dir # os.path.join(args.save_dir, args.algo)
-            os.makedirs(save_path, exist_ok=True)
-            fname = os.path.join(save_path, f'{args.env_name}_{args.outsuffix}_train.csv')
-            pd.DataFrame(training_log).to_csv(fname)
+            pd.DataFrame(training_log).to_csv(args.training_log)
 
 
         if (args.eval_interval is not None and len(episode_rewards) > 1
@@ -570,20 +561,28 @@ def main():
         eps=args.eps,
         max_grad_norm=args.max_grad_norm,
         weight_decay=args.weight_decay)
-
+    
+    try:
+        os.makedirs(args.save_dir, exist_ok=True)
+    except OSError:
+        pass
+    
+    args.model_fname = f"{args.env_name}_{args.outsuffix}.pt"
+    args.model_fpath = os.path.join(args.save_dir, args.model_fname)
+    args.training_log = args.model_fpath.replace(".pt", '_train.csv')
     # Save args and config info
     # https://stackoverflow.com/questions/16878315/what-is-the-right-way-to-treat-argparse-namespace-as-a-dictionary
-    # fname = f"{args.save_dir}/{args.env_name}_{args.outsuffix}_args.json"
-    # with open(fname, 'w') as fp:
-    #     json.dump(vars(args), fp)
+    args.json_config = args.model_fpath.replace(".pt", "_args.json")
+    with open(args.json_config , 'w') as fp:
+        json.dump(vars(args), fp)
 
-    # # Save model at START of training
-    # fname = f'{args.save_dir}/{args.env_name}_{args.outsuffix}.pt.start'
-    # torch.save([
-    #     actor_critic,
-    #     getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
-    # ], fname)
-    # print('Saved', fname)
+    # Save model at START of training
+    start_fname = f'{args.model_fpath}.start'
+    torch.save([
+        actor_critic,
+        getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
+    ], start_fname)
+    print('Saved', start_fname)
     
     # keeping these for backwards compatibility
     training_log = None
@@ -601,7 +600,6 @@ def main():
         return
 
     actor_critic.to('cpu')
-    args.model_fname = fname
 
     # Evaluation
     # these datasets are not mentioned in the manuscript
