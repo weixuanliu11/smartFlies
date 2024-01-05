@@ -1,6 +1,7 @@
 import datajoint as dj
 import hashlib
 import numpy as np
+from plume.ppo.main import main
 
 # Setting up schema
 schema = dj.schema("jq_fly")
@@ -99,7 +100,7 @@ class TrainingResult(dj.Computed):
     definition = """
     -> TrainingConfig
     ---
-    perf: double
+    
     """
 
     def make(self, key):
@@ -109,11 +110,10 @@ class TrainingResult(dj.Computed):
         args = (TrainingConfig & key).fetch1()
 
         # Pass it on your code
-        print("PPO Args --->", args)
+        main(args = args)
 
         np.random.seed(args['seed'])
         # EXAMPLE COMPLETE TRIANING
-        key['perf'] = 0.0
         self.insert1(key)
 
 
