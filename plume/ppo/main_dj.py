@@ -7,7 +7,7 @@ if __name__ == '__main__':
     processes = []
     kw={'reserve_jobs':True}
     for i in num_of_processes:
-        processes.append(target=TrainingResult.populate, kwargs=kw)
+        processes.append(Process(target=TrainingResult.populate, kwargs=kw))
 
     for p in processes:
         p.start()
