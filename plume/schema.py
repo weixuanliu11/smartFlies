@@ -94,8 +94,10 @@ class TrainingConfig(dj.Manual):
                 return seed
     
 
-    def insert1(self, dict_to_insert):
+    def insert1(self, input_dict):
+        dict_to_insert = input_dict.copy()
         if 'seed' not in dict_to_insert.keys():
+            print("No seed provided. Generating a new one.")
             seed = self.get_new_seed()
             dict_to_insert['seed'] = seed
         
