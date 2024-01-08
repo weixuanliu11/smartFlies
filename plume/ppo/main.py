@@ -494,7 +494,14 @@ def log_episode(training_log, j, total_num_steps, start, episode_rewards, episod
 def main(args=None):
     if not args:
         args = get_args()
+    else:
+        # turn a dict into a parsed arg object.
+        args = argparse.Namespace(**args)
+        
+        
     print("PPO Args --->", args)
+    print(args.seed)
+        
 
     np.random.seed(args.seed)
     if args.betadist:
