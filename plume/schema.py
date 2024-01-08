@@ -86,14 +86,18 @@ class TrainingConfig(dj.Manual):
     cuda: bool
     """
     
-
-    def insert1(self, dict_to_insert):
-        # get a random seed that is NOT in the table
+    def get_new_seed(self):
+        # return a random seed that is NOT already in the table
         while True:
             seed = random.randint(0, 32767) # keep tradition of $RANDOM in bash, where RAND~Uni(0, 32767)
             if seed not in self.fetch()['seed']:
-                break
-        dict_to_insert['seed'] = seed
+                return seed
+    
+
+    def insert1(self, dict_to_insert):
+        if 'seed' not in dict_to_insert.keys():
+            seed = self.get_new_seed()
+            dict_to_insert['seed'] = seed
         
         # dummy outsuffix
         dict_to_insert['outsuffix'] = ''
@@ -119,11 +123,15 @@ class TrainingResult(dj.Computed):
     definition = """
     -> TrainingConfig
     ---
-    
+    hours_elapsed: double
     """
 
     def make(self, key):
         # key is a dictionary containg the primary key of TrainingConfig [1 row]
+        
+        # start timer
+        import time
+        t0 = time.time()
         
         # Pull all the secondary attributes from the table into the dictionary
         args = (TrainingConfig & key).fetch1()
@@ -131,6 +139,11 @@ class TrainingResult(dj.Computed):
         # Pass it on your code
         main(args = args)
 
-        np.random.seed(args['seed'])
+        # stop timer
+        t1 = time.time()
+        # calculate time taken in hours
+        t = (t1-t0)/3600
+
+        key['hours_elapsed'] = t
         # EXAMPLE COMPLETE TRIANING
         self.insert1(key)
