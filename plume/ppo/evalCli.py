@@ -422,16 +422,18 @@ def eval_loop(args, actor_critic, test_sparsity=True):
 
                 zoom = 1 if 'constant' in args.dataset else 2    
                 zoom = 3 if args.walking else zoom
-                if birthx in [0.8, 0.6, 0.4, 0.2, 0.1]:
-                    agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
-                        zoom=zoom, 
-                        dataset=args.dataset,
-                        animate=False,
-                        fprefix=f'sparse_{args.dataset}_{birthx}', 
-                        outprefix=OUTPREFIX,
-                        diffusionx=args.diffusionx,
-                        birthx=birthx,
-                        )
+                
+                # if birthx in [0.8, 0.6, 0.4, 0.2, 0.1]:
+                #     agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
+                #         zoom=zoom, 
+                #         dataset=args.dataset,
+                #         animate=False,
+                #         fprefix=f'sparse_{args.dataset}_{birthx}', 
+                #         outprefix=OUTPREFIX,
+                #         diffusionx=args.diffusionx,
+                #         birthx=birthx,
+                #         )
+                
                 # agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
                 #     zoom=zoom, 
                 #     dataset=args.dataset,
