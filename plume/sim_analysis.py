@@ -16,7 +16,7 @@ import matplotlib
 import config
 np.random.seed(config.seed_global)
 
-import mpl_scatter_density
+# import mpl_scatter_density # never used
 
 def get_puff_birthtime(data_puffs, puff_number):
     p = data_puffs[data_puffs.puff_number==puff_number].time.values

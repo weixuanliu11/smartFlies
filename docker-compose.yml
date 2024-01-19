@@ -5,7 +5,9 @@ services:
       context: .
     volumes:
     - ./:/src # Left hand is host, right hand is container. Basically map an outside volume into container
-    - ../data:/data # Map data folder into container
+    - ../smartFlies/data:/src/data # Map data folder into container
+    - ../smartFlies/JH_boilerplate/:/src/JH_boilerplate # Map JH_boilerplate folder into container
+    - ../smartFlies/.git/:/src/smartFlies/.git # Map JH_boilerplate folder into container
     deploy:
       resources:
         reservations:
@@ -13,4 +15,5 @@ services:
           - driver: nvidia
             device_ids: ['0', '1']
             capabilities: [gpu]
-  #   # env_file:
+    env_file: .env # Load environment variables from .env file- 
+    command: sleep infinity
