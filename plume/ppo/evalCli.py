@@ -377,10 +377,18 @@ def eval_loop(args, actor_critic, test_sparsity=True):
 
 
 
-    #### ------- Sparse ------- #### 
+
+
+
+
+    #### ------- Sparse ------- #### #### ------- Sparse ------- #### #### ------- Sparse ------- #### #### ------- Sparse ------- #### 
     if test_sparsity:
-        for birthx in np.arange(0.9, 0.05, -0.05):
-            birthx = round(birthx, 2)
+        x = np.linspace(0.9, 0.1, 5)
+        y = np.array([0.05, 0.01, 0.005, 0.001, 0.0005])
+        z = np.concatenate((x,y))
+        # for birthx in np.arange(0.9, 0.1, -0.05):
+        for birthx in z:
+            birthx = round(birthx, 4)
             print("Sparse/birthx:", birthx)
             try:
                 args.birthx_max = birthx # load time birthx: subsample the plume data at the time of loading 
