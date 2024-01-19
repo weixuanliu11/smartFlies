@@ -5,7 +5,7 @@ import sys
 if __name__ == '__main__':
     num_of_processes = int(sys.argv[1])
     processes = []
-    kw={'reserve_jobs':False} # True to ensure no duplicate jobs are queued. Not currently working. Only run with ONE subprocess
+    kw={'reserve_jobs':True} # True to ensure no duplicate jobs are queued. Not currently working. Only run with ONE subprocess
     if num_of_processes == 1:
         TrainingResult.populate(**kw)
     else:
