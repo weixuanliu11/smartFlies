@@ -422,7 +422,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
                     agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
                         zoom=zoom, 
                         dataset=args.dataset,
-                        animate=False,
+                        animate=True,
                         fprefix=f'sparse_{args.dataset}_{birthx}', 
                         outprefix=OUTPREFIX,
                         diffusionx=args.diffusionx,
