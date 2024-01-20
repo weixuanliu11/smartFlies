@@ -31,12 +31,16 @@ def make_vec_envs(env_name,
                   **all_curriculum_params
                   ):
     envs = []
-    for env_idx in range(len(all_curriculum_params['dataset'])):
-        now_curriculum_params = {}
-        for k, v in all_curriculum_params.items():
-            now_curriculum_params[k] = v[env_idx]
+    if all_curriculum_params:
+        for env_idx in range(len(all_curriculum_params['dataset'])):
+            now_curriculum_params = {}
+            for k, v in all_curriculum_params.items():
+                now_curriculum_params[k] = v[env_idx]
+            for i in range(num_processes):
+                envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args, **now_curriculum_params))
+    else:
         for i in range(num_processes):
-            envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args, **now_curriculum_params))
+            envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args))
 
     if len(envs) > 1:
         envs = SubprocVecEnv(envs)
@@ -112,7 +116,8 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs
                         seed=args.seed, 
                         )
                 else:
-                    # bkw compat before cleaning up TC hack
+                    # bkw compat before cleaning up TC hack. Useful when evalCli
+                    print("kwargs OFF", flush=True, file=sys.stdout)
                     env = plume_env.PlumeEnvironment(
                         dataset=args.dataset,
                         turnx=args.turnx,

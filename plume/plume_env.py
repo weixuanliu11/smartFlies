@@ -406,6 +406,7 @@ class PlumeEnvironment(gym.Env):
     self.data_puffs = self.data_puffs_all.query('(tidx >= @self.tidx-1) and (tidx <= @self.tidx_max_episode)') # Speeds up queries!
     # print("puff_number_all", self.data_puffs['puff_number'].nunique())
     # Dynamic birthx for each episode
+    self.puff_density = 1
     if self.birthx < 0.99:
         puff_density = np.clip(np.random.uniform(low=self.birthx, high=1.0), 0.0, 1.0)
         self.puff_density = puff_density
