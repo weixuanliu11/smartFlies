@@ -3,6 +3,7 @@ import hashlib
 import numpy as np
 from plume.ppo.main import main
 import random
+import time
 
 # Setting up schema
 schema = dj.schema("jq_fly")
@@ -95,7 +96,9 @@ class TrainingConfig(dj.Manual):
     
 
     def insert1(self, input_dict):
+        # input_dict: dictionary with training config parameters
         dict_to_insert = input_dict.copy()
+        # set novel seed if not provided
         if 'seed' not in dict_to_insert.keys():
             print("No seed provided. Generating a new one.")
             seed = self.get_new_seed()
@@ -113,6 +116,7 @@ class TrainingConfig(dj.Manual):
         # outsuffix of the form: seed_hash 
         dict_to_insert['outsuffix'] = "_".join([str(seed), dict_to_insert['training_config_hash']])
         
+        # insert into table
         super().insert1(dict_to_insert)
 
     def json_insert(self, fjson):
@@ -126,13 +130,13 @@ class TrainingResult(dj.Computed):
     -> TrainingConfig
     ---
     hours_elapsed: double
+    seed: int
     """
 
     def make(self, key):
         # key is a dictionary containg the primary key of TrainingConfig [1 row]
         
         # start timer
-        import time
         t0 = time.time()
         
         # Pull all the secondary attributes from the table into the dictionary
@@ -147,5 +151,68 @@ class TrainingResult(dj.Computed):
         t = (t1-t0)/3600
 
         key['hours_elapsed'] = t
+        key['seed'] = int(args['seed'])
         # EXAMPLE COMPLETE TRIANING
         self.insert1(key)
+        
+        
+# @schema
+# class EvalConfig(dj.Computed):
+#     definition = """
+#     -> TrainingConfig
+#     ---
+#     seed: int
+#     algo: varchar(64)
+#     dataset: varchar(64)
+#     model_fname: varchar(256)
+#     test_episodes: int
+#     viz_episodes: int
+#     fixed_eval: bool
+#     test_sparsity: bool
+#     device: varchar(64)
+#     diffusionx: double
+#     """
+
+#     def make(self, key):
+#         # key: hash with keys from TrainingResult head column - training_config_hash
+        
+#         # Pull all the secondary attributes from the table into the dictionary
+#         args = (TrainingConfig & key).fetch1()
+        
+#         # Pass it on your code
+#         keys = ['seed', 'algo', 'dataset', 'model_fname', 'fixed_eval', 'test_sparsity', 'device', 'diffusionx']
+#         keys['viz_episodes'] = 10
+#         for k in keys:
+#             key[k] = args[k]
+#         self.insert1(key)
+                
+
+
+# @schema
+# class EvalResult(dj.Computed):
+#     definition = """
+#     -> TrainingResult
+#     ---
+#     hours_elapsed: double
+#     """
+
+#     def make(self, key):
+#         # key: hash with keys from TrainingResult head column - training_config_hash
+        
+#         # start timer
+#         t0 = time.time()
+        
+#         # Pull all the secondary attributes from the table into the dictionary
+#         args = (TrainingConfig & key).fetch1()
+#         # Pass it on your code
+#         print(key['training_config_hash'])
+
+#         # stop timer
+#         t1 = time.time()
+#         # calculate time taken in hours
+#         t = (t1-t0)/3600
+
+#         # key['hours_elapsed'] = t
+#         # # EXAMPLE COMPLETE TRIANING
+#         # self.insert1(key)
+        
