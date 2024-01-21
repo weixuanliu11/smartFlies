@@ -1,12 +1,13 @@
-# python3 /src/TrainigCurriculum/plume/tabulate_from_summary.py --base_dir /src/TrainigCurriculum/data/TrainingCurriculum/sw_dist/
+# python3 /src/plume/tabulate_from_summary.py --base_dir /src/data/TrainingCurriculum/sw_dist_logstep_wind_cond_0.01/
+# python3 plume/tabulate_from_summary.py --base_dir /src/data/TrainingCurriculum/sw_dist_logstep_wind_cond_0.01/
 
 # aggregate performance eval results of all models in a directory 
 
 import tqdm
 import os
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
+# import seaborn as sns
+# import matplotlib.pyplot as plt
 import argparse
 import glob
 import datetime
@@ -27,6 +28,10 @@ def parse_summary_files(fnames, BASE_DIR):
             'code': str(fname).split('code')[-1].split('_')[0],
             'fname': str(fname)
         }
+        if not row['seed']:
+            # dj fname naming scheme changed... get seed info from model_dir
+            row['seed'] = row["model_dir"].split("_")[1]
+            
         counts_df.append(row)
         
     counts_df = pd.DataFrame(counts_df)
