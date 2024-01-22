@@ -532,5 +532,9 @@ if __name__ == "__main__":
         args.stacking = int( args.model_fname.split('MLP_s')[-1].split('_')[0] )
     
     # actor_critic, ob_rms, optimizer_state_dict = torch.load(args.model_fname, map_location=torch.device('cpu'))
-    actor_critic, ob_rms, optimizer_state_dict = torch.load(args.model_fname, map_location=torch.device(args.device))
+    try:
+        actor_critic, ob_rms, optimizer_state_dict = torch.load(args.model_fname, map_location=torch.device(args.device))
+    except ValueError:
+        actor_critic, ob_rms = torch.load(args.model_fname, map_location=torch.device(args.device))
+        
     eval_loop(args, actor_critic, test_sparsity=args.test_sparsity)
