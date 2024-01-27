@@ -100,7 +100,7 @@ class PlumeEnvironment(gym.Env):
     self.dt = env_dt # 0.1, 0.2, 0.4, 0.5 sec
     # self.fps = config.env['fps'] # 20/25/50/100 steps/sec
     self.fps = int(1/self.dt)
-    self.sim_fps = 100
+    # self.sim_fps = 100 # not used
     self.episode_step = 0 # skip_steps done during loading
 
     # Load simulated data
