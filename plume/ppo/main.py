@@ -202,12 +202,15 @@ def eval_lite(agent, env, args, device, actor_critic):
     }
     return eval_record
 
+
 def update_by_schedule(envs, schedule_dict, curr_step):
     # TODO: implement a density function over the probs of selecting a new TC value
     # updating the env_collection will change the currently running envs :o
+    
+    updated = False
     for k, _schedule_dict in schedule_dict.items():
-        # if the current step should be updated 
-        if curr_step in _schedule_dict:
+        if curr_step in _schedule_dict: # see if the current step should be updated 
+            updated = k
             # different update functions since birthx is managed by each process, while wind_cond is managed by my custom SubprocVecEnv
             if k == 'birthx': # update the birthx value in the envs. Sparsity is decided in each envs.reset() at each trial
                 envs.env_method_apply_to_all("update_env_param", {k: _schedule_dict[curr_step]})
@@ -217,9 +220,10 @@ def update_by_schedule(envs, schedule_dict, curr_step):
                 print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
             else:
                 raise NotImplementedError
+    return updated # return the course that is updated, if any
 
 
-def build_tc_schedule_dict(total_number_periods, **kwargs):
+def build_tc_schedule_dict(total_number_periods, interleave=True, **kwargs):
     """Builds a training curriculum schedule dictionary. 
     Args:
         total_number_periods: number of updates 
@@ -239,12 +243,19 @@ def build_tc_schedule_dict(total_number_periods, **kwargs):
     # initialize the default course directory 
     course_dirctory = {'birthx': {'num_classes': 6, 'difficulty_range': [0.7,0.001], 'dtype': 'float', 'step_type': 'log'}, 
                    'wind_cond': {'num_classes': 2, 'difficulty_range': [1, 3], 'dtype': 'int', 'step_type': 'linear'}} 
+    if not interleave:
+        # if not interleave, do the two lessons consecutively, with the wind first 
+        course_dirctory = {'wind_cond': {'num_classes': 2, 'difficulty_range': [1, 3], 'dtype': 'int', 'step_type': 'linear'},
+                           'birthx': {'num_classes': 6, 'difficulty_range': [0.7,0.001], 'dtype': 'float', 'step_type': 'log'}} 
     
+        
     # update the default course directory with the input kwargs
     for course in kwargs:
         now_kwargs = kwargs[course]
         for k in now_kwargs:
-            course_dirctory[course][k] = now_kwargs[k]
+            if course_dirctory[course][k] != now_kwargs[k]:
+                course_dirctory[course][k] = now_kwargs[k]
+                print(f"Updated {course} {k} = {course_dirctory[course][k]} to {now_kwargs[k]}", flush=True)
 
     # calculate the scheduled value for each class, given the number of updates and the difficulty range
     tmp_schedule = []
@@ -265,9 +276,12 @@ def build_tc_schedule_dict(total_number_periods, **kwargs):
         now_course['scheduled_value'] = scheduled_value 
         tmp_schedule.append(zip(itertools.cycle([course]), scheduled_value[1:])) # the lower bound is the first value -> set at the beginning
         
-    # interleave the scheduled values for each class
-    course_schedule = itertools.chain.from_iterable(itertools.zip_longest(*tmp_schedule))
-    course_schedule = [c for c in course_schedule if c]
+    
+    if interleave: # interleave the scheduled values for each class
+        course_schedule = itertools.chain.from_iterable(itertools.zip_longest(*tmp_schedule))
+        course_schedule = [c for c in course_schedule if c]
+    else: # do the two lessons consecutively
+        course_schedule = list(itertools.chain(*tmp_schedule))
 
     # build the schedule dictionary - when/how to update the env variable according to the course schedule
     schedule_dict = {}
@@ -317,7 +331,7 @@ def training_loop(agent, envs, args, device, actor_critic,
                                                                 'dtype': 'float', 'step_type': 'log'}, 
                                           wind_cond={'num_classes': 2, 'difficulty_range': [1, 3], 
                                                      'dtype': 'int', 'step_type': 'linear'}) # wind_cond: 1 is constant, 2 is switch, 3 is noisy
-        update_by_schedule(envs, schedule, 0)
+        update_by_schedule(envs, schedule, 0) # update the initialized envs according to the curriculum schedule. The default init values are incorrect, hence this update s.t. reset() returns correctly.
     
     obs = envs.reset()
     rollouts.obs[0].copy_(obs) # https://discuss.pytorch.org/t/which-copy-is-better/56393
@@ -336,7 +350,16 @@ def training_loop(agent, envs, args, device, actor_critic,
         
         # update envs according to the curriculum schedule
         if args.birthx_linear_tc_steps:
-            update_by_schedule(envs, schedule, j)
+            updated = update_by_schedule(envs, schedule, j)
+            if updated: # save model if an update to env occurred during this trial
+                lesson_fpath = args.model_fpath.replace(".pt", f'_before_{updated}{schedule[updated][j]}_update{j}.pt')
+                torch.save([
+                    actor_critic,
+                    getattr(utils.get_vec_normalize(envs), 'ob_rms', None),
+                    agent.optimizer.state_dict(),
+                ], lesson_fpath)
+                print('Saved', lesson_fpath)
+
         
         ##############################################################################################################
         # at each step of training 
@@ -355,7 +378,7 @@ def training_loop(agent, envs, args, device, actor_critic,
             
             if step < 3:
                 end2 = time.time()
-                print(f"Step {step} took {end2-start2} seconds")
+                # print(f"Step {step} took {end2-start2} seconds")
             
             # save and log
             for i, d in enumerate(done): # if done, log the episode info. Care about what kind of env is encountered
@@ -383,7 +406,7 @@ def training_loop(agent, envs, args, device, actor_critic,
                             action_log_prob, value, reward, masks, bad_masks) # ~0.0006s
             if step < 3:
                 end3 = time.time()
-                print(f"Step {step} took {end3-start3} seconds")
+                # print(f"Step {step} took {end3-start3} seconds")
         ##############################################################################################################
         # UPDATE AGENT ~ 0.48s
         ##############################################################################################################
@@ -401,7 +424,7 @@ def training_loop(agent, envs, args, device, actor_critic,
         rollouts.after_update()
         total_num_steps = (j + 1) * args.num_processes * args.num_steps
         end4 = time.time()
-        print(f"Update {j} took {end4-start4} seconds")
+        # print(f"Update {j} took {end4-start4} seconds")
         ##############################################################################################################
         # save for every interval-th episode or for the last epoch
         ##############################################################################################################
@@ -444,7 +467,7 @@ def training_loop(agent, envs, args, device, actor_critic,
                 fname = os.path.join(save_path, f'{args.env_name}_{args.outsuffix}_eval.csv')
                 pd.DataFrame(eval_log).to_csv(fname)
         end1 = time.time()
-        print(f"Update {j} took {end1-start1} seconds")
+        # print(f"Update {j} took {end1-start1} seconds")
                 
     return training_log, eval_log
 
