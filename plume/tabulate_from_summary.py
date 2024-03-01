@@ -43,9 +43,9 @@ def parse_summary_files(fnames, BASE_DIR):
 
 def main(args):
     if args.subdir_prefix:
-        files = glob.glob(f"{args.base_dir}/**/{args.subdir_prefix}*/**/*_summary.csv", recursive=True)
+        files = glob.glob(f"{args.base_dir}/{args.subdir_prefix}*/**/*_summary.csv", recursive=True)
         # files = [f for f in files if f.split('/')[1].startswith(args.subdir_suffix)]
-        print(f"Reading directory {args.base_dir}/**/{args.subdir_prefix}*/**, {len(files)} files found")
+        print(f"Reading directory {args.base_dir}/{args.subdir_prefix}*/**, {len(files)} files found")
     else:
         files = glob.glob(f"{args.base_dir}/**/*_summary.csv", recursive=True)
         print(f"Reading directory {args.base_dir}, {len(files)} files found")
