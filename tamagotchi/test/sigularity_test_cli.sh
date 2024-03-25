@@ -1,0 +1,1 @@
+singularity exec --writable-tmpfs --nv  --bind /gscratch/walkerlab/jqhu/smartFlies:/src /gscratch/walkerlab/jqhu/smartFlies/smartFlies_hyak.sif bash -c "/src/tamagotchi/test/train_TC.sh"
