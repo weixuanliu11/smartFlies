@@ -169,7 +169,7 @@ def main(args=None):
         torch.backends.cudnn.deterministic = True
 
     if args.cuda and not torch.cuda.is_available():
-        print("CUDA is not available. Running on CPU.")
+        print("CUDA is not available. Running on CPU.", flush=True, file=sys.stderr)
         args.cuda = False
 
     log_dir = os.path.expanduser(args.log_dir)
