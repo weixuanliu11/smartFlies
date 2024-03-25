@@ -137,3 +137,5 @@ figshare/
 *.png
 JH_boilerplate/
 *sif
+slurm*out
+tamagotchi/test
