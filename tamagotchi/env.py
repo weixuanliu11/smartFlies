@@ -868,8 +868,6 @@ class PlumeEnvironment_v2(gym.Env):
     self.wind_rel = wind_rel
     self.turn_capacity = turn_capacity
     self.move_capacity = move_capacity 
-    # self.turn_capacity = 1.0 * np.pi # Max agent can turn CW/CCW in one timestep
-    # self.move_capacity = 0.025 # Max agent can move in one timestep
     self.arena_bounds = config.env['arena_bounds'] 
     self.homed_radius = homed_radius  # End session if dist(agent - source) < homed_radius
     self.rewards = {
