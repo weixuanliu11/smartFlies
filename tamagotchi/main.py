@@ -168,6 +168,10 @@ def main(args=None):
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
 
+    if args.cuda and not torch.cuda.is_available():
+        print("CUDA is not available. Running on CPU.")
+        args.cuda = False
+
     log_dir = os.path.expanduser(args.log_dir)
     args.eval_log_dir = log_dir + "_eval"
     utils.cleanup_log_dir(log_dir)
