@@ -1027,8 +1027,6 @@ class PlumeEnvironment_v2(gym.Env):
         Y_mean, Y_var = Y_pcts[1], min(1, Y_pcts[1] - Y_pcts[0]) # TODO: What was min for?
         # print(Y_mean, Y_var)
         varx = self.qvar 
-        # if 'switch' in self.dataset: # Preferably start within/close to plume
-        #     varx = 0.1
         loc_xy = np.array([X_mean + varx*X_var*np.random.randn(), 
             Y_mean + varx*Y_var*np.random.randn()]) 
 
@@ -1143,16 +1141,7 @@ class PlumeEnvironment_v2(gym.Env):
 
   def get_oob(self):
     # better restricted bounds    
-    # bbox = {'x_min':-2, 'x_max':15, 'y_min':-5, 'y_max':5 }    
-    # is_outofbounds = (self.agent_location[0] < bbox['x_min']) or \
-    #                  (self.agent_location[0] > bbox['x_max']) or \
-    #                  (self.agent_location[1] < bbox['y_min']) or \
-    #                  (self.agent_location[1] > bbox['y_max']) 
-
     is_outofbounds = self.stray_distance > self.stray_max # how far agent can be from closest puff-center
-    # if 'switch' in self.dataset: # large perturbations
-    #     # bbox = {'x_min':-0.5, 'x_max':10, 'y_min':-3, 'y_max':3 }    
-
     return is_outofbounds
 
   def get_current_wind_xy(self):
