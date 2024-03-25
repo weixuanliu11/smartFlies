@@ -840,7 +840,7 @@ class PlumeEnvironment_v2(gym.Env):
     self.tidx = self.tidxs[self.episode_step + self.step_offset] 
     self.tidx_min_episode = self.tidx
     self.tidx_max_episode = self.tidx
-    self.wind_ground = None
+    self.ambient_wind = None
     self.stray_distance = 0
     self.stray_distance_last = 0
     self.agent_velocity_last = np.array([0, 0]) # Maintain last timestep velocity (in absolute coordinates) for relative sensory observations
@@ -945,11 +945,11 @@ class PlumeEnvironment_v2(gym.Env):
         pprint(vars(self))
 
     # Wind
-    wind_absolute = self.wind_ground # updated by step(); ambient wind x, y
+    wind_absolute = self.ambient_wind # updated by step(); ambient wind x, y
     
     # Subtract agent velocity to convert to (observed) relative velocity
     if self.wind_rel: 
-        wind_absolute = self.wind_ground - self.agent_velocity_last 
+        wind_absolute = self.ambient_wind - self.agent_velocity_last 
 
     # Get wind relative angle
     agent_angle_radians = np.angle( self.agent_angle[0] + 1j*self.agent_angle[1], deg=False )
@@ -1142,8 +1142,8 @@ class PlumeEnvironment_v2(gym.Env):
       print("Agent initial location {} and orientation {}".format(self.agent_location, self.agent_angle))
     self.agent_velocity_last = np.array([0, 0])
 
-    # self.wind_ground = self.get_current_wind_xy() # Observe after flip
-    self.wind_ground = self.get_current_wind_xy() # Observe after flip
+    # self.ambient_wind = self.get_current_wind_xy() # Observe after flip
+    self.ambient_wind = self.get_current_wind_xy() # Observe after flip
     if self.odor_scaling:
         self.odorx = np.random.uniform(low=0.5, high=1.5) # Odor generalize
     observation = self.sense_environment()
@@ -1193,8 +1193,8 @@ class PlumeEnvironment_v2(gym.Env):
     self.stray_distance_last = self.stray_distance
     self.stray_distance = self.get_stray_distance()
     
-    self.wind_ground = self.get_current_wind_xy()
-    # print(self.wind_ground)
+    self.ambient_wind = self.get_current_wind_xy()
+    # print(self.ambient_wind)
 
     # Unpack action
     if self.verbose > 1:
@@ -1232,8 +1232,8 @@ class PlumeEnvironment_v2(gym.Env):
     # New location = old location + agent movement + wind advection
     agent_move_x = self.agent_angle[0]*self.move_capacity*self.movex*move_action*self.dt
     agent_move_y = self.agent_angle[1]*self.move_capacity*self.movex*move_action*self.dt
-    wind_drift_x = self.wind_ground[0]*self.dt
-    wind_drift_y = self.wind_ground[1]*self.dt
+    wind_drift_x = self.ambient_wind[0]*self.dt
+    wind_drift_y = self.ambient_wind[1]*self.dt
     if self.walking:
         wind_drift_x = wind_drift_y = 0
     self.agent_location = [
@@ -1339,7 +1339,7 @@ class PlumeEnvironment_v2(gym.Env):
         'location_last':self.agent_location_last, 
         'location_initial':self.agent_location_init, 
         'stray_distance': self.stray_distance,
-        'wind_ground': self.wind_ground,
+        'ambient_wind': self.ambient_wind,
         'angle': self.agent_angle,
         'reward': reward,
         'r_radial_step': r_radial_step,
