@@ -1114,19 +1114,10 @@ class PlumeEnvironment_v2(gym.Env):
         self.flipx = -1.0 if np.random.uniform() > 0.5 else 1.0 
     else:
         self.flipx = 1.0
-    # if self.flipx < 0:
-    #     self.data_wind = self.data_wind_all.copy(deep=True)
-    #     self.data_wind.loc[:,'wind_y'] *= self.flipx
-    #     self.data_puffs = self.data_puffs.copy(deep=True)
-    #     self.data_puffs.loc[:,'y'] *= self.flipx 
-    #     # print(self.data_puffs.shape)
-    # else:
-    #     self.data_wind = self.data_wind_all
 
     self.data_wind = self.data_wind_all
 
     # Initialize agent to random location 
-    # self.agent_location = self.get_initial_location(algo='quantile')
     self.agent_location = self.get_initial_location(self.loc_algo)
     self.agent_location_last = self.agent_location
     self.agent_location_init = self.agent_location
@@ -1138,8 +1129,7 @@ class PlumeEnvironment_v2(gym.Env):
     if self.verbose > 0:
       print("Agent initial location {} and orientation {}".format(self.agent_location, self.agent_angle))
     self.agent_velocity_last = np.array([0, 0])
-
-    # self.ambient_wind = self.get_current_wind_xy() # Observe after flip
+    
     self.ambient_wind = self.get_current_wind_xy() # Observe after flip
     if self.odor_scaling:
         self.odorx = np.random.uniform(low=0.5, high=1.5) # Odor generalize
@@ -1291,12 +1281,7 @@ class PlumeEnvironment_v2(gym.Env):
     if done and 'end' in self.r_shaping:
         # 1: Radial distance r_decreasease at end of episode
         radial_distance_decrease = ( np.linalg.norm(self.agent_location_init) - np.linalg.norm(self.agent_location) )
-        # radial_distance_reward = radial_distance_decrease - np.linalg.norm(self.agent_location)
-        # reward += radial_distance_reward 
-        # reward -= np.linalg.norm(self.agent_location)
-        # end_reward = -np.linalg.norm(self.agent_location)*(1+self.stray_distance) + radial_distance_decrease
         self.stray_distance = self.get_stray_distance()
-        # end_reward = -2*self.stray_distance # scale to be comparable with sum_T(r_step)
         end_reward = radial_distance_decrease - self.stray_distance
         reward += end_reward
 
@@ -1338,12 +1323,8 @@ class PlumeEnvironment_v2(gym.Env):
         'angle': self.agent_angle,
         'reward': reward,
         'r_radial_step': r_radial_step,
-        # 'reward_decay': self.reward_decay,
-        # 'r_radial_ep': radial_distance_reward,
-        # 'r_metabolic': r_metabolic,
         'movex': self.movex,
         'done': done_reason if done else None,
-        # 'outcomes': self.outcomes,
         'radiusx': self.radiusx,
         }
 
