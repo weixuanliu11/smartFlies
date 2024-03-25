@@ -758,8 +758,6 @@ class PlumeEnvironment_v2(gym.Env):
     rescale=False, # rescale/normalize input/outputs [redundant?]
     squash_action=False, # apply tanh and rescale (useful with PPO)
     walking=False,
-    walk_move=0.05, # m/s (x100 for cm/s)
-    walk_turn=1.0*np.pi, # radians/sec
     radiusx=1.0, 
     diffusion_min=1.00, 
     diffusion_max=1.00, 
