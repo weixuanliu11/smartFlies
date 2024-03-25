@@ -914,8 +914,6 @@ class PlumeEnvironment_v2(gym.Env):
         diffusion_multiplier=self.diffusion_max,
         radius_multiplier=self.radiusx,
         )
-    if self.walking:
-        self.data_puffs_all = self.data_puffs_all.query('x <= 0.5')
     self.data_puffs = self.data_puffs_all.copy() # trim this per episode
     self.data_wind = self.data_wind_all.copy() # trim/flip this per episode
     self.t_vals = self.data_wind['time'].tolist()
@@ -965,7 +963,6 @@ class PlumeEnvironment_v2(gym.Env):
     if self.verbose > 1:
         print('wind_observation', wind_observation)
         print('t_val', self.t_val)
-
 
     odor_observation = get_concentration_at_tidx(
         self.data_puffs, self.tidx, self.agent_location[0], self.agent_location[1])
@@ -1177,7 +1174,6 @@ class PlumeEnvironment_v2(gym.Env):
   def step(self, action):
     """
     return observation, reward, done, info
-    v2 took out walking
     """
     self.episode_step += 1 
     self.agent_location_last = self.agent_location
@@ -1234,8 +1230,7 @@ class PlumeEnvironment_v2(gym.Env):
     agent_move_y = self.agent_angle[1]*self.move_capacity*self.movex*move_action*self.dt
     wind_drift_x = self.ambient_wind[0]*self.dt
     wind_drift_y = self.ambient_wind[1]*self.dt
-    if self.walking:
-        wind_drift_x = wind_drift_y = 0
+
     self.agent_location = [
       self.agent_location[0] + agent_move_x + wind_drift_x,
       self.agent_location[1] + agent_move_y + wind_drift_y,
