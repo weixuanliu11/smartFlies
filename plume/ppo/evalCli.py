@@ -235,12 +235,13 @@ def evaluate_agent(actor_critic, env, args):
             _reward = (_reward + 100) if _reward > 9 else _reward # HACK! Unsure/Debug!
             
             reward_sum += _reward
-
+            print(f"[DEBUG] Documented Action pre-squash: {_action}", flush=True, file=sys.stderr)
             if args.squash_action:
                 action = (np.tanh(action.to("cpu")) + 1)/2
-
+            print(f"[DEBUG] Squashed Action: {action}", flush=True, file=sys.stderr)
             trajectory.append( _info['location'] )
             observations.append( _obs )
+            print(f"[DEBUG] Documented Action: {_action}", flush=True, file=sys.stderr)
             actions.append( _action )
             rewards.append( _reward )
             infos.append( [_info] )
