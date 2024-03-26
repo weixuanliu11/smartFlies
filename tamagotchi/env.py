@@ -756,7 +756,7 @@ class PlumeEnvironment_v2(gym.Env):
     r_shaping=['step', 'oob'], # 'step', 'end'
     rewardx=1.0, # scale reward for e.g. A3C
     rescale=False, # rescale/normalize input/outputs [redundant?]
-    squash_action=False, # apply tanh and rescale (useful with PPO)
+    squash_action=False, # apply tanh and rescale (useful with PPO) i.e. convert action [0,1] to [-1,1] and then rescale to [0,1]
     walking=False,
     radiusx=1.0, 
     diffusion_min=1.00, 
@@ -1171,7 +1171,7 @@ class PlumeEnvironment_v2(gym.Env):
     if self.verbose > 1:
         print("step action:", action, action.shape)
     assert action.shape == (2,)
-    if self.squash_action:
+    if self.squash_action: # sometimes false during evaluation see report commonsubspace... kinda weird that it's not always true
         action = (np.tanh(action) + 1)/2
     action = np.clip(action, 0.0, 1.0)
     move_action = action[0] # Move [0, 1], with 0.0 = no movement
@@ -1195,7 +1195,7 @@ class PlumeEnvironment_v2(gym.Env):
 
     # Turn/Update orientation and move to new location 
     old_angle_radians = np.angle(self.agent_angle[0] + 1j*self.agent_angle[1], deg=False)
-    new_angle_radians = old_angle_radians + self.turn_capacity*self.turnx*(turn_action - 0.5)*self.dt # in radians
+    new_angle_radians = old_angle_radians + self.turn_capacity*self.turnx*(turn_action - 0.5)*self.dt # in radians; (Turn~[0, 1], with 0.5 = no turn, <0.5 turn cw, >0.5 turn ccw)
     self.agent_angle = [ np.cos(new_angle_radians), np.sin(new_angle_radians) ]    
     assert np.linalg.norm(self.agent_angle) < 1.1
 
