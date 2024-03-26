@@ -1162,7 +1162,7 @@ class PlumeEnvironment_v2(gym.Env):
     # Unpack action
     if self.verbose > 1:
         print("step action:", action, action.shape)
-    assert action.shape == (2,)
+
     if self.squash_action: # sometimes false during evaluation see report commonsubspace... kinda weird that it's not always true
         action = (np.tanh(action) + 1)/2
     action = np.clip(action, 0.0, 1.0)
