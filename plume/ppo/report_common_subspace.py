@@ -614,6 +614,7 @@ for colorby in colorbys:
 # importlib.reload(log_analysis)
 
 def plot_common_subspace_individual(selected_df, plot_df, idxs_to_color, viz_dataset):
+    raise NotImplementedError("Check if this is correct 03/26/24 squash action True and False in the same function. refer to notion debug of this day")
     for outcome in ['HOME', 'OOB']:        
         for idx2color in idxs_to_color[outcome]:
             fig = plt.figure(figsize=pca3d_figsize)
@@ -1282,6 +1283,7 @@ for idx, row in all_df.query("outcome == @outcome and dataset in @datasets ").it
     ep_activity = log_analysis.get_activity(row['log'], is_recurrent, do_plot=False)
     traj_df = log_analysis.get_traj_df(row['log'], 
             extended_metadata=True, squash_action=True, seed=model_seed)
+    raise NotImplementedError("Check if this is correct 03/26/24 squash action may need to be true. refer to notion debug of this day")
     
     if sum(traj_df.odor_lastenc == 0) >= 1: # encountered plume at least X timesteps
         home_distances = np.linalg.norm(ep_activity - hx_centroids['HOME'], axis=1)
