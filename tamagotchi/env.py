@@ -1163,7 +1163,7 @@ class PlumeEnvironment_v2(gym.Env):
     if self.verbose > 1:
         print("step action:", action, action.shape)
 
-    if self.squash_action: # sometimes false during evaluation see report commonsubspace... kinda weird that it's not always true
+    if self.squash_action: # always true in training and eval. Bkw compt for Sat's older logs in visualization scripts... Not touching this yet.
         action = (np.tanh(action) + 1)/2
     action = np.clip(action, 0.0, 1.0)
     move_action = action[0] # Move [0, 1], with 0.0 = no movement
