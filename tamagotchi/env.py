@@ -1174,9 +1174,8 @@ class PlumeEnvironment_v2(gym.Env):
     if self.squash_action:
         action = (np.tanh(action) + 1)/2
     action = np.clip(action, 0.0, 1.0)
-    move_action = action[0] # Typically between [0.0, 1.0]
-    turn_action = action[1] # Typically between [0.0, 1.0]
-    # print(action)
+    move_action = action[0] # Move [0, 1], with 0.0 = no movement
+    turn_action = action[1] # # Turn [0, 1], with 0.5 = no turn... maybe change to [-1, 1]
 
     # Action: Clip & self.rescale to support more algorithms
     # assert move_action >= 0 and move_action <= 1.0
@@ -1331,7 +1330,7 @@ class PlumeEnvironment_v2(gym.Env):
 
     if self.flipping and self.flipx < 0:
     	observation[1] *= -1.0 # observation: [x, y, o] 
-     
+    
     self.episode_reward += reward
     
     if done:
