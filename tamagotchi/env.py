@@ -755,7 +755,6 @@ class PlumeEnvironment_v2(gym.Env):
     diff_min=0.4, # teacher curriculum; sets the quantile of init x location 
     r_shaping=['step', 'oob'], # 'step', 'end'
     rewardx=1.0, # scale reward for e.g. A3C
-    rescale=False, # rescale/normalize input/outputs [redundant?]
     squash_action=False, # apply tanh and rescale (useful with PPO) i.e. convert action [0,1] to [-1,1] and then rescale to [0,1]
     walking=False,
     radiusx=1.0, 
@@ -780,7 +779,6 @@ class PlumeEnvironment_v2(gym.Env):
     self.venv = self
     self.walking = walking
     self.rewardx = rewardx
-    self.rescale = rescale
     self.odor_scaling = odor_scaling
     self.stray_max = stray_max
     self.wind_obsx = wind_obsx
@@ -881,12 +879,6 @@ class PlumeEnvironment_v2(gym.Env):
     # Move [0, 1], with 0.0 = no movement
     # Turn [0, 1], with 0.5 = no turn... maybe change to [-1, 1]
     self.action_space = spaces.Box(low=0, high=+1,
-                                        shape=(2,), dtype=np.float32)
-    if self.rescale:
-        ## Rescaled to [-1,+1] to follow best-practices: 
-        # https://stable-baselines.readthedocs.io/en/master/guide/rl_tips.html#tips-and-tricks-when-creating-a-custom-environment
-        # Both will first clip to [-1,+1] then map to [0,1] with all other code remaining same
-        self.action_space = spaces.Box(low=-1, high=+1,
                                         shape=(2,), dtype=np.float32)
 
     # Observations
@@ -1176,15 +1168,6 @@ class PlumeEnvironment_v2(gym.Env):
     action = np.clip(action, 0.0, 1.0)
     move_action = action[0] # Move [0, 1], with 0.0 = no movement
     turn_action = action[1] # # Turn [0, 1], with 0.5 = no turn... maybe change to [-1, 1]
-
-    # Action: Clip & self.rescale to support more algorithms
-    # assert move_action >= 0 and move_action <= 1.0
-    # assert turn_action >= 0 and turn_action <= 1.0
-    if self.rescale:
-        move_action = np.clip(move_action, -1.0, 1.0)
-        move_action = (move_action + 1)/2 
-        turn_action = np.clip(turn_action, -1.0, 1.0)
-        turn_action = (turn_action + 1)/2 
 
     # Action noise (multiplicative)
     move_action *= 1.0 + np.random.uniform(-self.act_noise, +self.act_noise) 
