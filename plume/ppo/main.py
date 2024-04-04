@@ -19,7 +19,7 @@ from a2c_ppo_acktr.ppo import PPO
 from a2c_ppo_acktr.envs import make_vec_envs
 from a2c_ppo_acktr.model import Policy
 from a2c_ppo_acktr.storage import RolloutStorage
-from evaluation import evaluate
+
 import argparse
 import json
 import time
@@ -328,7 +328,7 @@ def training_loop(agent, envs, args, device, actor_critic,
     if args.birthx_linear_tc_steps:
         schedule = build_tc_schedule_dict(num_updates, birthx={'num_classes': args.birthx_linear_tc_steps, 
                                                                 'difficulty_range': [0.7, args.birthx], 
-                                                                'dtype': 'float', 'step_type': 'log'}, 
+                                                                'dtype': 'float', 'step_type': 'linear'}, 
                                           wind_cond={'num_classes': 2, 'difficulty_range': [1, 3], 
                                                      'dtype': 'int', 'step_type': 'linear'}) # wind_cond: 1 is constant, 2 is switch, 3 is noisy
         update_by_schedule(envs, schedule, 0) # update the initialized envs according to the curriculum schedule. The default init values are incorrect, hence this update s.t. reset() returns correctly.
