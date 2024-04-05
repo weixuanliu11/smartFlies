@@ -765,12 +765,11 @@ class PlumeEnvironment_v2(gym.Env):
     odor_scaling=False, # Generalization/reduce training data bias
     obs_noise=0.0, # Multiplicative: Wind & Odor observation noise.
     act_noise=0.0, # Multiplicative: Move & Turn action noise.
-    dynamic=False,
+    apparent_wind=False,
     seed=137,
     verbose=0):
     super(PlumeEnvironment, self).__init__()
 
-    assert dynamic is False
     np.random.seed(seed)    
     self.arguments = locals()
     print("PlumeEnvironment:", self.arguments)
@@ -873,6 +872,8 @@ class PlumeEnvironment_v2(gym.Env):
       'homed': 101.0,
       }
 
+    # Wind Sensing 
+    self.apparent_wind = apparent_wind
 
     # Define action and observation spaces
     # Actions:
@@ -935,7 +936,14 @@ class PlumeEnvironment_v2(gym.Env):
     
     # Subtract agent velocity to convert to (observed) relative velocity
     if self.wind_rel: 
-        wind_absolute = self.ambient_wind - self.agent_velocity_last 
+        wind_absolute = self.ambient_wind - self.agent_velocity_last
+    # Use apparent wind (negative of air velocity) for training
+    if self.apparent_wind:
+        wind_absolute = - self.agent_velocity_last # Apparent wind = negative of air velocity 
+    if self.verbose > 1:
+        print('t_val', self.t_val)
+        print('wind allocentric', wind_absolute)
+        
 
     # Get wind relative angle
     agent_angle_radians = np.angle( self.agent_angle[0] + 1j*self.agent_angle[1], deg=False )
@@ -949,8 +957,8 @@ class PlumeEnvironment_v2(gym.Env):
     wind_observation = [ x*(1.0+np.random.uniform(-self.obs_noise, +self.obs_noise)) for x in wind_observation ]
 
     if self.verbose > 1:
-        print('wind_observation', wind_observation)
-        print('t_val', self.t_val)
+        print('wind egocentric', wind_observation)
+        print('agent_angle', self.agent_angle)
 
     odor_observation = get_concentration_at_tidx(
         self.data_puffs, self.tidx, self.agent_location[0], self.agent_location[1])
