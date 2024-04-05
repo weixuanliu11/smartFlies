@@ -1,7 +1,7 @@
 import datajoint as dj
 import hashlib
 import numpy as np
-from plume.ppo.main import main
+from tamagotchi.main import main
 import random
 import time
 
