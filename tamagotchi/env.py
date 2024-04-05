@@ -765,9 +765,9 @@ class PlumeEnvironment_v2(gym.Env):
     odor_scaling=False, # Generalization/reduce training data bias
     obs_noise=0.0, # Multiplicative: Wind & Odor observation noise.
     act_noise=0.0, # Multiplicative: Move & Turn action noise.
-    apparent_wind=False,
     seed=137,
-    verbose=0):
+    verbose=0,
+    **kwargs):
     super(PlumeEnvironment, self).__init__()
 
     np.random.seed(seed)    
@@ -873,7 +873,10 @@ class PlumeEnvironment_v2(gym.Env):
       }
 
     # Wind Sensing 
-    self.apparent_wind = apparent_wind
+    if kwargs.apparent_wind:
+        self.apparent_wind = True
+    else:
+        self.apparent_wind = False
 
     # Define action and observation spaces
     # Actions:
@@ -1395,9 +1398,14 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs
             # hard coded to be plume in evalCli: env_name=plume. Only instance of env_id found so far
             if args.recurrent_policy or (args.stacking == 0):
                 if kwargs:
-                    print("kwargs ON", flush=True, file=sys.stdout)
+                    if kwargs.experimental:
+                        print("kwargs ON; plume env v2", flush=True, file=sys.stdout)
+                        Environment = PlumeEnvironment_v2
+                    else:
+                        print("kwargs ON; plume env v1", flush=True, file=sys.stdout) # changes up until apparent wind 04/05/24
+                        Environment = PlumeEnvironment
                     # TODO make this cleaner. auto read kwargs keys and overwrite args to keep args.X format
-                    env = PlumeEnvironment(
+                    env = Environment(
                         dataset=kwargs['dataset'],
                         birthx=args.birthx, 
                         qvar=kwargs['qvar'],
