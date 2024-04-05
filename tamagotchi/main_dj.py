@@ -1,4 +1,4 @@
-from datajoint.schema_v2 import * # use schema_v2 for wind sensing exps.
+from schemas.schema_v2 import * # use schema_v2 for wind sensing exps.
 from multiprocessing import Process, Pipe
 import sys
 
