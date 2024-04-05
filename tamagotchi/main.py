@@ -8,6 +8,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import torch
 import os
+import sys
 import numpy as np
 from a2c_ppo_acktr import utils
 from a2c_ppo_acktr.ppo import PPO
@@ -16,6 +17,7 @@ from a2c_ppo_acktr.storage import RolloutStorage
 import argparse
 import json
 from setproctitle import setproctitle as ptitle
+
 
 from env import make_vec_envs
 from training import training_loop
@@ -99,9 +101,9 @@ def get_args():
     parser.add_argument('--diff_max',  type=float, nargs='+', default=[0.8])
     parser.add_argument('--diff_min',  type=float, nargs='+', default=[0.4])
     parser.add_argument('--birthx_linear_tc_steps', type=int, default=0) # if on, birthx will linearly decrease over time, reachinig the birthx value gradually
-
-    # 
+    # apparent wind 
     parser.add_argument('--apparent_wind', type=bool, default=False) 
+    
     parser.add_argument('--birthx_max',  type=float, default=1.0) # Only used for sparsity
     parser.add_argument('--dryrun',  type=bool, default=False) # not used 
     parser.add_argument('--curriculum', type=bool, default=False) # not used 
@@ -261,41 +263,6 @@ def main(args=None):
                         actor_critic.recurrent_hidden_state_size)
     training_log, eval_log = training_loop(agent, envs, args, device, actor_critic, 
         training_log=training_log, eval_log=eval_log, eval_env=None, rollouts=rollouts)  
-
-    #### -------------- Done training - now Evaluate -------------- ####
-    if args.eval_type == 'skip':
-        return
-
-    actor_critic.to('cpu')
-
-    # Evaluation
-    # these datasets are not mentioned in the manuscript
-    print("Starting evaluation")
-    datasets = ['switch45x5b5', 
-                # 'switch15x5b5', 
-                # 'switch30x5b5', 
-                'constantx5b5', 
-                # 'noisy6x5b5', 
-                'noisy3x5b5']
-    # if args.dataset not in datasets:
-    #     datasets.append(args.dataset)
-    #     datasets.reverse() # Do training data test first
-    args.flipping = False
-    args.dynamic = False
-    args.fixed_eval = True if 'fixed' in args.eval_type else False
-    args.birthx = 1.0
-    args.birthx_max = 1.0 # the fraction of plume data read in during init
-    args.qvar = 0.0 # doesn't matter for fixed
-    args.obs_noise = 0.0
-    args.act_noise = 0.0
-    args.diffusion_max = args.diffusion_min # always test at min diffusion rate
-    args.diffusionx = args.diffusion_max # added on 10/01/23. this is the parameter if called .eval_loop directly. diffusion_min/max is not init'd in training. Default is 1, same as eval
-    for ds in datasets:
-      print(f"Evaluating on dataset: {ds}")
-      args.dataset = ds
-      test_sparsity = True # if 'constantx5b5' in args.dataset else False # always test sparsity
-      test_sparsity = False if 'short' in args.eval_type else test_sparsity
-      evalCli.eval_loop(args, actor_critic, test_sparsity=test_sparsity)
 
 if __name__ == "__main__":
     main()
