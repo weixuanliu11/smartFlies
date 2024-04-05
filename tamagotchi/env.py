@@ -748,7 +748,7 @@ class PlumeEnvironment_v2(gym.Env):
     angle_algo='uniform',
     homed_radius=0.2, # meters, at which to end flying episode
     stray_max=2.0, # meters, max distance agent can stray from plume
-    wind_rel=True, # Agent senses relative wind speed (not ground speed)
+    wind_rel=True, # Agent senses relative wind speed (not ground speed) # will be overridden by apparent wind if turned on
     auto_movex=False, # simple autocurricula for movex
     auto_reward=False, # simple autocurricula for reward decay
     diff_max=0.8, # teacher curriculum; sets the quantile of init x location 
