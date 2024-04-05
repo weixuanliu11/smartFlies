@@ -90,7 +90,7 @@ def get_args():
     parser.add_argument('--masking', type=str, default=None)
     parser.add_argument('--stride', type=int, default=1)
 
-    # Curriculum hack
+    # Curriculum variables
     parser.add_argument('--dataset', type=str, nargs='+', default=['constantx5b5'])
     parser.add_argument('--num-env-steps', type=int, default=10e6)
     # parser.add_argument('--num-env-steps', type=int, nargs='+', default=[10e6]) # save for bkwds compat
@@ -100,6 +100,8 @@ def get_args():
     parser.add_argument('--diff_min',  type=float, nargs='+', default=[0.4])
     parser.add_argument('--birthx_linear_tc_steps', type=int, default=0) # if on, birthx will linearly decrease over time, reachinig the birthx value gradually
 
+    # 
+    parser.add_argument('--apparent_wind', type=bool, default=False) 
     parser.add_argument('--birthx_max',  type=float, default=1.0) # Only used for sparsity
     parser.add_argument('--dryrun',  type=bool, default=False) # not used 
     parser.add_argument('--curriculum', type=bool, default=False) # not used 
@@ -188,7 +190,8 @@ def main(args=None):
         'diff_max': args.diff_max,
         'diff_min': args.diff_min,
         'reset_offset_tmax': [30, 3, 30], # 3 for switch condition, according to evalCli 
-        't_val_min': [60, 58, 60] # start time of plume data. 58 for switch condition, at around when the switching happens accoding to evalCli
+        't_val_min': [60, 58, 60], # start time of plume data. 58 for switch condition, at around when the switching happens accoding to evalCli
+        'apparent_wind': args.apparent_wind # experiemntal option
     }
     
     # creates the envs and deploys the first 'num_processes' envs 
