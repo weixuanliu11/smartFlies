@@ -767,8 +767,9 @@ class PlumeEnvironment_v2(gym.Env):
     act_noise=0.0, # Multiplicative: Move & Turn action noise.
     seed=137,
     verbose=0,
+    apparent_wind=False,
     **kwargs):
-    super(PlumeEnvironment, self).__init__()
+    super(PlumeEnvironment_v2, self).__init__()
 
     np.random.seed(seed)    
     self.arguments = locals()
@@ -873,10 +874,10 @@ class PlumeEnvironment_v2(gym.Env):
       }
 
     # Wind Sensing 
-    if kwargs.apparent_wind:
+    if apparent_wind:
+        print(f"plume e {kwargs}", flush=True)
+        print("Apparent wind sensing", flush=True)
         self.apparent_wind = True
-    else:
-        self.apparent_wind = False
 
     # Define action and observation spaces
     # Actions:
@@ -1361,9 +1362,14 @@ def make_vec_envs(env_name,
     envs = []
     if all_curriculum_params:
         for env_idx in range(len(all_curriculum_params['dataset'])):
-            now_curriculum_params = {}
+            now_curriculum_params = {} # also handles non-curriculum params
             for k, v in all_curriculum_params.items():
-                now_curriculum_params[k] = v[env_idx]
+                # check if v is iterable
+                if isinstance(v, (list, tuple)):
+                    now_curriculum_params[k] = v[env_idx]
+                else:
+                    now_curriculum_params[k] = v
+                    print(now_curriculum_params, file=sys.stdout)
             for i in range(num_processes):
                 envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args, **now_curriculum_params))
     else:
@@ -1398,21 +1404,24 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs
             # hard coded to be plume in evalCli: env_name=plume. Only instance of env_id found so far
             if args.recurrent_policy or (args.stacking == 0):
                 if kwargs:
-                    if kwargs.experimental:
-                        print("kwargs ON; plume env v2", flush=True, file=sys.stdout)
-                        Environment = PlumeEnvironment_v2
-                    else:
-                        print("kwargs ON; plume env v1", flush=True, file=sys.stdout) # changes up until apparent wind 04/05/24
-                        Environment = PlumeEnvironment
+                    Environment = PlumeEnvironment_v2
+                    print(kwargs, flush=True)
+                    # if kwargs.apparent_wind:
+                    #     print("kwargs ON; plume env v2", flush=True, file=sys.stdout)
+                    #     Environment = PlumeEnvironment_v2
+                    # else:
+                    #     print("kwargs ON; plume env v1", flush=True, file=sys.stdout) # changes up until apparent wind 04/05/24
+                    #     Environment = PlumeEnvironment
                     # TODO make this cleaner. auto read kwargs keys and overwrite args to keep args.X format
                     env = Environment(
-                        dataset=kwargs['dataset'],
+                        # dataset=kwargs['dataset'],
                         birthx=args.birthx, 
-                        qvar=kwargs['qvar'],
-                        diff_max=kwargs['diff_max'],
-                        diff_min=kwargs['diff_min'],
-                        reset_offset_tmax=kwargs['reset_offset_tmax'],
-                        t_val_min=kwargs['t_val_min'],
+                        # qvar=kwargs['qvar'],
+                        # diff_max=kwargs['diff_max'],
+                        # diff_min=kwargs['diff_min'],
+                        # reset_offset_tmax=kwargs['reset_offset_tmax'],
+                        # t_val_min=kwargs['t_val_min'],
+                        # apparent_wind=kwargs['apparent_wind'],
                         turnx=args.turnx,
                         movex=args.movex,
                         birthx_max=args.birthx_max,
@@ -1433,6 +1442,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs
                         obs_noise=args.obs_noise,
                         act_noise=args.act_noise,
                         seed=args.seed, 
+                        **kwargs
                         )
                 else:
                     # bkw compat before cleaning up TC hack. Useful when evalCli
