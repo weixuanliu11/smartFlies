@@ -339,14 +339,15 @@ def eval_loop(args, actor_critic, test_sparsity=True):
         # graph_OUTPREFIX = f"{OUTPREFIX}/eg_trajectory/"
         zoom = 1 if 'constant' in args.dataset else 2    
         zoom = 3 if args.walking else zoom
-        agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
-                                          zoom=zoom, 
-                                          dataset=args.dataset,
-                                          animate=False, # Quick plot
-                                          fprefix=args.dataset,
-                                          diffusionx=args.diffusionx,
-                                          outprefix=OUTPREFIX
-                                         )
+        if not args.no_viz:
+            agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
+                                            zoom=zoom, 
+                                            dataset=args.dataset,
+                                            animate=False, # Quick plot
+                                            fprefix=args.dataset,
+                                            diffusionx=args.diffusionx,
+                                            outprefix=OUTPREFIX
+                                            )
         # agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
         #                                   zoom=zoom, 
         #                                   dataset=args.dataset,
@@ -418,17 +419,17 @@ def eval_loop(args, actor_critic, test_sparsity=True):
 
                 zoom = 1 if 'constant' in args.dataset else 2    
                 zoom = 3 if args.walking else zoom
-                
-                if birthx in [0.1, 0.05, 0.001]:
-                    agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
-                        zoom=zoom, 
-                        dataset=args.dataset,
-                        animate=True,
-                        fprefix=f'sparse_{args.dataset}_{birthx}', 
-                        outprefix=OUTPREFIX,
-                        diffusionx=args.diffusionx,
-                        birthx=birthx,
-                        )
+                if not args.no_viz:
+                    if birthx in [0.1, 0.05, 0.001]:
+                        agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
+                            zoom=zoom, 
+                            dataset=args.dataset,
+                            animate=True,
+                            fprefix=f'sparse_{args.dataset}_{birthx}', 
+                            outprefix=OUTPREFIX,
+                            diffusionx=args.diffusionx,
+                            birthx=birthx,
+                            )
                 
                 # agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
                 #     zoom=zoom, 
@@ -475,6 +476,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_fname')
     parser.add_argument('--test_episodes', type=int, default=100)
     parser.add_argument('--viz_episodes', type=int, default=10)
+    parser.add_argument('--no_viz', type=bool, default=True)
     # parser.add_argument('--viz_episodes', type=int, default=10)
 
     parser.add_argument('--fixed_eval', action='store_true', default=False)
