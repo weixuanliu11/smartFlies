@@ -1418,7 +1418,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs
     def _thunk():
         print(f"make_env kwargs {kwargs}", flush=True)
         if args.recurrent_policy or (args.stacking == 0):
-            if kwargs['apparent_wind']:
+            if 'apparent_wind' in kwargs:
                 env = PlumeEnvironment_v2(
                     dataset=args.dataset,
                     birthx=args.birthx, 
