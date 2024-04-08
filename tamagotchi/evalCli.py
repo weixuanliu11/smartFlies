@@ -18,8 +18,8 @@ import matplotlib
 matplotlib.use("Agg")
 
 import numpy as np
-from tamagotchi.env import make_vec_envs
-import agent_analysis 
+from env import make_vec_envs
+import eval.agent_analysis as agent_analysis
 import os
 # import log_analysis # for viz hidden trajectories
 
@@ -203,6 +203,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
         kwargs = {}
         if args.apparent_wind: # don't pass in if don't care
             kwargs = {'apparent_wind': args.apparent_wind}
+            print("Apparent wind kwargs ", kwargs)
         #### ------- Nonsparse ------- #### 
         env = make_vec_envs(
             args.env_name,
@@ -365,7 +366,7 @@ if __name__ == "__main__":
     
     # env related
     parser.add_argument('--diffusionx',  type=float, default=1.0)
-    parser.add_argument('--apparent_wind', action='store_true', default=False)
+    parser.add_argument('--apparent_wind', type=bool, default=False)
 
 
     args = parser.parse_args()
@@ -408,6 +409,7 @@ if __name__ == "__main__":
     args.dynamic = False
 
     args.stacking = 0
+    args.recurrent_policy = True # used in setting up network in main. Outside of that, used once in make_env (always true in my case)
     
     args.f_prefix = os.path.basename(args.model_fname).replace(".pt", "") # eg: plume_seed_hash
     args.f_dir = os.path.dirname(args.model_fname) # f_dir should follow {/path/to/experiment}/weights

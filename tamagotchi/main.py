@@ -10,15 +10,16 @@ import torch
 import os
 import sys
 import numpy as np
-from a2c_ppo_acktr.ppo import PPO
-from a2c_ppo_acktr.model import Policy
-from a2c_ppo_acktr.storage import RolloutStorage
+
 import argparse
 import json
 from setproctitle import setproctitle as ptitle
 
 import tamagotchi.data_util as utils
-from tamagotchi.env import make_vec_envs
+from env import make_vec_envs
+from a2c_ppo_acktr.ppo import PPO
+from a2c_ppo_acktr.model import Policy
+from a2c_ppo_acktr.storage import RolloutStorage
 from training import training_loop
 
 def get_args():
@@ -201,8 +202,7 @@ def main(args=None):
         'diff_max': args.diff_max,
         'diff_min': args.diff_min,
         'reset_offset_tmax': [30, 3, 30], # 3 for switch condition, according to evalCli 
-        't_val_min': [60, 58, 60], # start time of plume data. 58 for switch condition, at around when the switching happens accoding to evalCli
-        'apparent_wind': args.apparent_wind # experiemntal option
+        't_val_min': [60, 58, 60] # start time of plume data. 58 for switch condition, at around when the switching happens accoding to evalCli
     }
     
     # creates the envs and deploys the first 'num_processes' envs 
