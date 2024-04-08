@@ -1,5 +1,6 @@
 ##### from plume/plume_env.py  ##### from plume/plume_env.py  ##### from plume/plume_env.py
-from data_util import load_plume, get_concentration_at_tidx
+from tamagotchi.data_util import load_plume, get_concentration_at_tidx
+import tamagotchi.config as config
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 import os
@@ -10,7 +11,6 @@ import torch
 import gym
 from gym import spaces
 from pprint import pprint
-import config
 from scipy.spatial.distance import cdist 
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import VecEnvWrapper, DummyVecEnv
@@ -539,7 +539,7 @@ class PlumeEnvironment(gym.Env):
     turn_action *= 1.0 + np.random.uniform(-self.act_noise, +self.act_noise) 
 
     if self.flipping and self.flipx < 0:
-    	turn_action = 1 - turn_action
+        turn_action = 1 - turn_action
 
     # Turn/Update orientation and move to new location 
     old_angle_radians = np.angle(self.agent_angle[0] + 1j*self.agent_angle[1], deg=False)
@@ -698,8 +698,8 @@ class PlumeEnvironment(gym.Env):
         observation = np.concatenate([observation, action])
 
     if self.flipping and self.flipx < 0:
-    	observation[1] *= -1.0 # observation: [x, y, o] 
-     
+        observation[1] *= -1.0 # observation: [x, y, o] 
+
     self.episode_reward += reward
     
     if done:
@@ -1186,7 +1186,7 @@ class PlumeEnvironment_v2(gym.Env):
     turn_action *= 1.0 + np.random.uniform(-self.act_noise, +self.act_noise) 
 
     if self.flipping and self.flipx < 0:
-    	turn_action = 1 - turn_action
+        turn_action = 1 - turn_action
 
     # Turn/Update orientation and move to new location 
     old_angle_radians = np.angle(self.agent_angle[0] + 1j*self.agent_angle[1], deg=False)
@@ -1324,8 +1324,8 @@ class PlumeEnvironment_v2(gym.Env):
         observation = np.concatenate([observation, action])
 
     if self.flipping and self.flipx < 0:
-    	observation[1] *= -1.0 # observation: [x, y, o] 
-    
+        observation[1] *= -1.0 # observation: [x, y, o] 
+
     self.episode_reward += reward
     
     if done:

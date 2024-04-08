@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import sim_analysis
-import config
+import tamagotchi.data_util as data_util
+import tamagotchi.config as config
 from moviepy.editor import ImageClip, concatenate_videoclips
 from natsort import natsorted
 import contextlib
@@ -88,7 +88,7 @@ def visualize_single_episode(data_puffs, data_wind, traj_df,
     plotsize = (8,8) if plotsize is None else plotsize
 
     try:      
-        fig, ax = sim_analysis.plot_puffs_and_wind_vectors(data_puffs, data_wind, t_val, 
+        fig, ax = data_util.plot_puffs_and_wind_vectors(data_puffs, data_wind, t_val, 
                                            fname='', plotsize=plotsize, show=show, invert_colors=invert_colors)
     except Exception as e:
         print(episode_idx, e)
@@ -304,7 +304,7 @@ def visualize_episodes(episode_logs,
     #     radiusx = episode_logs[-1]['infos'][0][0]['radiusx']
     # except Exception as e:
     radiusx = 1.0    
-    data_puffs_all, data_wind_all = sim_analysis.load_plume(dataset, 
+    data_puffs_all, data_wind_all = data_util.load_plume(dataset, 
         t_val_min=min(t_starts)-1.0, 
         t_val_max=max(t_ends)+1.0,
         radius_multiplier=radiusx,

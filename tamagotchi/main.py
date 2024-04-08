@@ -10,7 +10,6 @@ import torch
 import os
 import sys
 import numpy as np
-from a2c_ppo_acktr import utils
 from a2c_ppo_acktr.ppo import PPO
 from a2c_ppo_acktr.model import Policy
 from a2c_ppo_acktr.storage import RolloutStorage
@@ -18,8 +17,8 @@ import argparse
 import json
 from setproctitle import setproctitle as ptitle
 
-
-from env import make_vec_envs
+import tamagotchi.data_util as utils
+from tamagotchi.env import make_vec_envs
 from training import training_loop
 
 def get_args():
