@@ -175,6 +175,16 @@ def main(args=None):
     if args.cuda and not torch.cuda.is_available():
         print("CUDA is not available. Running on CPU.", flush=True, file=sys.stderr)
         args.cuda = False
+    
+    args.model_fname = f"{args.env_name}_{args.outsuffix}.pt"
+    args.model_fpath = os.path.join(args.save_dir, args.model_fname)
+    args.training_log = args.model_fpath.replace(".pt", '_train.csv')
+    # Save args and config info
+    # https://stackoverflow.com/questions/16878315/what-is-the-right-way-to-treat-argparse-namespace-as-a-dictionary
+    args.json_config = args.model_fpath.replace(".pt", "_args.json")
+    with open(args.json_config , 'w') as fp:
+        json.dump(vars(args), fp)
+
 
     log_dir = os.path.expanduser(args.log_dir)
     args.eval_log_dir = log_dir + "_eval"
@@ -236,15 +246,6 @@ def main(args=None):
     except OSError:
         pass
     
-    args.model_fname = f"{args.env_name}_{args.outsuffix}.pt"
-    args.model_fpath = os.path.join(args.save_dir, args.model_fname)
-    args.training_log = args.model_fpath.replace(".pt", '_train.csv')
-    # Save args and config info
-    # https://stackoverflow.com/questions/16878315/what-is-the-right-way-to-treat-argparse-namespace-as-a-dictionary
-    args.json_config = args.model_fpath.replace(".pt", "_args.json")
-    with open(args.json_config , 'w') as fp:
-        json.dump(vars(args), fp)
-
     # Save model at START of training
     start_fname = f'{args.model_fpath}.start'
     torch.save([

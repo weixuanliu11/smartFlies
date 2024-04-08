@@ -1357,21 +1357,37 @@ def make_vec_envs(env_name,
                   allow_early_resets,
                   args=None,
                   num_frame_stack=None, 
-                  **all_curriculum_params
+                  **raw_kwargs # raw because it may contain parameters that are already in args, in which case overwrite args. 
+                                # this would change args object globally, which is fine since args will have been saved at the beginning of the training loop
                   ):
     envs = []
-    if all_curriculum_params:
-        for env_idx in range(len(all_curriculum_params['dataset'])):
-            now_curriculum_params = {} # also handles non-curriculum params
-            for k, v in all_curriculum_params.items():
-                # check if v is iterable
-                if isinstance(v, (list, tuple)):
-                    now_curriculum_params[k] = v[env_idx]
-                else:
-                    now_curriculum_params[k] = v
-                    print(now_curriculum_params, file=sys.stdout)
+    if raw_kwargs:
+        if 'dataset' in raw_kwargs: # curriculum learning which multiple datasets for different types of environments 
+            for env_idx in range(len(raw_kwargs['dataset'])):
+                clean_kwargs = {} 
+                for k, v in raw_kwargs.items():
+                    # check if v is iterable
+                    if isinstance(v, (list, tuple)):
+                        clean_kwargs[k] = v[env_idx]
+                    else:
+                        clean_kwargs[k] = v
+                # args and kwargs should not have overlapping keys (cannot pass multiple values to same key). If they do, kwargs will overwrite args
+                for k,v in clean_kwargs.items():
+                    if k in args:
+                        setattr(args, k, v)
+                    del clean_kwargs[k]
+                # make environments 
+                for i in range(num_processes):
+                    envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args, **clean_kwargs))
+        else:
+            # args and kwargs should not have overlapping keys (cannot pass multiple values to same key). If they do, kwargs will overwrite args
+            clean_kwargs = raw_kwargs.copy()
+            for k,v in clean_kwargs.items():
+                if k in args:
+                    setattr(args, k, v)
+                del clean_kwargs[k]
             for i in range(num_processes):
-                envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args, **now_curriculum_params))
+                envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args, **clean_kwargs))
     else:
         for i in range(num_processes):
             envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args))
@@ -1400,83 +1416,71 @@ def make_vec_envs(env_name,
 
 def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs):
     def _thunk():
-        if 'plume' in env_id:
-            # hard coded to be plume in evalCli: env_name=plume. Only instance of env_id found so far
-            if args.recurrent_policy or (args.stacking == 0):
-                if kwargs:
-                    Environment = PlumeEnvironment_v2
-                    print(kwargs, flush=True)
-                    # if kwargs.apparent_wind:
-                    #     print("kwargs ON; plume env v2", flush=True, file=sys.stdout)
-                    #     Environment = PlumeEnvironment_v2
-                    # else:
-                    #     print("kwargs ON; plume env v1", flush=True, file=sys.stdout) # changes up until apparent wind 04/05/24
-                    #     Environment = PlumeEnvironment
-                    # TODO make this cleaner. auto read kwargs keys and overwrite args to keep args.X format
-                    env = Environment(
-                        # dataset=kwargs['dataset'],
-                        birthx=args.birthx, 
-                        # qvar=kwargs['qvar'],
-                        # diff_max=kwargs['diff_max'],
-                        # diff_min=kwargs['diff_min'],
-                        # reset_offset_tmax=kwargs['reset_offset_tmax'],
-                        # t_val_min=kwargs['t_val_min'],
-                        # apparent_wind=kwargs['apparent_wind'],
-                        turnx=args.turnx,
-                        movex=args.movex,
-                        birthx_max=args.birthx_max,
-                        env_dt=args.env_dt,
-                        loc_algo=args.loc_algo,
-                        time_algo=args.time_algo,
-                        auto_movex=args.auto_movex,
-                        auto_reward=args.auto_reward,
-                        walking=args.walking,
-                        radiusx=args.radiusx,
-                        r_shaping=args.r_shaping,
-                        wind_rel=args.wind_rel,
-                        action_feedback=args.action_feedback,
-                        squash_action=args.squash_action,
-                        flipping=args.flipping,
-                        odor_scaling=args.odor_scaling,
-                        stray_max=args.stray_max,
-                        obs_noise=args.obs_noise,
-                        act_noise=args.act_noise,
-                        seed=args.seed, 
-                        **kwargs
-                        )
-                else:
-                    # bkw compat before cleaning up TC hack. Useful when evalCli
-                    print("kwargs OFF", flush=True, file=sys.stdout)
-                    env = PlumeEnvironment(
-                        dataset=args.dataset,
-                        turnx=args.turnx,
-                        movex=args.movex,
-                        birthx=args.birthx,
-                        birthx_max=args.birthx_max,
-                        env_dt=args.env_dt,
-                        loc_algo=args.loc_algo,
-                        time_algo=args.time_algo,
-                        diff_max=args.diff_max,
-                        diff_min=args.diff_min,
-                        auto_movex=args.auto_movex,
-                        auto_reward=args.auto_reward,
-                        walking=args.walking,
-                        radiusx=args.radiusx,
-                        r_shaping=args.r_shaping,
-                        wind_rel=args.wind_rel,
-                        action_feedback=args.action_feedback,
-                        squash_action=args.squash_action,
-                        flipping=args.flipping,
-                        odor_scaling=args.odor_scaling,
-                        qvar=args.qvar,
-                        stray_max=args.stray_max,
-                        obs_noise=args.obs_noise,
-                        act_noise=args.act_noise,
-                        seed=args.seed, 
-                        )
+        print(f"make_env kwargs {kwargs}", flush=True)
+        if args.recurrent_policy or (args.stacking == 0):
+            if kwargs['apparent_wind']:
+                env = PlumeEnvironment_v2(
+                    dataset=args.dataset,
+                    birthx=args.birthx, 
+                    qvar=args.qvar,
+                    diff_max=args.diff_max,
+                    diff_min=args.diff_min,
+                    reset_offset_tmax=args.reset_offset_tmax,
+                    t_val_min=args.t_val_min,
+                    turnx=args.turnx,
+                    movex=args.movex,
+                    birthx_max=args.birthx_max,
+                    env_dt=args.env_dt,
+                    loc_algo=args.loc_algo,
+                    time_algo=args.time_algo,
+                    auto_movex=args.auto_movex,
+                    auto_reward=args.auto_reward,
+                    walking=args.walking,
+                    radiusx=args.radiusx,
+                    r_shaping=args.r_shaping,
+                    wind_rel=args.wind_rel,
+                    action_feedback=args.action_feedback,
+                    squash_action=args.squash_action,
+                    flipping=args.flipping,
+                    odor_scaling=args.odor_scaling,
+                    stray_max=args.stray_max,
+                    obs_noise=args.obs_noise,
+                    act_noise=args.act_noise,
+                    seed=args.seed, 
+                    **kwargs
+                    )
+            else:
+                # bkw compat before cleaning up TC hack. Useful when evalCli
+                # also bkw compat with prior to apparent wind sensin because TC now works by overriding args instead of kwargs. 
+                env = PlumeEnvironment(
+                    dataset=args.dataset,
+                    turnx=args.turnx,
+                    movex=args.movex,
+                    birthx=args.birthx,
+                    birthx_max=args.birthx_max,
+                    env_dt=args.env_dt,
+                    loc_algo=args.loc_algo,
+                    time_algo=args.time_algo,
+                    diff_max=args.diff_max,
+                    diff_min=args.diff_min,
+                    auto_movex=args.auto_movex,
+                    auto_reward=args.auto_reward,
+                    walking=args.walking,
+                    radiusx=args.radiusx,
+                    r_shaping=args.r_shaping,
+                    wind_rel=args.wind_rel,
+                    action_feedback=args.action_feedback,
+                    squash_action=args.squash_action,
+                    flipping=args.flipping,
+                    odor_scaling=args.odor_scaling,
+                    qvar=args.qvar,
+                    stray_max=args.stray_max,
+                    obs_noise=args.obs_noise,
+                    act_noise=args.act_noise,
+                    seed=args.seed, 
+                    **kwargs
+                    )
 
-        else:
-            env = gym.make(env_id)
         env.seed(seed + rank)        
 
         if str(env.__class__.__name__).find('TimeLimit') >= 0:
