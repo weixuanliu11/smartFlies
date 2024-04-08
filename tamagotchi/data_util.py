@@ -1,5 +1,4 @@
 import tamagotchi.config as config
-from tamagotchi.env import VecNormalize
 import os
 import matplotlib.pyplot as plt
 import matplotlib
@@ -83,14 +82,6 @@ def get_concentration_at_tidx(data, tidx, x_val, y_val):
     q = qx + ' and ' + qy
     d = data[data.tidx==tidx].query(q)
     return d.concentration.sum()
-
-def get_vec_normalize(venv):
-    if isinstance(venv, VecNormalize):
-        return venv
-    elif hasattr(venv, 'venv'):
-        return get_vec_normalize(venv.venv)
-
-    return None
 
 def cleanup_log_dir(log_dir):
     os.makedirs(log_dir, exist_ok=True)
