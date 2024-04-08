@@ -6,7 +6,6 @@ import traceback
 import os
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152 # this line is from #https://stackoverflow.com/questions/37893755/tensorflow-set-cuda-visible-devices-within-jupyter
-import sys
 
 import torch
 import argparse
@@ -19,7 +18,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import numpy as np
-from env import make_vec_envs
+from tamagotchi.env import make_vec_envs
 import agent_analysis 
 import os
 # import log_analysis # for viz hidden trajectories
@@ -82,7 +81,6 @@ def evaluate_agent(actor_critic, env, args):
 
 
     for i_episode in range(args.test_episodes):
-
         if args.fixed_eval:
             venv.fixed_y = grid[i_episode, 0] # meters
             venv.fixed_angle = grid[i_episode, 1] # radians
@@ -202,9 +200,6 @@ def evaluate_agent(actor_critic, env, args):
 ### BACK TO MAIN ###
 def eval_loop(args, actor_critic, test_sparsity=True):
     try:
-        # Common output directory
-        OUTPREFIX = args.model_fname.replace(".pt", "/")
-        os.makedirs(OUTPREFIX, exist_ok=True)
         kwargs = {}
         if args.apparent_wind: # don't pass in if don't care
             kwargs = {'apparent_wind': args.apparent_wind}
@@ -231,26 +226,26 @@ def eval_loop(args, actor_critic, test_sparsity=True):
 
         episode_logs, episode_summaries = evaluate_agent(actor_critic, env, args)
 
-        fname3 = f"{OUTPREFIX}/{args.dataset}.pkl"
+        fname3 = f"{args.out_dir}/{args.dataset}.pkl"
         with open(fname3, 'wb') as f_handle:
             pickle.dump(episode_logs, f_handle)
             print("Saving", fname3)
 
-        fname3 = f"{OUTPREFIX}/{args.dataset}_summary.csv"
+        fname3 = f"{args.out_dir}/{args.dataset}_summary.csv"
         pd.DataFrame(episode_summaries).to_csv(fname3)
         print("Saving", fname3)
 
-        # graph_OUTPREFIX = f"{OUTPREFIX}/eg_trajectory/"
-        zoom = 1 if 'constant' in args.dataset else 2    
-        zoom = 3 if args.walking else zoom
+        # graph_out_dir = f"{args.out_dir}/eg_trajectory/"
         if not args.no_viz:
+            zoom = 1 if 'constant' in args.dataset else 2    
+            zoom = 3 if args.walking else zoom
             agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
                                             zoom=zoom, 
                                             dataset=args.dataset,
                                             animate=False, # Quick plot
                                             fprefix=args.dataset,
                                             diffusionx=args.diffusionx,
-                                            outprefix=OUTPREFIX
+                                            out_dir=args.out_dir
                                             )
 
         # for episode_idx in range(len(episode_logs[:args.viz_episodes])):
@@ -266,13 +261,12 @@ def eval_loop(args, actor_critic, test_sparsity=True):
         #             traj_df, 
         #             episode_idx, 
         #             fprefix=args.dataset,
-        #             outprefix=OUTPREFIX,
+        #             out_dir=out_dir,
         #             pca_dims=3)
 
     except Exception as e:
         print(f"Exception: {e}")
         traceback.print_exc()
-
 
     #### ------- Sparse ------- #### #### ------- Sparse ------- #### #### ------- Sparse ------- #### #### ------- Sparse ------- #### 
     if test_sparsity:
@@ -282,7 +276,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
         # for birthx in np.arange(0.9, 0.1, -0.05):
         for birthx in z:
             birthx = round(birthx, 4)
-            print("Sparse/birthx:", birthx)
+            # print("Sparse/birthx:", birthx)
             try:
                 args.birthx_max = birthx # load time birthx: subsample the plume data at the time of loading 
                 args.birthx = 1.0 # dynamic birthx: subsample by rand.unif.[birthx, 1] at the time of reset at each epoch, on top of the loaded birthx
@@ -304,26 +298,25 @@ def eval_loop(args, actor_critic, test_sparsity=True):
 
                 episode_logs, episode_summaries = evaluate_agent(actor_critic, env, args)
 
-                fname3 = f"{OUTPREFIX}/{args.dataset}_{birthx}.pkl"
+                fname3 = f"{args.out_dir}/{args.dataset}_{birthx}.pkl"
                 with open(fname3, 'wb') as f_handle:
                     pickle.dump(episode_logs, f_handle)
                     print("Saving", fname3)
 
-                fname3 = f"{OUTPREFIX}/{args.dataset}_{birthx}_summary.csv"
+                fname3 = f"{args.out_dir}/{args.dataset}_{birthx}_summary.csv"
                 pd.DataFrame(episode_summaries).to_csv(fname3)
                 print("Saving", fname3)
 
-
-                zoom = 1 if 'constant' in args.dataset else 2    
-                zoom = 3 if args.walking else zoom
                 if not args.no_viz:
+                    zoom = 1 if 'constant' in args.dataset else 2    
+                    zoom = 3 if args.walking else zoom
                     if birthx in [0.1, 0.05, 0.001]:
                         agent_analysis.visualize_episodes(episode_logs[:args.viz_episodes], 
                             zoom=zoom, 
                             dataset=args.dataset,
                             animate=True,
                             fprefix=f'sparse_{args.dataset}_{birthx}', 
-                            outprefix=OUTPREFIX,
+                            out_dir=args.out_dir,
                             diffusionx=args.diffusionx,
                             birthx=birthx,
                             )
@@ -342,7 +335,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
                 #             traj_df, 
                 #             episode_idx, 
                 #             fprefix=f'sparse_{args.dataset}_{birthx}',
-                #             outprefix=OUTPREFIX,
+                #             out_dir=args.out_dir,
                 #             pca_dims=3)
 
             except Exception as e:
@@ -360,7 +353,7 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=137)
     parser.add_argument('--algo', default='ppo')
     parser.add_argument('--dataset', default='constantx5b5')
-    parser.add_argument('--model_fname')
+    parser.add_argument('--model_fname', help='absolute path to model')
     parser.add_argument('--test_episodes', type=int, default=100)
     parser.add_argument('--viz_episodes', type=int, default=10)
     parser.add_argument('--no_viz', type=bool, default=True)
@@ -372,7 +365,7 @@ if __name__ == "__main__":
     
     # env related
     parser.add_argument('--diffusionx',  type=float, default=1.0)
-    parser.add_argument('--apparent_wind',  type=bool, default=False)
+    parser.add_argument('--apparent_wind', action='store_true', default=False)
 
 
     args = parser.parse_args()
@@ -393,7 +386,6 @@ if __name__ == "__main__":
     args.auto_reward = False
     args.wind_rel = True
     args.action_feedback = False
-    # args.action_feedback = True
     args.walking = False
     args.radiusx = 1.0
     args.r_shaping = ['step'] # redundant
@@ -416,7 +408,15 @@ if __name__ == "__main__":
     args.dynamic = False
 
     args.stacking = 0
-
+    
+    args.f_prefix = os.path.basename(args.model_fname).replace(".pt", "") # eg: plume_seed_hash
+    args.f_dir = os.path.dirname(args.model_fname) # f_dir should follow {/path/to/experiment}/weights
+    exp_dir = os.path.dirname(args.f_dir) # {/path/to/experiment}
+    args.out_dir = '/'.join([exp_dir, 'eval', args.f_prefix]) # {/path/to/experiment}/eval/plume_seed_hash/
+    print(f"Output directory: {args.out_dir}")
+    # make sure the directory exists
+    os.makedirs('/'.join([exp_dir, 'eval']), exist_ok=True)
+    os.makedirs(args.out_dir, exist_ok=True)
     
     # actor_critic, ob_rms, optimizer_state_dict = torch.load(args.model_fname, map_location=torch.device('cpu'))
     try:
