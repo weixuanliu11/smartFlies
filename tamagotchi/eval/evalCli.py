@@ -415,12 +415,8 @@ if __name__ == "__main__":
 
     args.dynamic = False
 
-    args.recurrent_policy = True if ('GRU' in args.model_fname) or ('RNN' in args.model_fname) else False
-    args.rnn_type = 'VRNN' if 'RNN' in args.model_fname else 'GRU'
-
     args.stacking = 0
-    if 'MLP' in args.model_fname:
-        args.stacking = int( args.model_fname.split('MLP_s')[-1].split('_')[0] )
+
     
     # actor_critic, ob_rms, optimizer_state_dict = torch.load(args.model_fname, map_location=torch.device('cpu'))
     try:
