@@ -1,6 +1,6 @@
 ##### from plume/plume_env.py  ##### from plume/plume_env.py  ##### from plume/plume_env.py
-from tamagotchi.data_util import load_plume, get_concentration_at_tidx
-import tamagotchi.config as config
+from data_util import load_plume, get_concentration_at_tidx
+import config as config
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 import os
@@ -1364,30 +1364,22 @@ def make_vec_envs(env_name,
     if raw_kwargs:
         if 'dataset' in raw_kwargs: # curriculum learning which multiple datasets for different types of environments 
             for env_idx in range(len(raw_kwargs['dataset'])):
-                clean_kwargs = {} 
+                processed_kwargs = {} 
                 for k, v in raw_kwargs.items():
-                    # check if v is iterable
+                    # check if v is iterable. If so, it's a curriculum variable and will be treated as such
                     if isinstance(v, (list, tuple)):
-                        clean_kwargs[k] = v[env_idx]
+                        processed_kwargs[k] = v[env_idx]
                     else:
-                        clean_kwargs[k] = v
-                # args and kwargs should not have overlapping keys (cannot pass multiple values to same key). If they do, kwargs will overwrite args
-                for k,v in clean_kwargs.items():
-                    if k in args:
-                        setattr(args, k, v)
-                    del clean_kwargs[k]
-                # make environments 
-                for i in range(num_processes):
-                    envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args, **clean_kwargs))
-        else:
-            # args and kwargs should not have overlapping keys (cannot pass multiple values to same key). If they do, kwargs will overwrite args
-            clean_kwargs = raw_kwargs.copy()
-            for k,v in clean_kwargs.items():
-                if k in args:
+                        processed_kwargs[k] = v
+                for k,v in processed_kwargs.items():
                     setattr(args, k, v)
-                del clean_kwargs[k]
+                for i in range(num_processes):
+                    envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args))
+        else: # not sure if kwargs will ever be used outside of curriculum learning... ignore this portion for now. 
+            for k,v in raw_kwargs.items():
+                setattr(args, k, v)
             for i in range(num_processes):
-                envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args, **clean_kwargs))
+                envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args))
     else:
         for i in range(num_processes):
             envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args))
@@ -1414,11 +1406,10 @@ def make_vec_envs(env_name,
 
     return envs
 
-def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs):
+def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None):
     def _thunk():
-        print(f"make_env kwargs {kwargs}", flush=True)
         if args.recurrent_policy or (args.stacking == 0):
-            if 'apparent_wind' in kwargs:
+            if 'apparent_wind' in args:
                 env = PlumeEnvironment_v2(
                     dataset=args.dataset,
                     birthx=args.birthx, 
@@ -1446,12 +1437,11 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs
                     stray_max=args.stray_max,
                     obs_noise=args.obs_noise,
                     act_noise=args.act_noise,
-                    seed=args.seed, 
-                    **kwargs
+                    seed=args.seed,
+                    apparent_wind=args.apparent_wind
                     )
             else:
                 # bkw compat before cleaning up TC hack. Useful when evalCli
-                # also bkw compat with prior to apparent wind sensin because TC now works by overriding args instead of kwargs. 
                 env = PlumeEnvironment(
                     dataset=args.dataset,
                     turnx=args.turnx,
@@ -1477,8 +1467,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None,**kwargs
                     stray_max=args.stray_max,
                     obs_noise=args.obs_noise,
                     act_noise=args.act_noise,
-                    seed=args.seed, 
-                    **kwargs
+                    seed=args.seed
                     )
 
         env.seed(seed + rank)        
