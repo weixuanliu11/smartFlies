@@ -23,7 +23,8 @@ def parse_summary_files(fnames, BASE_DIR):
             'OOB': sum(s['reason'] == 'OOB'),
             'OOT': sum(s['reason'] == 'OOT'),
             'total': len(s['reason']),
-            'seed': str(fname).split('seed')[-1].split('/')[0],
+            # 'seed': str(fname).split('seed')[-1].split('/')[0], # old fname scheme
+            'seed': os.path.basename(os.path.dirname(str(fname))).split('_')[1],
             'model_dir': str(fname).replace(f'{dataset}_summary.csv','').replace(os.path.expanduser(BASE_DIR), ''),
             'code': str(fname).split('code')[-1].split('_')[0],
             'fname': str(fname)
