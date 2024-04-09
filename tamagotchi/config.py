@@ -6,7 +6,7 @@ import matplotlib
 
 import socket
 MACHINE = socket.gethostname().lower()
-# datadir = '/data/published_results/reproduce/'
+# datadir = '/gscratch/walkerlab/jqhu/smartFlies/data/published_results/reproduce/'
 datadir = '/src/data/published_results/reproduce/'
 # if MACHINE == 'mycroft':
 # 	datadir = '/data/users/satsingh/plumedata/'
