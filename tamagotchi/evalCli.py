@@ -6,7 +6,7 @@ import traceback
 import os
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152 # this line is from #https://stackoverflow.com/questions/37893755/tensorflow-set-cuda-visible-devices-within-jupyter
-
+import inspect
 import torch
 import argparse
 import numpy as np
@@ -18,7 +18,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import numpy as np
-from env import make_vec_envs
+from env import make_vec_envs, PlumeEnvironment_v2
 import eval.agent_analysis as agent_analysis
 import os
 # import log_analysis # for viz hidden trajectories
@@ -200,10 +200,13 @@ def evaluate_agent(actor_critic, env, args):
 ### BACK TO MAIN ###
 def eval_loop(args, actor_critic, test_sparsity=True):
     try:
-        kwargs = {}
-        if args.apparent_wind: # don't pass in if don't care
-            kwargs = {'apparent_wind': args.apparent_wind}
-            print("Apparent wind kwargs ", kwargs)
+        # Extract default values from __init__ method
+        init_signature = inspect.signature(PlumeEnvironment_v2.__init__)
+        defaults = {param.name: param.default for param in init_signature.parameters.values() if param.default != inspect.Parameter.empty}
+        # Write into args if not already present
+        for key, value in defaults.items():
+            if not hasattr(args, key):
+                setattr(args, key, value)
         #### ------- Nonsparse ------- #### 
         env = make_vec_envs(
             args.env_name,
@@ -214,8 +217,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
             # device='cpu',
             device=args.device,
             args=args,
-            allow_early_resets=False,
-            **kwargs)
+            allow_early_resets=False)
 
         if 'switch' in args.dataset: 
             venv = env.unwrapped.envs[0].venv
@@ -294,8 +296,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
                     # device='cpu',
                     device=args.device,
                     args=args,
-                    allow_early_resets=False,
-                    **kwargs)
+                    allow_early_resets=False)
 
                 episode_logs, episode_summaries = evaluate_agent(actor_critic, env, args)
 
