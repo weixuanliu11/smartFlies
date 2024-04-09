@@ -5,9 +5,12 @@ import torch
 import pandas as pd
 import os
 from collections import deque
-from a2c_ppo_acktr.storage import RolloutStorage
+from data_util import RolloutStorage
 # from tamagotchi.eval import eval_lite
-from a2c_ppo_acktr import utils
+import data_util as utils
+
+# from torch.utils.tensorboard import SummaryWriter
+
 
 def update_by_schedule(envs, schedule_dict, curr_step):
     # TODO: implement a density function over the probs of selecting a new TC value
@@ -20,10 +23,10 @@ def update_by_schedule(envs, schedule_dict, curr_step):
             # different update functions since birthx is managed by each process, while wind_cond is managed by my custom SubprocVecEnv
             if k == 'birthx': # update the birthx value in the envs. Sparsity is decided in each envs.reset() at each trial
                 envs.env_method_apply_to_all("update_env_param", {k: _schedule_dict[curr_step]})
-                print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
+                # print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
             elif k == 'wind_cond': 
                 envs.update_wind_direction(_schedule_dict[curr_step])
-                print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
+                # print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
             else:
                 raise NotImplementedError
     return updated # return the course that is updated, if any
@@ -60,9 +63,8 @@ def build_tc_schedule_dict(total_number_periods, interleave=True, **kwargs):
         now_kwargs = kwargs[course]
         for k in now_kwargs:
             if course_dirctory[course][k] != now_kwargs[k]:
-                course_dirctory[course][k] = now_kwargs[k]
                 print(f"Updated {course} {k} = {course_dirctory[course][k]} to {now_kwargs[k]}", flush=True)
-
+                course_dirctory[course][k] = now_kwargs[k]
     # calculate the scheduled value for each class, given the number of updates and the difficulty range
     tmp_schedule = []
     for course in course_dirctory:
@@ -187,8 +189,10 @@ def training_loop(agent, envs, args, device, actor_critic,
     
     # at each bout of update
     for j in range(num_updates):
-        print(f"On update {j} of {num_updates}")
-        start1 = time.time()
+        # c = 0 # for benchmarks 
+        # if j < 3:
+        #     print(f"On update {j} of {num_updates}")
+        #     start_an_update = time.time()
 
         # decrease learning rate linearly
         if args.use_linear_lr_decay:
@@ -196,25 +200,27 @@ def training_loop(agent, envs, args, device, actor_critic,
                 agent.optimizer, j, num_updates, args.lr)
         
         # update envs according to the curriculum schedule
+        # start = time.time()
         if args.birthx_linear_tc_steps:
             updated = update_by_schedule(envs, schedule, j)
             if updated: # save model if an update to env occurred during this trial
-                lesson_fpath = args.model_fpath.replace(".pt", f'_before_{updated}{schedule[updated][j]}_update{j}.pt')
+                lesson_fpath = os.path.join(args.save_dir, 'chkpt', args.model_fname.replace(".pt", f'_before_{updated}{schedule[updated][j]}_update{j}.pt'))
                 torch.save([
                     actor_critic,
                     getattr(utils.get_vec_normalize(envs), 'ob_rms', None),
                     agent.optimizer.state_dict(),
                 ], lesson_fpath)
                 print('Saved', lesson_fpath)
-
+        # end = time.time()
+        # print(f"Update upschedule and save check point{j} took {end-start} seconds")
         
         ##############################################################################################################
         # at each step of training 
         ##############################################################################################################
         for step in range(args.num_steps):
-            if step < 3:
-                start2 = time.time()
-            
+            # if step < 3:
+            #     start_a_step = time.time()
+            #     start_actor_critic = time.time()
             # Sample actions ~0.008 seconds
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states, activities = actor_critic.act(
@@ -222,14 +228,18 @@ def training_loop(agent, envs, args, device, actor_critic,
                     rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])
             obs, reward, done, infos = envs.step(action)
-            
-            if step < 3:
-                end2 = time.time()
-                # print(f"Step {step} took {end2-start2} seconds")
+            # if step < 3:
+            #     end_actor_critic = time.time()
+            #     print(f"Step {step}: actor critic took {end_actor_critic-start_actor_critic} seconds")
             
             # save and log
+            # if c < 3:
+            #     start_check_if_done = time.time()
+            # if step < 3:
+            #     start_check_if_done = time.time()
             for i, d in enumerate(done): # if done, log the episode info. Care about what kind of env is encountered
                 if d:
+                    c +=1 
                     try:
                         # Note: only ouput these to infos when done
                         episode_rewards.append(infos[i]['episode']['r'])
@@ -238,7 +248,12 @@ def training_loop(agent, envs, args, device, actor_critic,
                         episode_wind_directions.append(envs.ds2wind(infos[i]['dataset'])) # density and dataset are logged to see eps. statistics implemented by the curriculum
                     except KeyError:
                         raise KeyError("Logging info not found... check why it's not here when done")
-
+            # if c < 3:
+            #     end_check_if_done = time.time()
+            #     print(f"Step {step}: an eps is done, log info took {end_check_if_done-start_check_if_done} seconds")
+            # if step < 3:
+            #     end_check_if_done = time.time()
+            #     print(f"Step {step}: check if done took {end_check_if_done-start_check_if_done} seconds")
             # If done then clean the history of observations in the recurrent_hidden_states. Done in the MLPBase forward method
             masks = torch.FloatTensor(
                 [[0.0] if done_ else [1.0] for done_ in done])
@@ -246,32 +261,48 @@ def training_loop(agent, envs, args, device, actor_critic,
             bad_masks = torch.FloatTensor(
                 [[0.0] if 'bad_transition' in info.keys() else [1.0]
                  for info in infos])
-            if step < 3:
-                start3 = time.time()
-                
+            # if step < 3:
+            #     start_insert_rollouts = time.time()
             rollouts.insert(obs, recurrent_hidden_states, action,
                             action_log_prob, value, reward, masks, bad_masks) # ~0.0006s
-            if step < 3:
-                end3 = time.time()
-                # print(f"Step {step} took {end3-start3} seconds")
+            # if step < 3:
+            #     end_insert_rollouts = time.time()
+            #     print(f"Step {step}: insert rollouts took {end_insert_rollouts-start_insert_rollouts} seconds")
+            # if step < 3:
+            #     end_a_step = time.time()
+            #     print(f"Step {step} took {end_a_step-start_a_step} seconds")
         ##############################################################################################################
         # UPDATE AGENT ~ 0.48s
         ##############################################################################################################
-        start4 = time.time()
+        # if j < 3:
+        #     update_start = time.time()
         with torch.no_grad():
             next_value = actor_critic.get_value(
                 rollouts.obs[-1], rollouts.recurrent_hidden_states[-1],
                 rollouts.masks[-1]).detach()
-
+        # if j < 3:
+        #     get_val_end = time.time()
+        #     print(f"Update {j} ac.get_value took {get_val_end-update_start} seconds")
+        #     get_returns_start = time.time()
         rollouts.compute_returns(next_value, args.use_gae, args.gamma,
                                  args.gae_lambda, args.use_proper_time_limits)
-
+        # if j < 3:
+        #     get_returns_end = time.time()
+        #     print(f"Update {j} compute_returns took {get_returns_end-get_returns_start} seconds")
+        #     update_start = time.time()
         value_loss, action_loss, dist_entropy = agent.update(rollouts)
-
+        # writer.add_scalar("Loss/value", value_loss, j)
+        # writer.add_scalar("Loss/action", action_loss, j)
+        # writer.add_scalar("Loss/entropy", dist_entropy, j)
+        # https://stackoverflow.com/questions/38464559/how-to-locally-view-tensorboard-of-remote-server?newreg=09d6ea6fea6e42efbf45890ebca822b1
         rollouts.after_update()
         total_num_steps = (j + 1) * args.num_processes * args.num_steps
-        end4 = time.time()
-        # print(f"Update {j} took {end4-start4} seconds")
+        # if j < 3:
+        #     update_end = time.time()
+        #     print(f"Update {j} agent.update took {update_end-update_start} seconds")
+        # if j<3:
+        #     update_end = time.time()
+        # print(f"Update {j} took {update_end-update_start} seconds")
         ##############################################################################################################
         # save for every interval-th episode or for the last epoch
         ##############################################################################################################
@@ -300,21 +331,21 @@ def training_loop(agent, envs, args, device, actor_critic,
             # Save training curve
             pd.DataFrame(training_log).to_csv(args.training_log)
 
+        # if (args.eval_interval is not None and len(episode_rewards) > 1
+        #         and j % args.eval_interval == 0):
+        #     if eval_env is not None:
+        #         eval_record = eval_lite(agent, eval_env, args, device, actor_critic, )
+        #         eval_record['T'] = total_num_steps
+        #         eval_log.append(eval_record)
+        #         print("eval_lite:", eval_record)
 
-        if (args.eval_interval is not None and len(episode_rewards) > 1
-                and j % args.eval_interval == 0):
-            if eval_env is not None:
-                eval_record = eval_lite(agent, eval_env, args, device, actor_critic, )
-                eval_record['T'] = total_num_steps
-                eval_log.append(eval_record)
-                print("eval_lite:", eval_record)
-
-                save_path = args.save_dir
-                os.makedirs(save_path, exist_ok=True)
-                fname = os.path.join(save_path, f'{args.env_name}_{args.outsuffix}_eval.csv')
-                pd.DataFrame(eval_log).to_csv(fname)
-        end1 = time.time()
-        # print(f"Update {j} took {end1-start1} seconds")
-                
+        #         save_path = args.save_dir
+        #         os.makedirs(save_path, exist_ok=True)
+        #         fname = os.path.join(save_path, f'{args.env_name}_{args.outsuffix}_eval.csv')
+        #         pd.DataFrame(eval_log).to_csv(fname)
+        # if j < 3:
+        #     end_an_update = time.time()
+        #     print(f"Update {j} took {end_an_update-start_an_update} seconds")
+    # writer.flush()     
     return training_log, eval_log
 
