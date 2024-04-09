@@ -103,6 +103,7 @@ def get_args():
     parser.add_argument('--birthx_linear_tc_steps', type=int, default=0) # if on, birthx will linearly decrease over time, reachinig the birthx value gradually
     # apparent wind 
     parser.add_argument('--apparent_wind', type=bool, default=False) 
+    parser.add_argument('--dry_run', default=False, action='store_true') 
     
     parser.add_argument('--birthx_max',  type=float, default=1.0) # Only used for sparsity
     parser.add_argument('--dryrun',  type=bool, default=False) # not used 
@@ -177,19 +178,29 @@ def main(args=None):
         args.cuda = False
     
     args.model_fname = f"{args.env_name}_{args.outsuffix}.pt"
-    args.model_fpath = os.path.join(args.save_dir, args.model_fname)
-    args.training_log = args.model_fpath.replace(".pt", '_train.csv')
+    args.model_fpath = os.path.join(args.save_dir, 'weights', args.model_fname)
+    args.training_log = os.path.join(args.save_dir, 'train_logs', args.model_fname.replace(".pt", '_train.csv'))
     # Save args and config info
     # https://stackoverflow.com/questions/16878315/what-is-the-right-way-to-treat-argparse-namespace-as-a-dictionary
-    args.json_config = args.model_fpath.replace(".pt", "_args.json")
-    with open(args.json_config , 'w') as fp:
-        json.dump(vars(args), fp)
-
-
-    log_dir = os.path.expanduser(args.log_dir)
-    args.eval_log_dir = log_dir + "_eval"
-    utils.cleanup_log_dir(log_dir)
-    utils.cleanup_log_dir(args.eval_log_dir)
+    args.json_config = os.path.join(args.save_dir, 'json', args.model_fname.replace(".pt", "_args.json"))
+    if not args.dry_run:
+        try:
+            os.makedirs(args.save_dir, exist_ok=True)
+            os.makedirs(os.path.join(args.save_dir, 'weights'), exist_ok=True)
+            os.makedirs(os.path.join(args.save_dir, 'train_logs'), exist_ok=True)
+            os.makedirs(os.path.join(args.save_dir, 'chkpt'), exist_ok=True)
+            os.makedirs(os.path.join(args.save_dir, 'json'), exist_ok=True)
+            
+        except OSError:
+            raise Exception("Could not create save directory")
+        
+        with open(args.json_config , 'w') as fp:
+            json.dump(vars(args), fp)
+            
+        log_dir = os.path.expanduser(args.log_dir)
+        args.eval_log_dir = log_dir + "_eval"
+        utils.cleanup_log_dir(log_dir)
+        utils.cleanup_log_dir(args.eval_log_dir)
 
     torch.set_num_threads(1)
     gpu_idx = 0
@@ -240,18 +251,15 @@ def main(args=None):
         max_grad_norm=args.max_grad_norm,
         weight_decay=args.weight_decay)
     
-    try:
-        os.makedirs(args.save_dir, exist_ok=True)
-    except OSError:
-        pass
-    
-    # Save model at START of training
-    start_fname = f'{args.model_fpath}.start'
-    torch.save([
-        actor_critic,
-        getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
-    ], start_fname)
-    print('Saved', start_fname)
+
+    if not args.dry_run:    
+        # Save model at START of training
+        start_fname = f'{args.model_fpath}.start'
+        torch.save([
+            actor_critic,
+            getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
+        ], start_fname)
+        print('Saved', start_fname)
     
     # keeping these for backwards compatibility
     training_log = None
