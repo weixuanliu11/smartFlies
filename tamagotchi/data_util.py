@@ -1,4 +1,4 @@
-import tamagotchi.config as config
+import config as config
 import os
 import matplotlib.pyplot as plt
 import matplotlib
