@@ -874,10 +874,7 @@ class PlumeEnvironment_v2(gym.Env):
       }
 
     # Wind Sensing 
-    if apparent_wind:
-        print(f"plume e {kwargs}", flush=True)
-        print("Apparent wind sensing", flush=True)
-        self.apparent_wind = True
+    self.apparent_wind = apparent_wind
 
     # Define action and observation spaces
     # Actions:
@@ -946,7 +943,7 @@ class PlumeEnvironment_v2(gym.Env):
         wind_absolute = - self.agent_velocity_last # Apparent wind = negative of air velocity 
     if self.verbose > 1:
         print('t_val', self.t_val)
-        print('wind allocentric', wind_absolute)
+        print('sensed wind (allocentric, before rotating angle by agent direction) ', wind_absolute) 
         
 
     # Get wind relative angle
