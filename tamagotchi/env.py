@@ -844,7 +844,7 @@ class PlumeEnvironment_v2(gym.Env):
 
     # Generalization & curricula
     self.r_shaping = r_shaping
-    print("Reward Shaping", self.r_shaping)
+    # print("Reward Shaping", self.r_shaping)
     self.flipping = flipping 
     self.flipx = 1.0 # flip puffs around x-axis? 
     self.difficulty = diff_max # Curriculum
@@ -907,9 +907,9 @@ class PlumeEnvironment_v2(gym.Env):
     self.data_puffs = self.data_puffs_all.copy() # trim this per episode
     self.data_wind = self.data_wind_all.copy() # trim/flip this per episode
     self.t_vals = self.data_wind['time'].tolist()
-    print("wind: t_val_diff", (self.t_vals[2] - self.t_vals[1]), "env_dt", self.dt)
+    # print("wind: t_val_diff", (self.t_vals[2] - self.t_vals[1]), "env_dt", self.dt)
     t_vals_puffs = self.data_puffs['time'].unique()
-    print("puffs: t_val_diff", (t_vals_puffs[2] - t_vals_puffs[1]), "env_dt", self.dt)
+    # print("puffs: t_val_diff", (t_vals_puffs[2] - t_vals_puffs[1]), "env_dt", self.dt)
     self.tidxs = self.data_wind['tidx'].tolist()
 
   def reload_dataset(self):
