@@ -229,16 +229,16 @@ def eval_loop(args, actor_critic, test_sparsity=True):
 
         episode_logs, episode_summaries = evaluate_agent(actor_critic, env, args)
 
-        fname3 = f"{args.out_dir}/{args.dataset}.pkl"
+        fname3 = f"{args.abs_out_dir}/{args.dataset}.pkl"
         with open(fname3, 'wb') as f_handle:
             pickle.dump(episode_logs, f_handle)
             print("Saving", fname3)
 
-        fname3 = f"{args.out_dir}/{args.dataset}_summary.csv"
+        fname3 = f"{args.abs_out_dir}/{args.dataset}_summary.csv"
         pd.DataFrame(episode_summaries).to_csv(fname3)
         print("Saving", fname3)
 
-        # graph_out_dir = f"{args.out_dir}/eg_trajectory/"
+        # graph_abs_out_dir = f"{args.abs_out_dir}/eg_trajectory/"
         if not args.no_viz:
             zoom = 1 if 'constant' in args.dataset else 2    
             zoom = 3 if args.walking else zoom
@@ -248,7 +248,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
                                             animate=False, # Quick plot
                                             fprefix=args.dataset,
                                             diffusionx=args.diffusionx,
-                                            out_dir=args.out_dir
+                                            abs_out_dir=args.abs_out_dir
                                             )
 
         # for episode_idx in range(len(episode_logs[:args.viz_episodes])):
@@ -264,7 +264,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
         #             traj_df, 
         #             episode_idx, 
         #             fprefix=args.dataset,
-        #             out_dir=out_dir,
+        #             abs_out_dir=abs_out_dir,
         #             pca_dims=3)
 
     except Exception as e:
@@ -300,12 +300,12 @@ def eval_loop(args, actor_critic, test_sparsity=True):
 
                 episode_logs, episode_summaries = evaluate_agent(actor_critic, env, args)
 
-                fname3 = f"{args.out_dir}/{args.dataset}_{birthx}.pkl"
+                fname3 = f"{args.abs_out_dir}/{args.dataset}_{birthx}.pkl"
                 with open(fname3, 'wb') as f_handle:
                     pickle.dump(episode_logs, f_handle)
                     print("Saving", fname3)
 
-                fname3 = f"{args.out_dir}/{args.dataset}_{birthx}_summary.csv"
+                fname3 = f"{args.abs_out_dir}/{args.dataset}_{birthx}_summary.csv"
                 pd.DataFrame(episode_summaries).to_csv(fname3)
                 print("Saving", fname3)
 
@@ -318,7 +318,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
                             dataset=args.dataset,
                             animate=True,
                             fprefix=f'sparse_{args.dataset}_{birthx}', 
-                            out_dir=args.out_dir,
+                            abs_out_dir=args.abs_out_dir,
                             diffusionx=args.diffusionx,
                             birthx=birthx,
                             )
@@ -337,7 +337,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
                 #             traj_df, 
                 #             episode_idx, 
                 #             fprefix=f'sparse_{args.dataset}_{birthx}',
-                #             out_dir=args.out_dir,
+                #             abs_out_dir=args.abs_out_dir,
                 #             pca_dims=3)
 
             except Exception as e:
@@ -368,6 +368,7 @@ if __name__ == "__main__":
     # env related
     parser.add_argument('--diffusionx',  type=float, default=1.0)
     parser.add_argument('--apparent_wind', type=bool, default=False)
+    parser.add_argument('--out_dir', type=str, default='eval')
 
 
     args = parser.parse_args()
@@ -415,11 +416,13 @@ if __name__ == "__main__":
     args.f_prefix = os.path.basename(args.model_fname).replace(".pt", "") # eg: plume_seed_hash
     args.f_dir = os.path.dirname(args.model_fname) # f_dir should follow {/path/to/experiment}/weights
     exp_dir = os.path.dirname(args.f_dir) # {/path/to/experiment}
-    args.out_dir = '/'.join([exp_dir, 'eval', args.f_prefix]) # {/path/to/experiment}/eval/plume_seed_hash/
-    print(f"Output directory: {args.out_dir}")
+
+    args.abs_out_dir = '/'.join([exp_dir, args.out_dir, args.f_prefix]) # {/path/to/experiment}/eval/plume_seed_hash/
+    
+    print(f"Output directory: {args.abs_out_dir}")
     # make sure the directory exists
-    os.makedirs('/'.join([exp_dir, 'eval']), exist_ok=True)
-    os.makedirs(args.out_dir, exist_ok=True)
+    os.makedirs('/'.join([exp_dir, args.out_dir]), exist_ok=True)
+    os.makedirs(args.abs_out_dir, exist_ok=True)
     
     # actor_critic, ob_rms, optimizer_state_dict = torch.load(args.model_fname, map_location=torch.device('cpu'))
     try:
