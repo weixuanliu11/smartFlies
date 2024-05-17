@@ -207,6 +207,26 @@ def plot_puffs_and_wind_vectors(data_puffs, data_wind, t_val, ax=None, fname='',
         plt.close()
     return fig, ax
 
+def save_tc_schedule(schedule, num_updates, num_processes, num_steps, save_dir):
+    df_schedule = pd.DataFrame(schedule)
+    df_schedule.sort_index(axis=0, inplace=True)
+    df_schedule.loc[num_updates] = None
+    df_schedule.fillna(method='ffill', inplace=True)
+    df_schedule['update'] = df_schedule.index
+    df_schedule['timestep'] = df_schedule['update'] * num_processes * num_steps
+    matplotlib.use('Agg') # no not display plots
+    ax = df_schedule.plot(x="timestep", y="birthx", legend=False)
+    ax2 = ax.twinx()
+    df_schedule.plot(x="timestep", y="wind_cond", ax=ax2, legend=False, color="r")
+    ax.scatter(df_schedule["timestep"], df_schedule["birthx"])
+    ax2.scatter(df_schedule["timestep"], df_schedule["wind_cond"], color="r")
+    ax2.set_yticks([1, 2, 3])
+    ax.figure.legend()
+    ax.set_yscale('log')
+    
+    df_schedule.to_csv(os.path.join(save_dir, 'json', 'schedule.tsv'), sep='\t', index=False)
+    plt.savefig(os.path.join(save_dir, 'json', 'schedule.png'))
+
 # from a2c_ppo_acktr/storage.py
 import torch
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler

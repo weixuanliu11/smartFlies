@@ -181,6 +181,7 @@ def training_loop(agent, envs, args, device, actor_critic,
                                           wind_cond={'num_classes': 2, 'difficulty_range': [1, 3], 
                                                      'dtype': 'int', 'step_type': 'linear'}) # wind_cond: 1 is constant, 2 is switch, 3 is noisy
         update_by_schedule(envs, schedule, 0) # update the initialized envs according to the curriculum schedule. The default init values are incorrect, hence this update s.t. reset() returns correctly.
+        utils.save_tc_schedule(schedule, num_updates, args.num_processes, args.num_steps, args.save_dir)
     
     obs = envs.reset()
     rollouts.obs[0].copy_(obs) # https://discuss.pytorch.org/t/which-copy-is-better/56393
