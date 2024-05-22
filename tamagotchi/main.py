@@ -69,7 +69,6 @@ def get_args():
         help='use a recurrent policy')
     parser.add_argument('--use-linear-lr-decay', action='store_true', default=False,
         help='use a linear schedule on the learning rate')
-
     # My params start
     parser.add_argument('--env-name')
     parser.add_argument('--log-dir', default='/tmp/gym/')
@@ -77,21 +76,16 @@ def get_args():
     parser.add_argument('--dynamic', type=bool, default=False)
     parser.add_argument('--eval_type',  type=str, 
         default=['fixed', 'short', 'skip'][0])
-
     parser.add_argument('--eval_episodes', type=int, default=20)
     parser.add_argument('--eval-interval', type=int, default=None,
         help='eval interval, one eval per n updates (default: None)')
-
-
     parser.add_argument('--weight_decay', type=float, default=0.)
     parser.add_argument('--rnn_type', type=str, default=None)
     parser.add_argument('--hidden_size', type=int, default=64)
     parser.add_argument('--betadist', type=bool, default=False)
-
     parser.add_argument('--stacking', type=int, default=0)
     parser.add_argument('--masking', type=str, default=None)
     parser.add_argument('--stride', type=int, default=1)
-
     # Curriculum variables
     parser.add_argument('--dataset', type=str, nargs='+', default=['constantx5b5'])
     parser.add_argument('--num-env-steps', type=int, default=10e6)
@@ -103,10 +97,8 @@ def get_args():
     parser.add_argument('--birthx_linear_tc_steps', type=int, default=0) # if on, birthx will linearly decrease over time, reachinig the birthx value gradually
     # apparent wind 
     parser.add_argument('--apparent_wind', type=bool, default=False) 
-    parser.add_argument('--dry_run', default=False, action='store_true') 
-    
     parser.add_argument('--birthx_max',  type=float, default=1.0) # Only used for sparsity
-    parser.add_argument('--dryrun',  type=bool, default=False) # not used 
+    parser.add_argument('--dryrun',  type=bool, default=False) 
     parser.add_argument('--curriculum', type=bool, default=False) # not used 
     parser.add_argument('--turnx',  type=float, default=1.0)
     parser.add_argument('--movex',  type=float, default=1.0)
@@ -132,19 +124,15 @@ def get_args():
     parser.add_argument('--model_fname',  type=str, default='')
     parser.add_argument('--obs_noise', type=float, default=0.0)
     parser.add_argument('--act_noise', type=float, default=0.0)
-
     args = parser.parse_args()
-    
     assert len(args.dataset) == len(args.qvar) 
     assert len(args.dataset) == len(args.diff_max) 
     assert len(args.dataset) == len(args.diff_min) 
-
     # args.cuda = not args.no_cuda and 
     cuda_available = torch.cuda.is_available()
     args.cuda = cuda_available
     print("CUDA:", args.cuda)
     assert args.algo in ['a2c', 'ppo']
-
     print(args)
     return args
 
@@ -154,7 +142,7 @@ def main(args=None):
     else:
         # turn a dict into a parsed arg object.
         args = argparse.Namespace(**args)
-        
+        args.dryrun = False
         
     print("PPO Args --->", args)
     print(args.seed)
@@ -183,7 +171,7 @@ def main(args=None):
     # Save args and config info
     # https://stackoverflow.com/questions/16878315/what-is-the-right-way-to-treat-argparse-namespace-as-a-dictionary
     args.json_config = os.path.join(args.save_dir, 'json', args.model_fname.replace(".pt", "_args.json"))
-    if not args.dry_run:
+    if not args.dryrun:
         try:
             os.makedirs(args.save_dir, exist_ok=True)
             os.makedirs(os.path.join(args.save_dir, 'weights'), exist_ok=True)
@@ -252,7 +240,7 @@ def main(args=None):
         weight_decay=args.weight_decay)
     
 
-    if not args.dry_run:    
+    if not args.dryrun:    
         # Save model at START of training
         start_fname = f'{args.model_fpath}.start'
         torch.save([
