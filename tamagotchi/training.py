@@ -8,6 +8,7 @@ from collections import deque
 from data_util import RolloutStorage
 # from tamagotchi.eval import eval_lite
 import data_util as utils
+from env import get_vec_normalize
 
 # from torch.utils.tensorboard import SummaryWriter
 
@@ -208,7 +209,7 @@ def training_loop(agent, envs, args, device, actor_critic,
                 lesson_fpath = os.path.join(args.save_dir, 'chkpt', args.model_fname.replace(".pt", f'_before_{updated}{schedule[updated][j]}_update{j}.pt'))
                 torch.save([
                     actor_critic,
-                    getattr(utils.get_vec_normalize(envs), 'ob_rms', None),
+                    getattr(get_vec_normalize(envs), 'ob_rms', None),
                     agent.optimizer.state_dict(),
                 ], lesson_fpath)
                 print('Saved', lesson_fpath)
@@ -240,7 +241,7 @@ def training_loop(agent, envs, args, device, actor_critic,
             #     start_check_if_done = time.time()
             for i, d in enumerate(done): # if done, log the episode info. Care about what kind of env is encountered
                 if d:
-                    c +=1 
+                    # c +=1 
                     try:
                         # Note: only ouput these to infos when done
                         episode_rewards.append(infos[i]['episode']['r'])
@@ -312,7 +313,7 @@ def training_loop(agent, envs, args, device, actor_critic,
 
             torch.save([
                 actor_critic,
-                getattr(utils.get_vec_normalize(envs), 'ob_rms', None),
+                getattr(get_vec_normalize(envs), 'ob_rms', None),
                 agent.optimizer.state_dict(),
             ], args.model_fpath)
             print('Saved', args.model_fpath)
@@ -323,7 +324,7 @@ def training_loop(agent, envs, args, device, actor_critic,
                 fname = f'{args.model_fpath}.best'
                 torch.save([
                     actor_critic,
-                    getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
+                    getattr(get_vec_normalize(envs), 'ob_rms', None)
                 ], fname)
                 print('Saved', fname)
 
