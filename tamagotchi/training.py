@@ -329,7 +329,7 @@ def training_loop(agent, envs, args, device, actor_critic,
                 ], fname)
                 print('Saved', fname)
 
-        if j % args.log_interval == 0 and len(episode_rewards) > 1:
+        if j % args.log_interval == 0 and len(episode_rewards) > 1 and not args.dryrun:
             training_log = log_episode(training_log, j, total_num_steps, start, episode_rewards, episode_puffs, episode_plume_densities, episode_wind_directions, num_updates)
             # Save training curve
             pd.DataFrame(training_log).to_csv(args.training_log)
