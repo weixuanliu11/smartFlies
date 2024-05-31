@@ -1356,10 +1356,12 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
         
 
     def sense_environment(self):
-        # Return an array with [wind x, y, odor]
-        # Wind can either be relative wind or apparent wind, depending on the setting
+        '''
+        Return an array with [wind x, y, odor, allocentric head direction x, y, egocentric course direction x, y]
+        '''
+        # Get an array with [wind x, y, odor]
+            # Wind can either be relative wind or apparent wind, depending on the setting
         observation = super(PlumeEnvironment_v3, self).sense_environment()
-        
         # Visual feedback
         if self.visual_feedback:
             # head direction
@@ -1372,6 +1374,13 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
             print('observation', observation)
         return observation
     
+    def reset(self):
+        # Return an array with [wind x, y, odor, air vel x, y, egocentric course direction x, y]
+            # Wind can either be relative wind or apparent wind, depending on the setting
+        observation = super(PlumeEnvironment_v3, self).reset()
+        if len(observation) == 7:
+            observation[5:] = 0 # course direction to 0
+        return observation
     
     def step(self, action):
         """
