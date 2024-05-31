@@ -1346,8 +1346,13 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
     def __init__(self, visual_feedback=False, **kwargs):
         super(PlumeEnvironment_v3, self).__init__(**kwargs)
         self.visual_feedback = visual_feedback
-        self.observation_space = spaces.Box(low=-1, high=+1,
+        if self.visual_feedback:
+            self.observation_space = spaces.Box(low=-1, high=+1,
                                         shape=(7,), dtype=np.float32) # [wind x, y, odor, head direction x, y, course direction x, y]
+        else:
+            self.observation_space = spaces.Box(low=-1, high=+1,
+                                    shape=(3,), dtype=np.float32) # [(apparent/ambient) wind x, y, odor]
+        
 
     def sense_environment(self):
         # Return an array xwith [wind x, y, odor]
