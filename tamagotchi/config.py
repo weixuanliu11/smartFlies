@@ -6,8 +6,11 @@ import matplotlib
 
 import socket
 MACHINE = socket.gethostname().lower()
-# datadir = '/gscratch/walkerlab/jqhu/smartFlies/data/published_results/reproduce/'
+curr_wd = os.getcwd()
 datadir = '/src/data/published_results/reproduce/'
+if 'gscratch' in curr_wd:
+    datadir = '/gscratch/walkerlab/jqhu/smartFlies/data/published_results/reproduce/'
+# print(f'Using datadir: {datadir}', flush=True)
 # if MACHINE == 'mycroft':
 # 	datadir = '/data/users/satsingh/plumedata/'
 # if (MACHINE == 'salarian') or (MACHINE == 'cylon'):
