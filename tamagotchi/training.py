@@ -24,10 +24,10 @@ def update_by_schedule(envs, schedule_dict, curr_step):
             # different update functions since birthx is managed by each process, while wind_cond is managed by my custom SubprocVecEnv
             if k == 'birthx': # update the birthx value in the envs. Sparsity is decided in each envs.reset() at each trial
                 envs.env_method_apply_to_all("update_env_param", {k: _schedule_dict[curr_step]})
-                # print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
+                print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
             elif k == 'wind_cond': 
                 envs.update_wind_direction(_schedule_dict[curr_step])
-                # print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
+                print(f"update_env_param {k}: {_schedule_dict[curr_step]} at {curr_step}")
             else:
                 raise NotImplementedError
     return updated # return the course that is updated, if any
@@ -182,7 +182,8 @@ def training_loop(agent, envs, args, device, actor_critic,
                                           wind_cond={'num_classes': 2, 'difficulty_range': [1, 3], 
                                                      'dtype': 'int', 'step_type': 'linear'}) # wind_cond: 1 is constant, 2 is switch, 3 is noisy
         update_by_schedule(envs, schedule, 0) # update the initialized envs according to the curriculum schedule. The default init values are incorrect, hence this update s.t. reset() returns correctly.
-        utils.save_tc_schedule(schedule, num_updates, args.num_processes, args.num_steps, args.save_dir)
+        if not args.dryrun:
+            utils.save_tc_schedule(schedule, num_updates, args.num_processes, args.num_steps, args.save_dir)
     
     obs = envs.reset()
     rollouts.obs[0].copy_(obs) # https://discuss.pytorch.org/t/which-copy-is-better/56393
@@ -205,7 +206,7 @@ def training_loop(agent, envs, args, device, actor_critic,
         # start = time.time()
         if args.birthx_linear_tc_steps:
             updated = update_by_schedule(envs, schedule, j)
-            if updated: # save model if an update to env occurred during this trial
+            if updated and not args.dryrun: # save model if an update to env occurred during this trial
                 lesson_fpath = os.path.join(args.save_dir, 'chkpt', args.model_fname.replace(".pt", f'_before_{updated}{schedule[updated][j]}_update{j}.pt'))
                 torch.save([
                     actor_critic,
@@ -309,7 +310,7 @@ def training_loop(agent, envs, args, device, actor_critic,
         # save for every interval-th episode or for the last epoch
         ##############################################################################################################
         if (j % args.save_interval == 0
-                or j == num_updates - 1) and args.save_dir != "":
+                or j == num_updates - 1) and args.save_dir != "" and not args.dryrun:
 
             torch.save([
                 actor_critic,
@@ -333,21 +334,5 @@ def training_loop(agent, envs, args, device, actor_critic,
             # Save training curve
             pd.DataFrame(training_log).to_csv(args.training_log)
 
-        # if (args.eval_interval is not None and len(episode_rewards) > 1
-        #         and j % args.eval_interval == 0):
-        #     if eval_env is not None:
-        #         eval_record = eval_lite(agent, eval_env, args, device, actor_critic, )
-        #         eval_record['T'] = total_num_steps
-        #         eval_log.append(eval_record)
-        #         print("eval_lite:", eval_record)
-
-        #         save_path = args.save_dir
-        #         os.makedirs(save_path, exist_ok=True)
-        #         fname = os.path.join(save_path, f'{args.env_name}_{args.outsuffix}_eval.csv')
-        #         pd.DataFrame(eval_log).to_csv(fname)
-        # if j < 3:
-        #     end_an_update = time.time()
-        #     print(f"Update {j} took {end_an_update-start_an_update} seconds")
-    # writer.flush()     
     return training_log, eval_log
 
