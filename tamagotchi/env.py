@@ -1376,7 +1376,7 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
     def step(self, action):
         """
         return observation, reward, done, info
-        same as v2, but with ground speed calc'd 
+        same as v2, but with ground velco and air velco as attributes
         """
         self.episode_step += 1 
         self.agent_location_last = self.agent_location
