@@ -838,7 +838,7 @@ class PlumeEnvironment_v2(gym.Env):
     self.ambient_wind = None
     self.stray_distance = 0
     self.stray_distance_last = 0
-    self.agent_velocity_last = np.array([0, 0]) # Maintain last timestep velocity (in absolute coordinates) for relative sensory observations
+    self.air_velocity = np.array([0, 0]) # Maintain last timestep velocity (in absolute coordinates) for relative sensory observations
     self.episode_reward = 0
 
     # Generalization & curricula
@@ -936,10 +936,10 @@ class PlumeEnvironment_v2(gym.Env):
     
     # Subtract agent velocity to convert to (observed) relative velocity
     if self.wind_rel: 
-        wind_absolute = self.ambient_wind - self.agent_velocity_last
+        wind_absolute = self.ambient_wind - self.air_velocity
     # Use apparent wind (negative of air velocity) for training
     if self.apparent_wind:
-        wind_absolute = - self.agent_velocity_last # Apparent wind = negative of air velocity 
+        wind_absolute = - self.air_velocity # Apparent wind = negative of air velocity 
     if self.verbose > 1:
         print('t_val', self.t_val)
         print('sensed wind (allocentric, before rotating angle by agent direction) ', wind_absolute) 
@@ -1120,7 +1120,7 @@ class PlumeEnvironment_v2(gym.Env):
     self.agent_angle = self.get_initial_angle(self.angle_algo)
     if self.verbose > 0:
       print("Agent initial location {} and orientation {}".format(self.agent_location, self.agent_angle))
-    self.agent_velocity_last = np.array([0, 0])
+    self.air_velocity = np.array([0, 0])
     
     self.ambient_wind = self.get_current_wind_xy() # Observe after flip
     if self.odor_scaling:
@@ -1198,7 +1198,7 @@ class PlumeEnvironment_v2(gym.Env):
       self.agent_location[0] + agent_move_x + wind_drift_x,
       self.agent_location[1] + agent_move_y + wind_drift_y,
     ]
-    self.agent_velocity_last = np.array([agent_move_x, agent_move_y])/self.dt # For relative wind calc.
+    self.air_velocity = np.array([agent_move_x, agent_move_y])/self.dt # Rel_wind = Amb_wind - Air_vel
 
     ### ----------------- End conditions / Is the trial over ----------------- ### 
     is_home = np.linalg.norm(self.agent_location) <= self.homed_radius 
