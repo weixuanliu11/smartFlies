@@ -767,8 +767,7 @@ class PlumeEnvironment_v2(gym.Env):
     act_noise=0.0, # Multiplicative: Move & Turn action noise.
     seed=137,
     verbose=0,
-    apparent_wind=False,
-    **kwargs):
+    apparent_wind=False):
     super(PlumeEnvironment_v2, self).__init__()
 
     np.random.seed(seed)    
@@ -945,7 +944,6 @@ class PlumeEnvironment_v2(gym.Env):
         print('t_val', self.t_val)
         print('sensed wind (allocentric, before rotating angle by agent direction) ', wind_absolute) 
         
-
     # Get wind relative angle
     agent_angle_radians = np.angle( self.agent_angle[0] + 1j*self.agent_angle[1], deg=False )
     wind_angle_radians = np.angle( wind_absolute[0] + 1j*wind_absolute[1], deg=False )
@@ -968,7 +966,6 @@ class PlumeEnvironment_v2(gym.Env):
     if self.odor_scaling:
         odor_observation *= self.odorx # Random scaling to improve generalization 
     odor_observation *= 1.0 + np.random.uniform(-self.obs_noise, +self.obs_noise) # Add observation noise
-
     odor_observation = 0.0 if odor_observation < config.env['odor_threshold'] else odor_observation
     odor_observation = np.clip(odor_observation, 0.0, 1.0) # clip
 
@@ -1345,6 +1342,25 @@ class PlumeEnvironment_v2(gym.Env):
     del self.data_wind_all
     pass
 
+class PlumeEnvironment_v3(PlumeEnvironment_v2):
+    def __init__(self, visual_feedback=False, **kwargs):
+        super(PlumeEnvironment_v3, self).__init__(**kwargs)
+        self.visual_feedback = visual_feedback
+        self.observation_space = spaces.Box(low=-1, high=+1,
+                                        shape=(7,), dtype=np.float32) # [wind x, y, odor, head direction x, y, course direction x, y]
+
+    def sense_environment(self):
+        # Return an array xwith [wind x, y, odor]
+        # Wind can either be relative wind or apparent wind, depending on the setting
+        observation = super(PlumeEnvironment_v3, self).sense_environment()
+        
+        # Visual feedback
+        if self.visual_feedback:
+            
+        if self.verbose > 1:
+            print('observation', observation)
+        return observation
+    
 def make_vec_envs(env_name,
                   seed,
                   num_processes,
@@ -1407,36 +1423,69 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None):
     def _thunk():
         if args.recurrent_policy or (args.stacking == 0):
             if 'apparent_wind' in args:
-                env = PlumeEnvironment_v2(
-                    dataset=args.dataset,
-                    birthx=args.birthx, 
-                    qvar=args.qvar,
-                    diff_max=args.diff_max,
-                    diff_min=args.diff_min,
-                    reset_offset_tmax=args.reset_offset_tmax,
-                    t_val_min=args.t_val_min,
-                    turnx=args.turnx,
-                    movex=args.movex,
-                    birthx_max=args.birthx_max,
-                    env_dt=args.env_dt,
-                    loc_algo=args.loc_algo,
-                    time_algo=args.time_algo,
-                    auto_movex=args.auto_movex,
-                    auto_reward=args.auto_reward,
-                    walking=args.walking,
-                    radiusx=args.radiusx,
-                    r_shaping=args.r_shaping,
-                    wind_rel=args.wind_rel,
-                    action_feedback=args.action_feedback,
-                    squash_action=args.squash_action,
-                    flipping=args.flipping,
-                    odor_scaling=args.odor_scaling,
-                    stray_max=args.stray_max,
-                    obs_noise=args.obs_noise,
-                    act_noise=args.act_noise,
-                    seed=args.seed,
-                    apparent_wind=args.apparent_wind
-                    )
+                if 'visual_feedback' not in args:
+                    env = PlumeEnvironment_v2(
+                        dataset=args.dataset,
+                        birthx=args.birthx, 
+                        qvar=args.qvar,
+                        diff_max=args.diff_max,
+                        diff_min=args.diff_min,
+                        reset_offset_tmax=args.reset_offset_tmax,
+                        t_val_min=args.t_val_min,
+                        turnx=args.turnx,
+                        movex=args.movex,
+                        birthx_max=args.birthx_max,
+                        env_dt=args.env_dt,
+                        loc_algo=args.loc_algo,
+                        time_algo=args.time_algo,
+                        auto_movex=args.auto_movex,
+                        auto_reward=args.auto_reward,
+                        walking=args.walking,
+                        radiusx=args.radiusx,
+                        r_shaping=args.r_shaping,
+                        wind_rel=args.wind_rel,
+                        action_feedback=args.action_feedback,
+                        squash_action=args.squash_action,
+                        flipping=args.flipping,
+                        odor_scaling=args.odor_scaling,
+                        stray_max=args.stray_max,
+                        obs_noise=args.obs_noise,
+                        act_noise=args.act_noise,
+                        seed=args.seed,
+                        apparent_wind=args.apparent_wind
+                        )
+                else:
+                    env = PlumeEnvironment_v3(
+                        dataset=args.dataset,
+                        birthx=args.birthx, 
+                        qvar=args.qvar,
+                        diff_max=args.diff_max,
+                        diff_min=args.diff_min,
+                        reset_offset_tmax=args.reset_offset_tmax,
+                        t_val_min=args.t_val_min,
+                        turnx=args.turnx,
+                        movex=args.movex,
+                        birthx_max=args.birthx_max,
+                        env_dt=args.env_dt,
+                        loc_algo=args.loc_algo,
+                        time_algo=args.time_algo,
+                        auto_movex=args.auto_movex,
+                        auto_reward=args.auto_reward,
+                        walking=args.walking,
+                        radiusx=args.radiusx,
+                        r_shaping=args.r_shaping,
+                        wind_rel=args.wind_rel,
+                        action_feedback=args.action_feedback,
+                        squash_action=args.squash_action,
+                        flipping=args.flipping,
+                        odor_scaling=args.odor_scaling,
+                        stray_max=args.stray_max,
+                        obs_noise=args.obs_noise,
+                        act_noise=args.act_noise,
+                        seed=args.seed,
+                        apparent_wind=args.apparent_wind,
+                        visual_feedback=args.visual_feedback
+                        )
             else:
                 # bkw compat before cleaning up TC hack. Useful when evalCli
                 env = PlumeEnvironment(
