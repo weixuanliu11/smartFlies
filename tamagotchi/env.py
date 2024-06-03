@@ -877,7 +877,6 @@ class PlumeEnvironment_v2(gym.Env):
     self.apparent_wind = apparent_wind # egocentric app wind is always np.pi, 180 degrees
     self.apparent_wind_allo = apparent_wind_allo # wether to feed allocentric apparent wind to agent 
 
-
     # Define action and observation spaces
     # Actions:
     # Move [0, 1], with 0.0 = no movement

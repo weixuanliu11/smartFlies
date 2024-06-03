@@ -1,4 +1,4 @@
-from schemas.schema_v2 import * # use schema_v2 for wind sensing exps.
+from schemas.schema_v3 import * # use schema_v2 for wind sensing exps.; v3 for app_wind + visual db 
 from multiprocessing import Process, Pipe
 import sys
 
