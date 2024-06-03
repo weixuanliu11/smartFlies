@@ -767,7 +767,8 @@ class PlumeEnvironment_v2(gym.Env):
     act_noise=0.0, # Multiplicative: Move & Turn action noise.
     seed=137,
     verbose=0,
-    apparent_wind=False):
+    apparent_wind=False,
+    apparent_wind_allo=False,):
     super(PlumeEnvironment_v2, self).__init__()
 
     np.random.seed(seed)    
@@ -873,7 +874,9 @@ class PlumeEnvironment_v2(gym.Env):
       }
 
     # Wind Sensing 
-    self.apparent_wind = apparent_wind
+    self.apparent_wind = apparent_wind # egocentric app wind is always np.pi, 180 degrees
+    self.apparent_wind_allo = apparent_wind_allo # wether to feed allocentric apparent wind to agent 
+
 
     # Define action and observation spaces
     # Actions:
@@ -939,7 +942,10 @@ class PlumeEnvironment_v2(gym.Env):
         wind_absolute = self.ambient_wind - self.air_velocity
     # Use apparent wind (negative of air velocity) for training
     if self.apparent_wind:
-        wind_absolute = - self.air_velocity # Apparent wind = negative of air velocity 
+        if self.apparent_wind_allo:
+            wind_absolute = - self.air_velocity # allocentric pparent wind = negative of air velocity (allocentric)
+        else:
+            wind_absolute = np.pi # egocentric apparent wind - always antiparallel to self 
     if self.verbose > 1:
         print('t_val', self.t_val)
         print('sensed wind (allocentric, before rotating angle by agent direction) ', wind_absolute) 
@@ -1198,7 +1204,7 @@ class PlumeEnvironment_v2(gym.Env):
       self.agent_location[0] + agent_move_x + wind_drift_x,
       self.agent_location[1] + agent_move_y + wind_drift_y,
     ]
-    self.air_velocity = np.array([agent_move_x, agent_move_y])/self.dt # Rel_wind = Amb_wind - Air_vel
+    self.air_velocity = np.array([agent_move_x, agent_move_y])/self.dt
     self.ground_velocity = self.agent_location_last - self.agent_location
     ### ----------------- End conditions / Is the trial over ----------------- ### 
     is_home = np.linalg.norm(self.agent_location) <= self.homed_radius 

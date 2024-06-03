@@ -97,6 +97,7 @@ def get_args():
     parser.add_argument('--birthx_linear_tc_steps', type=int, default=0) # if on, birthx will linearly decrease over time, reachinig the birthx value gradually
     # apparent wind 
     parser.add_argument('--apparent_wind', type=bool, default=False) 
+    parser.add_argument('--apparent_wind_allo', type=bool, default=False) 
     parser.add_argument('--visual_feedback', type=bool, default=False) 
     parser.add_argument('--birthx_max',  type=float, default=1.0) # Only used for sparsity
     parser.add_argument('--dryrun',  type=bool, default=False) 
