@@ -944,7 +944,7 @@ class PlumeEnvironment_v2(gym.Env):
         if self.apparent_wind_allo:
             wind_absolute = - self.air_velocity # allocentric pparent wind = negative of air velocity (allocentric)
         else:
-            wind_absolute = np.pi # egocentric apparent wind - always antiparallel to self 
+            wind_absolute = [ np.cos(np.pi), np.sin(np.pi) ]  # egocentric apparent wind - always antiparallel to self 
     if self.verbose > 1:
         print('t_val', self.t_val)
         print('sensed wind (allocentric, before rotating angle by agent direction) ', wind_absolute) 
