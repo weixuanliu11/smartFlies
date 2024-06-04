@@ -3,8 +3,7 @@ LABEL maintainer='plume_walkerlab_base_hyak'
 RUN apt-get update \
     && apt-get install -y libopenmpi-dev \
     && apt-get install -y tmux \
-    && apt-get install -y htop \ 
-    && apt-get install -y nvtop
+    && apt-get install -y htop 
 RUN pip install --upgrade pip
 RUN pip install scikit-learn==1.1.2 yapf==0.33.0 gym==0.21.0 h5py spyder stable_baselines3==1.7.0 moviepy mpi4py \
 tqdm urllib3 virtualenv joblib natsort mpl_scatter_density setproctitle \

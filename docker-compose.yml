@@ -1,19 +1,20 @@
 version: "3.9" # Docker-compose version, just using the latest for now
 services: 
-  plume_base: # Name of the service, can be whatever you want
+  tamagotchi: # Name of the service, can be whatever you want
     build: # The . here is similar to the docker build . which specifiy the context in which to build the docker image under
       context: .
     volumes:
     - ./:/src # Left hand is host, right hand is container. Basically map an outside volume into container
-    - ../smartFlies/data:/src/data # Map data folder into container
-    - ../smartFlies/JH_boilerplate/:/src/JH_boilerplate # Map JH_boilerplate folder into container
-    - ../smartFlies/.git/:/src/smartFlies/.git # Map JH_boilerplate folder into container
+    - ../data:/src/data # Map data folder into container
+    # - ../smartFlies/JH_boilerplate/:/src/JH_boilerplate # Map JH_boilerplate folder into container
+    # - ../smartFlies/.git/:/src/smartFlies/.git # Map .git folder into container
     deploy:
       resources:
         reservations:
           devices:
           - driver: nvidia
-            device_ids: ['0', '1']
+            # device_ids: ['0', '1']
+            count: 2
             capabilities: [gpu]
     env_file: .env # Load environment variables from .env file- 
     command: sleep infinity
