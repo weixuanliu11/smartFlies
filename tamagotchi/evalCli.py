@@ -18,7 +18,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import numpy as np
-from env import make_vec_envs, PlumeEnvironment_v2
+from env import make_vec_envs, PlumeEnvironment_v2, PlumeEnvironment_v3
 import eval.agent_analysis as agent_analysis
 import os
 # import log_analysis # for viz hidden trajectories
@@ -201,8 +201,10 @@ def evaluate_agent(actor_critic, env, args):
 def eval_loop(args, actor_critic, test_sparsity=True):
     try:
         # Extract default values from __init__ method
+        init_signature_vis_fb_params = inspect.signature(PlumeEnvironment_v3.__init__)
         init_signature = inspect.signature(PlumeEnvironment_v2.__init__)
         defaults = {param.name: param.default for param in init_signature.parameters.values() if param.default != inspect.Parameter.empty}
+        defaults = {param.name: param.default for param in init_signature_vis_fb_params.parameters.values() if param.default != inspect.Parameter.empty}
         # Write into args if not already present
         for key, value in defaults.items():
             if not hasattr(args, key):
@@ -368,6 +370,7 @@ if __name__ == "__main__":
     # env related
     parser.add_argument('--diffusionx',  type=float, default=1.0)
     parser.add_argument('--apparent_wind', type=bool, default=False)
+    parser.add_argument('--visual_feedback', type=bool, default=False)
     parser.add_argument('--out_dir', type=str, default='eval')
 
 
