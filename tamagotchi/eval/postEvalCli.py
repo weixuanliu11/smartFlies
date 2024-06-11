@@ -111,7 +111,7 @@ def post_eval(args):
                                               outprefix=OUTPREFIX,
                                               title_text=False, # not supported anyway
                                               legend=False,
-                                              invert_colors=True,
+                                              invert_colors=args.invert_colors,
                                              )    
 
             log_analysis.animate_activity_1episode(ep_activity, 
@@ -121,7 +121,7 @@ def post_eval(args):
                     outprefix=OUTPREFIX,
                     pca_dims=3,
                     pca_common=pca_common,
-                    invert_colors=True,
+                    invert_colors=args.invert_colors,
                     title=False)
 
             # eig animations/plots
@@ -226,6 +226,7 @@ if __name__ == "__main__":
     parser.add_argument('--birthxs', type=float, nargs='+', default=[None])
     parser.add_argument('--diffusionx',  type=float, default=1.0)
     parser.add_argument('--out_reldir', type=str, default='2_videos')
+    parser.add_argument('--invert_colors', type=bool, default=False)
     parser.add_argument('--use_datasets', type=str,  nargs='+', 
                         default=['constantx5b5', 'switch45x5b5', 'noisy3x5b5'])
 
