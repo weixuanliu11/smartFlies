@@ -3,8 +3,6 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 import numpy as np
-import matplotlib.pyplot as plt
-import pandas
 import scipy
 import scipy as sp
 import scipy.stats
@@ -19,14 +17,10 @@ import time
 import pickle
 import matplotlib.pyplot as plt
 import pandas as pd
-import os
 import tqdm
 import config
 np.random.seed(config.seed_global)
 
-
-# from config import sim as simc
-from numba import jit # TODO
 
 
 # wind/plume sim parameters
