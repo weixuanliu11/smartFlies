@@ -250,8 +250,14 @@ def get_traj_df(episode_log,
     # Observations & Actions
     obs = [ x[0] for x in episode_log['observations'] ]
     obs = pd.DataFrame(obs)
-    obs = obs.iloc[:, -3:] # handles STACKING > 0
-    obs.columns = ['wind_x', 'wind_y', 'odor']
+    
+    if obs.shape[1] == 3:
+        obs = obs.iloc[:, -3:] # handles STACKING > 0 # keep line from sat's code. Not sure why this is here
+        obs.columns = ['wind_x', 'wind_y', 'odor']
+    elif obs.shape[1] == 7:
+        obs =  obs.iloc[:, -7:] # obs in PEv3 has 7 columns
+        obs.columns = ['wind_x', 'wind_y', 'odor', 'agent_angle_x', 'agent_angle_y', 'ego_course_direction_x', 'ego_course_direction_y']
+    
     obs['wind_theta_obs'] = obs.apply(lambda row: wind_xy_to_theta(row['wind_x'], row['wind_y']), axis=1)
     traj_df['wind_theta_obs'] = shift_scale_theta(obs['wind_theta_obs'])
     traj_df['wind_x_obs'] = obs['wind_x']
