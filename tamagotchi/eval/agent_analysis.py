@@ -80,6 +80,8 @@ def evaluate_agent(agent,
 
 ######################################################################################
 ## Behavior Analysis ##
+
+# TODO plot wind and wind estimation with this function
 def visualize_single_episode(data_puffs, data_wind, traj_df, 
     episode_idx, zoom=1, t_val=None, title_text=None, output_fname=None, 
     show=True, colorby=None, vmin=0, vmax=1, plotsize=None, xlims=None, ylims=None, legend=True,
@@ -322,12 +324,15 @@ def visualize_episodes(episode_logs,
     figs, axs = [], []
     for episode_idx in range(n_episodes): 
         episode_idx_title = episode_idxs[episode_idx] # Hack to take in custom idxs
+        if not traj_df: # traj_df is passed in the postEvalCli workflow
+            raise NotImplementedError("Need to pass in from log_analysis.get_tracj_df() where traj_df has headers and odor is thresholded correctly")
+            trajectory = ep_log['trajectory']
+            traj_df = pd.DataFrame( trajectory )
+            traj_df.columns = ['loc_x', 'loc_y']   
+            traj_df['odor_obs'] = [o[0][-1] for o in ep_log['observations']] # WHY here? Incorrect because not the right indexs ([0][-1] is not odor in PEv3). Also not doing thresholding. 
+
         ep_log = episode_logs[episode_idx]
-        trajectory = ep_log['trajectory']
-        traj_df = pd.DataFrame( trajectory )
-        traj_df.columns = ['loc_x', 'loc_y']   
         t_val_end = t_ends[episode_idx]
-        traj_df['odor_obs'] = [o[0][-1] for o in ep_log['observations']] # WHY here? Incorrect because not the right indexs ([0][-1] is not odor in PEv3). Also not doing thresholding. 
 
         if title_text:
             title_text = f"ep:{episode_idx} t:{t_val_end:0.2f} "
@@ -353,20 +358,6 @@ def visualize_episodes(episode_logs,
             data_puffs = data_puffs_all.query("time <= @t_val_end + 1")
 
         t_vals = [record[0]['t_val'] for record in ep_log['infos']]
-
-        if colorby == 'regime': # HACK!
-            assert False # not supported anymore; pass in list of colors
-            # # print("visualize_episodes", colorby)
-            # traj_df2 = log_analysis.get_traj_df(ep_log, 
-            #                 extended_metadata=False, squash_action=False)
-            # traj_df['regime'] = traj_df2['regime']
-            # print("value_counts", traj_df['regime'].value_counts().to_dict())
-
-        # Tweet
-        # title_text = f"Time:{t_val:0.2f}s"
-        # title_text = f"Time:{t_val-t_val_min:0.2f}s"
-
-
         ylims = xlims = None
         if zoom == 0:
             print("adaptive ylims")
