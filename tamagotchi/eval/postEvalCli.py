@@ -57,7 +57,6 @@ def post_eval(args):
         h_episodes.append(ep_activity)
                 
     h_episodes_stacked = np.vstack(h_episodes)
-    # print(h_episodes_stacked.shape)
 
     pca_common = skld.PCA(3, whiten=False)
     pca_common.fit(h_episodes_stacked)
@@ -87,8 +86,6 @@ def post_eval(args):
         traj_df = log_analysis.get_traj_df(row['log'], 
                     extended_metadata=False, 
                     squash_action=squash_action)
-        print(traj_df.head())
-        print(traj_df.shape)
         dataset = row['dataset']
         outcome = row['outcome']
         fprefix = f'{row["dataset"]}_{outcome}'

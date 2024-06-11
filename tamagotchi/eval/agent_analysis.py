@@ -324,7 +324,7 @@ def visualize_episodes(episode_logs,
     figs, axs = [], []
     for episode_idx in range(n_episodes): 
         episode_idx_title = episode_idxs[episode_idx] # Hack to take in custom idxs
-        if not traj_df: # traj_df is passed in the postEvalCli workflow
+        if traj_df is None: # traj_df is passed in the postEvalCli workflow
             raise NotImplementedError("Need to pass in from log_analysis.get_tracj_df() where traj_df has headers and odor is thresholded correctly")
             trajectory = ep_log['trajectory']
             traj_df = pd.DataFrame( trajectory )
