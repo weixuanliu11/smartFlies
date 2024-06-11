@@ -327,8 +327,7 @@ def visualize_episodes(episode_logs,
         traj_df = pd.DataFrame( trajectory )
         traj_df.columns = ['loc_x', 'loc_y']   
         t_val_end = t_ends[episode_idx]
-        traj_df['odor_obs'] = [o[0][-1] for o in ep_log['observations']] # WHY here? you did thresholding already traj_df odor_obs should exist already
-        # print(traj_df.shape)
+        traj_df['odor_obs'] = [o[0][-1] for o in ep_log['observations']] # WHY here? Incorrect because not the right indexs. Also not doing thresholding. 
 
         if title_text:
             title_text = f"ep:{episode_idx} t:{t_val_end:0.2f} "
