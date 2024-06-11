@@ -204,7 +204,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
         init_signature_vis_fb_params = inspect.signature(PlumeEnvironment_v3.__init__)
         init_signature = inspect.signature(PlumeEnvironment_v2.__init__)
         defaults = {param.name: param.default for param in init_signature.parameters.values() if param.default != inspect.Parameter.empty}
-        defaults = {param.name: param.default for param in init_signature_vis_fb_params.parameters.values() if param.default != inspect.Parameter.empty}
+        defaults.update({param.name: param.default for param in init_signature_vis_fb_params.parameters.values() if param.default != inspect.Parameter.empty})
         # Write into args if not already present
         for key, value in defaults.items():
             if not hasattr(args, key):
