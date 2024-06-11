@@ -1,50 +1,3 @@
-"""
-DIR=$(ls -d /home/satsingh/plume/plumezoo/latest/fly/memory/*VRNN*/ | head -n 1)
-echo $DIR
-python -u postEvalCli.py --model_dir $DIR --viz_episodes 2 
-
-
-# Batch
-MODELDIRS=$(ls -d /home/satsingh/plume/plumezoo/latest/fly/memory/*VRNN*seed3199993/)
-MODELDIRS=$(ls -d /home/satsingh/plume/plumezoo/latest/fly/memory/*VRNN*seed9781ba/)
-MODELDIRS=$(ls -d /home/satsingh/plume/plumezoo/latest/fly/memory/*VRNN*seed3307e9/)
-MODELDIRS=$(ls -d /home/satsingh/plume/plumezoo/latest/fly/memory/*VRNN*/)
-echo $MODELDIRS
-for DIR in $MODELDIRS; do
-    LOGFILE=${DIR}/posteval.log
-    python -u postEvalCli.py --model_dir $DIR \
-      --viz_episodes 20 >> $LOGFILE 2>&1 &
-done
-# --walking False # does NOT work that way!
-#tail -f /home/satsingh/plume/plumezoo/latest/fly/memory/*VRNN*/posteval.log
-
-# Sparse
-for DIR in $MODELDIRS; do
-    LOGFILE=${DIR}/posteval.log
-    python -u postEvalCli.py --model_dir $DIR \
-      --viz_episodes 20 --birthxs 0.4 >> $LOGFILE 2>&1 &
-done
-
-tail -f $LOGFILE
-
-# Stitch videos side-by-side: see vid_stitch_cli for more options
-for FNEURAL in $(find /home/satsingh/plume/plumezoo/latest/fly/memory/ -name "*pca3d_common_ep*.mp4"); do 
-    FTRAJ=$(echo $FNEURAL | sed s/_pca3d_common//g) 
-    # echo $FNEURAL $FTRAJ
-    python -u ~/plume/plume2/vid_stitch_cli.py --fneural $FNEURAL --ftraj $FTRAJ
-done
-
-# Stitch videos side-by-side: see vid_stitch_cli for more options
-MAXJOBS=20
-for FNEURAL in $(find /home/satsingh/plume/plumezoo/latest/fly/memory/ -name "*pca3d_common_ep*.mp4"); do 
-  while (( $(jobs -p | wc -l) >= MAXJOBS )); do sleep 10; done 
-  FTRAJ=$(echo $FNEURAL | sed s/_pca3d_common//g) 
-  # echo $FNEURAL $FTRAJ
-  python -u ~/plume/plume2/vid_stitch_cli.py --fneural $FNEURAL --ftraj $FTRAJ &
-done
-
-
-"""
 from __future__ import division
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -60,32 +13,22 @@ import os
 import sys
 import numpy as np
 import torch
-import pandas as pd
-import pickle
-
-import glob
-import pickle
 from natsort import natsorted
 
 import traceback
 
 import matplotlib 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
+
 
 import numpy as np
-from pprint import pprint
-import glob
+# import glob
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-# sys.path.append('/home/satsingh/plume/plume2/')
-from plume_env import PlumeEnvironment, PlumeFrameStackEnvironment
 import agent_analysis
 import os
 import log_analysis
 import arch_utils as archu
-import vid_stitch_cli
-
 import sklearn.decomposition as skld
 
 
