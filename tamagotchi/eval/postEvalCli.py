@@ -87,6 +87,8 @@ def post_eval(args):
         traj_df = log_analysis.get_traj_df(row['log'], 
                     extended_metadata=False, 
                     squash_action=squash_action)
+        print(traj_df.head())
+        print(traj_df.shape)
         dataset = row['dataset']
         outcome = row['outcome']
         fprefix = f'{row["dataset"]}_{outcome}'
@@ -99,6 +101,7 @@ def post_eval(args):
             # zoom = 0 
             zoom = 3 if args.walking else zoom
             agent_analysis.visualize_episodes(episode_logs=[row['log']], 
+                                              traj_df=traj_df,
                                               episode_idxs=[row['idx']],
                                               zoom=zoom, 
                                               dataset=row['dataset'],

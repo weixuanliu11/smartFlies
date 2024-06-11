@@ -278,6 +278,7 @@ def animate_single_episode(
 
 
 def visualize_episodes(episode_logs, 
+                       traj_df=None,
                        zoom=1, 
                        outprefix=None, 
                        title_text=True, 
@@ -326,7 +327,7 @@ def visualize_episodes(episode_logs,
         traj_df = pd.DataFrame( trajectory )
         traj_df.columns = ['loc_x', 'loc_y']   
         t_val_end = t_ends[episode_idx]
-        traj_df['odor_obs'] = [o[0][-1] for o in ep_log['observations']] 
+        traj_df['odor_obs'] = [o[0][-1] for o in ep_log['observations']] # WHY here? you did thresholding already traj_df odor_obs should exist already
         # print(traj_df.shape)
 
         if title_text:
@@ -370,7 +371,6 @@ def visualize_episodes(episode_logs,
         ylims = xlims = None
         if zoom == 0:
             print("adaptive ylims")
-            # xlims = [ traj_df['loc_x'].min() - 0.25, traj_df['loc_x'].max() + 0.25 ]
             xlims = [-0.5, 10.1]
             ylims = [ traj_df['loc_y'].min() - 0.25, traj_df['loc_y'].max() + 0.25 ]
         fig, ax = visualize_single_episode(data_puffs, data_wind, 
