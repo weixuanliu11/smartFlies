@@ -106,7 +106,7 @@ def build_tc_schedule_dict(total_number_periods, interleave=True, **kwargs):
         course_name, scheduled_value = course
         schedule_dict[course_name][when_2_update[i]] = scheduled_value
 
-    print("[DEBUG] schedule_dict:", schedule_dict)
+    # print("[DEBUG] schedule_dict:", schedule_dict)
     return schedule_dict
 
 def log_episode(training_log, j, total_num_steps, start, episode_rewards, episode_puffs, episode_plume_densities, episode_wind_directions, num_updates):
