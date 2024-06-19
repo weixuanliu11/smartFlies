@@ -27,7 +27,7 @@ from stable_baselines3.common.vec_env.base_vec_env import (
     VecEnvObs,
     VecEnvStepReturn,
 )
-
+import copy
 
 class PlumeEnvironment(gym.Env):
   """
@@ -1585,15 +1585,17 @@ def make_vec_envs(env_name,
                         processed_kwargs[k] = v[env_idx]
                     else:
                         processed_kwargs[k] = v
+                args_copy = copy.deepcopy(args) # need to copy args to avoid overwriting the same object. make_env returns a function without immediately creating the env
                 for k,v in processed_kwargs.items():
-                    setattr(args, k, v)
+                    setattr(args_copy, k, v)
                 for i in range(num_processes):
-                    envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args))
+                    envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args_copy))
         else: # not sure if kwargs will ever be used outside of curriculum learning... ignore this portion for now. 
+            args_copy = copy.deepcopy(args)
             for k,v in raw_kwargs.items():
-                setattr(args, k, v)
+                setattr(args_copy, k, v)
             for i in range(num_processes):
-                envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args))
+                envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args_copy))
     else:
         for i in range(num_processes):
             envs.append(make_env(env_name, seed, i, log_dir, allow_early_resets, args))
@@ -1897,7 +1899,9 @@ class SubprocVecEnv(SubprocVecEnv_):
                 infos[i]["terminal_observation"] = obs[i]
                 # sample a new wind condition
                 new_wind_direction = self.sample_wind_direction()
+                # print('[DEBUG] sampled wind direction:', new_wind_direction)
                 current_wind_direction = self.ds2wind(self.get_attr('dataset', i)[0])
+                # print('[DEBUG] current wind direction:', current_wind_direction)
                 # if wind condtion changed, then swap
                 if new_wind_direction != current_wind_direction:
                     # print(f"[DEBUG] new wind dir selected... pre swap {self.get_attr('dataset')}")
@@ -1905,9 +1909,9 @@ class SubprocVecEnv(SubprocVecEnv_):
                     for remote_idx, status in self.remote_directory.items():
                         if status['deployed'] == False and status['wind_direction'] == new_wind_direction:
                             self.swap(i, remote_idx)
+                            # print(f"[DEBUG] new wind dir selected... post swap {self.get_attr('dataset')}")
                             swapped = True
                             break
-                    # print(f"[DEBUG] new wind dir selected... post swap {self.get_attr('dataset')}")
                 
                 # update the newest observation
                 list(obs)[i] = self.reset_deployed_at(i)
