@@ -61,16 +61,18 @@ def post_eval(args):
     pca_common = skld.PCA(3, whiten=False)
     pca_common.fit(h_episodes_stacked)
 
-    # Get neural net # TODO fix this. Would never work with current setup. model.pt is not in the dir of behavioral eval
-    try:
-        model_fname = args.model_dir[:-1] + ".pt"
-        is_recurrent = True if ('GRU' in args.model_dir) or ('VRNN' in args.model_dir) else False
+    # Get neural net
+
+    model_fname = args.model_dir.rstrip("/").replace("eval", "weights") + ".pt" # plume_951_23354e57874d619687478a539a360146.pt should be
+    # check if file exists
+    if not os.path.exists(model_fname):
+        print(f"Model file {model_fname} not found. Skipping...")
+    else:
+        print(f"Loading model from {model_fname}")
         actor_critic, ob_rms = \
             torch.load(model_fname, map_location=torch.device('cpu'))
         net = actor_critic.base.rnn #.weight_hh_l0.detach().numpy()
         J0 = net.weight_hh_l0.detach().numpy()
-    except Exception as e:
-        print(f"Exception: {e}")
 
     if args.viz_only_these_episodes:
         print(f"Visualizing episodes {args.viz_only_these_episodes}...")
