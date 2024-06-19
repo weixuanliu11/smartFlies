@@ -575,8 +575,8 @@ def animate_activity_1episode(ep_activity, traj_df, episode_idx,
             ax.scatter(X_pca[t_idx, 0], X_pca[t_idx, 1], c='g', marker='x', s=200) # End
             ax.set_aspect('equal')
         else: 
-            fig = plt.figure(figsize=(12,6))
-            ax = fig.gca(projection='3d')
+            fig = plt.figure(figsize=(12,6)) # 15,15 gets the whole plot by the front is too small then
+            ax = fig.add_subplot(projection='3d')
             if invert_colors: # white dynamic trajectories and bigger moment to moment dots against the black background
                 ax.plot(X_pca[:, 0], X_pca[:, 1], X_pca[:, 2], linewidth=1, c='white', alpha=1)
                 sc = ax.scatter(X_pca[:t_idx, 0], X_pca[:t_idx, 1], X_pca[:t_idx, 2], s=30, 
