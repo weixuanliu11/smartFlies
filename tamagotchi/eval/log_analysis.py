@@ -24,7 +24,7 @@ import os
 import tqdm
 
 import sklearn.decomposition as skld
-import config
+from tamagotchi import config
 np.random.seed(config.seed_global)
 
 from natsort import natsorted
