@@ -1,32 +1,19 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import time
 import pickle 
-
-import matplotlib.path as mpath
-import matplotlib.lines as mlines
-import matplotlib.patches as mpatches
-from matplotlib.collections import PatchCollection
-from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
 import seaborn as sns
-
-from array2gif import write_gif
 from moviepy.editor import ImageClip, concatenate_videoclips
 from natsort import natsorted
 import contextlib
 import os
 import tqdm
-
 import sklearn.decomposition as skld
 from tamagotchi import config
 np.random.seed(config.seed_global)
-
 from natsort import natsorted
 import contextlib
 import os

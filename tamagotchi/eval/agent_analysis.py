@@ -13,7 +13,6 @@ from natsort import natsorted
 import contextlib
 import os
 import tqdm
-# import log_analysis
 
 ######################################################################################
 ### Helper functions ###

@@ -1,30 +1,14 @@
 from __future__ import division
 import os
-# import glob
-# import pickle
 from natsort import natsorted
-# import argparse
 import os
-# import sys
 import numpy as np
 import tqdm
 import pandas as pd
-
 import numpy as np
-from pprint import pprint
-import glob
-import sys
-import config
-# import agents
-import agent_analysis
 import os
-# import sklearn
-# import sklearn.decomposition as skld
-
-# import importlib
-import log_analysis
+import tamagotchi.eval.log_analysis as log_analysis
 import torch
-
 import contextlib
 from moviepy.editor import ImageClip, concatenate_videoclips
 
