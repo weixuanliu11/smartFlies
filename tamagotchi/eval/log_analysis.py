@@ -262,6 +262,10 @@ def get_traj_df(episode_log,
     traj_df['wind_theta_obs'] = shift_scale_theta(obs['wind_theta_obs'])
     traj_df['wind_x_obs'] = obs['wind_x']
     traj_df['wind_y_obs'] = obs['wind_y']
+    ego_course_direction_theta = shift_scale_theta(obs.apply(lambda row: wind_xy_to_theta(row['wind_x'], row['wind_y']), axis=1))
+    
+    traj_df['ego_course_direction_theta'] = ego_course_direction_theta
+    
 
 
     act = episode_log['actions'] 
@@ -359,7 +363,7 @@ def get_traj_df(episode_log,
         colnames_diff = [
             'loc_x', 
             'loc_y', 
-            'wind_theta_obs', 
+            'wind_theta_obs', # wind input to the model... depends on the experiment
             'odor_obs', 
             'odor_01',
             'odor_clip', 
@@ -367,7 +371,8 @@ def get_traj_df(episode_log,
             'radius', 
             'stray_distance',
             'r_step', 
-            'agent_angle_ground',
+            'agent_angle_ground', # head direction - solar polarization
+            'ego_course_direction_theta', # course direction - vental optic flow
             'wind_angle_ground',
             'wind_speed_ground',
             ]
