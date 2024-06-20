@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import tamagotchi.data_util as data_util
 import tamagotchi.config as config
+import tamagotchi.eval.log_analysis as log_analysis
 from moviepy.editor import ImageClip, concatenate_videoclips
 from natsort import natsorted
 import contextlib
@@ -324,15 +325,14 @@ def visualize_episodes(episode_logs,
     figs, axs = [], []
     for episode_idx in range(n_episodes): 
         episode_idx_title = episode_idxs[episode_idx] # Hack to take in custom idxs
-        if traj_df is None: # traj_df is passed in the postEvalCli workflow
-            raise NotImplementedError("Need to pass in from log_analysis.get_tracj_df() where traj_df has headers and odor is thresholded correctly")
-            trajectory = ep_log['trajectory']
-            traj_df = pd.DataFrame( trajectory )
-            traj_df.columns = ['loc_x', 'loc_y']   
-            traj_df['odor_obs'] = [o[0][-1] for o in ep_log['observations']] # WHY here? Incorrect because not the right indexs ([0][-1] is not odor in PEv3). Also not doing thresholding. 
-
         ep_log = episode_logs[episode_idx]
         t_val_end = t_ends[episode_idx]
+
+        if traj_df is None: # traj_df is passed in the postEvalCli workflow
+            traj_df = log_analysis.get_traj_df(ep_log, 
+            extended_metadata=False, 
+            squash_action=True)
+
 
         if title_text:
             title_text = f"ep:{episode_idx} t:{t_val_end:0.2f} "
