@@ -37,7 +37,7 @@ matplotlib.use("Agg")
 
 
 def get_J(model_fname):
-    actor_critic, ob_rms = \
+    actor_critic, ob_rms, optimizer_state_dict = \
             torch.load(model_fname, map_location=torch.device('cpu'))
 #     actor_critic.base.rnn
     # dir(actor_critic.base.rnn)
