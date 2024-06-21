@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian, BetaCustom
-from a2c_ppo_acktr.utils import init
+from tamagotchi.a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian, BetaCustom
+from tamagotchi.a2c_ppo_acktr.utils import init
 
 
 class Flatten(nn.Module):

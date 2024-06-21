@@ -17,9 +17,9 @@ from setproctitle import setproctitle as ptitle
 
 import tamagotchi.data_util as utils
 from env import make_vec_envs, get_vec_normalize
-from a2c_ppo_acktr.ppo import PPO
-from a2c_ppo_acktr.model import Policy
-from a2c_ppo_acktr.storage import RolloutStorage
+from tamagotchi.a2c_ppo_acktr.ppo import PPO
+from tamagotchi.a2c_ppo_acktr.model import Policy
+from tamagotchi.a2c_ppo_acktr.storage import RolloutStorage
 from training import training_loop
 
 def get_args():
