@@ -39,22 +39,8 @@ matplotlib.use("Agg")
 def get_J(model_fname):
     actor_critic, ob_rms, optimizer_state_dict = \
             torch.load(model_fname, map_location=torch.device('cpu'))
-#     actor_critic.base.rnn
-    # dir(actor_critic.base.rnn)
     net = actor_critic.base.rnn #.weight_hh_l0.detach().numpy()
-    # weights_hh
-    # plt.matshow(weights_hh)
-    # https://pytorch.org/docs/stable/generated/torch.nn.GRU.html
-    if 'GRU' in model_fname:
-        w_ir, w_ii, w_in = net.weight_ih_l0.chunk(3, 0)
-        print(w_ir.shape, w_ii.shape, w_in.shape)
-        w_hr, w_hi, w_hn = net.weight_hh_l0.chunk(3, 0)
-        print(w_hr.shape, w_hi.shape, w_hn.shape)
-    #     J = w_hr.detach().numpy()
-    #     J = w_hi.detach().numpy()
-        J = w_hn.detach().numpy()
-    if 'VRNN' in model_fname:
-        J = net.weight_hh_l0.detach().numpy()
+    J = net.weight_hh_l0.detach().numpy()
     return J
 
 def plot_J(J, ax=None):
