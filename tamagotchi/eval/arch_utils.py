@@ -37,8 +37,15 @@ matplotlib.use("Agg")
 
 
 def get_J(model_fname):
-    actor_critic, ob_rms, optimizer_state_dict = \
+    # if model_fname ends in start
+    if model_fname.endswith('start'): # when saving the init. model, not storing the optimizer state.
+        actor_critic, ob_rms = \
             torch.load(model_fname, map_location=torch.device('cpu'))
+    elif model_fname.endswith('pt'):
+        actor_critic, ob_rms, optimizer_state_dict = \
+            torch.load(model_fname, map_location=torch.device('cpu'))
+    else:
+        raise ValueError(f"Unexpected model_fname: {model_fname}. Does not end in .pt or .pt.start. May not be wrong but worth checking.")
     net = actor_critic.base.rnn #.weight_hh_l0.detach().numpy()
     J = net.weight_hh_l0.detach().numpy()
     return J
