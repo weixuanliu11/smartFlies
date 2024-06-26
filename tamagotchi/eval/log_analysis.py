@@ -249,7 +249,7 @@ def get_traj_df(episode_log,
     traj_df['wind_theta_obs'] = shift_scale_theta(obs['wind_theta_obs'])
     traj_df['wind_x_obs'] = obs['wind_x']
     traj_df['wind_y_obs'] = obs['wind_y']
-    ego_course_direction_theta = shift_scale_theta(obs.apply(lambda row: wind_xy_to_theta(row['wind_x'], row['wind_y']), axis=1))
+    ego_course_direction_theta = shift_scale_theta(obs.apply(lambda row: wind_xy_to_theta(row['ego_course_direction_x'], row['ego_course_direction_y']), axis=1))
     
     traj_df['ego_course_direction_theta'] = ego_course_direction_theta
     
