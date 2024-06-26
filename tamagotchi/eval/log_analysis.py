@@ -231,7 +231,7 @@ def get_traj_df(episode_log,
     - extended_metadata (bool): Flag to include extended metadata in the DataFrame. Default is False.
     - squash_action (bool): Flag to squash the action values. Default is False.
     - n_history (int): Maxinum number of history steps to include when calculating n-step ENV/EWA/MA odor. Creates from 2~n_history info. Default is 20. 
-    - seed (int): Seed value for random number generation. Default is None.
+    - seed (int): Seed value for random number generation. Used in get regimes Default is None.
 
     Returns:
     - traj_df (pd.DataFrame): The generated trajectory DataFrame.
