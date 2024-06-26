@@ -218,24 +218,38 @@ def get_regimes(traj_df, outcome, RECOVER_MIN=12, RECOVER_MAX=25, seed=None):
     return traj_df['regime']
 
 def get_traj_df(episode_log, 
-    extended_metadata=False, 
-    squash_action=False,
-    n_history=20,
-    seed=None,
-    ):
+    extended_metadata: bool = False, 
+    squash_action: bool = False,
+    n_history: int = 20,
+    seed: int = None,
+    ) -> pd.DataFrame:
+    '''
+    Generate a trajectory DataFrame from an episode log.
+
+    Parameters:
+    - episode_log (dict): The episode log containing trajectory data.
+    - extended_metadata (bool): Flag to include extended metadata in the DataFrame. Default is False.
+    - squash_action (bool): Flag to squash the action values. Default is False.
+    - n_history (int): Maxinum number of history steps to include when calculating n-step ENV/EWA/MA odor. Creates from 2~n_history info. Default is 20. 
+    - seed (int): Seed value for random number generation. Default is None.
+
+    Returns:
+    - traj_df (pd.DataFrame): The generated trajectory DataFrame.
+    '''
+
     # squash_action=True only needed for old log files 
     # (this is now done in evalCli itself, during creation of episode_log)
 
     # Basic trajectory (x, y)
     trajectory = episode_log['trajectory']
-    traj_df = pd.DataFrame( trajectory )  
+    traj_df = pd.DataFrame(trajectory)  
     traj_df.columns = ['loc_x', 'loc_y']   
 
     # time
     traj_df['t_val'] = [record[0]['t_val'] for record in episode_log['infos']]
 
     # Observations & Actions
-    obs = [ x[0] for x in episode_log['observations'] ]
+    obs = [x[0] for x in episode_log['observations']]
     obs = pd.DataFrame(obs)
     
     if obs.shape[1] == 3:
@@ -253,8 +267,6 @@ def get_traj_df(episode_log,
     
     traj_df['ego_course_direction_theta'] = ego_course_direction_theta
     
-
-
     act = episode_log['actions'] 
     act = pd.DataFrame(act)
     if squash_action:
@@ -296,7 +308,7 @@ def get_traj_df(episode_log,
         for record in episode_log['infos']]
     traj_df['wind_angle_ground'] = [ shift_scale_theta( 
         wind_xy_to_theta(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
-    traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0]['ambient_wind']) for record in episode_log['infos']]
+    traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0]['ambient_windq']) for record in episode_log['infos']]
 
 
     if extended_metadata:
