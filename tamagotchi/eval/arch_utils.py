@@ -42,8 +42,13 @@ def get_J(model_fname):
         actor_critic, ob_rms = \
             torch.load(model_fname, map_location=torch.device('cpu'))
     elif model_fname.endswith('pt'):
-        actor_critic, ob_rms, optimizer_state_dict = \
-            torch.load(model_fname, map_location=torch.device('cpu'))
+        try:
+            actor_critic, ob_rms, optimizer_state_dict = \
+                torch.load(model_fname, map_location=torch.device('cpu'))
+        except ValueError:
+            actor_critic, ob_rms = \
+                torch.load(model_fname, map_location=torch.device('cpu'))
+            print(f"[NOTE] Model file {model_fname} does not contain optimizer state. Load as the old format.")
     else:
         raise ValueError(f"Unexpected model_fname: {model_fname}. Does not end in .pt or .pt.start. May not be wrong but worth checking.")
     net = actor_critic.base.rnn #.weight_hh_l0.detach().numpy()
@@ -90,9 +95,13 @@ def get_taus(J, filters=['fix']):
     eig_vals, eig_vecs = np.linalg.eig(J)
     eligible = eig_vals
     if 'stable' in filters:
+        print(f"Stable, before: {len(eligible)}")
         eligible = eligible[ np.absolute(eig_vals) < 1.0 ]
+        print(f"Stable, after: {len(eligible)}")
     if 'munstable' in filters:
+        print(f"Unstable, before: {len(eligible)}")
         eligible = eligible[ np.absolute(eig_vals) >= 1.0 ] # unstable or marginally stable
+        print(f"Unstable, after: {len(eligible)}")
 
     timescales = np.abs(1/np.log( np.absolute(eligible) ))
     if 'fix' in filters: # Fix marginally/unstable eig taus to 1
