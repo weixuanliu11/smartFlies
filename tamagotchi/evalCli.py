@@ -371,6 +371,7 @@ if __name__ == "__main__":
     parser.add_argument('--diffusionx',  type=float, default=1.0)
     parser.add_argument('--apparent_wind', type=bool, default=False)
     parser.add_argument('--visual_feedback', type=bool, default=False)
+    parser.add_argument('--flip_ventral_optic_flow', type=bool, default=False) # for eval to see the behavioral impact of flipping course direction perception.
     parser.add_argument('--out_dir', type=str, default='eval')
 
 
@@ -420,7 +421,7 @@ if __name__ == "__main__":
     args.f_dir = os.path.dirname(args.model_fname) # f_dir should follow {/path/to/experiment}/weights
     exp_dir = os.path.dirname(args.f_dir) # {/path/to/experiment}
 
-    args.abs_out_dir = '/'.join([exp_dir, args.out_dir, args.f_prefix]) # {/path/to/experiment}/eval/plume_seed_hash/
+    args.abs_out_dir = '/'.join([exp_dir, args.out_dir, args.f_prefix]) # {/path/to/experiment}/{args.out_dir=eval}/plume_seed_hash/
     
     print(f"Output directory: {args.abs_out_dir}")
     # make sure the directory exists
