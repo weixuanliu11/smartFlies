@@ -1348,8 +1348,13 @@ class PlumeEnvironment_v2(gym.Env):
     pass
 
 class PlumeEnvironment_v3(PlumeEnvironment_v2):
-    def __init__(self, visual_feedback=False, **kwargs):
+    def __init__(self, visual_feedback=False, flip_ventral_optic_flow=False, **kwargs):
         super(PlumeEnvironment_v3, self).__init__(**kwargs)
+        self.flip_ventral_optic_flow = flip_ventral_optic_flow
+        if self.verbose > 0:
+            print("PlumeEnvironment_v3")
+            print("visual_feedback", visual_feedback)
+            print("flip_ventral_optic_flow", flip_ventral_optic_flow)
         self.visual_feedback = visual_feedback
         self.ground_velocity = np.array([0, 0]) # for egocentric course direction calculation
         if self.visual_feedback:
@@ -1373,7 +1378,9 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
             allocentric_head_direction_radian = np.angle(self.agent_angle[0] + 1j*self.agent_angle[1], deg=False)
             # course direction
             allocentric_course_direction_radian = np.angle(self.ground_velocity[0] + 1j*self.ground_velocity[1], deg=False)
-            egocentric_course_direction_radian = allocentric_course_direction_radian - allocentric_head_direction_radian # leftward positive
+            egocentric_course_direction_radian = allocentric_course_direction_radian - allocentric_head_direction_radian # leftward positive - standard CWW convention
+            if self.flip_ventral_optic_flow:
+                egocentric_course_direction_radian = allocentric_head_direction_radian - allocentric_course_direction_radian # rightward positive - for eval to see the behavioral impact of flipping course direction perception.
             observation = np.append(observation, [np.cos(allocentric_head_direction_radian), np.sin(allocentric_head_direction_radian), np.cos(egocentric_course_direction_radian), np.sin(egocentric_course_direction_radian)])
         if self.verbose > 1:
             print('observation', observation)
@@ -1687,7 +1694,8 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, args=None):
                         act_noise=args.act_noise,
                         seed=args.seed,
                         apparent_wind=args.apparent_wind,
-                        visual_feedback=args.visual_feedback
+                        visual_feedback=args.visual_feedback,
+                        flip_ventral_optic_flow=args.flip_ventral_optic_flow
                         )
             else:
                 # bkw compat before cleaning up TC hack. Useful when evalCli
