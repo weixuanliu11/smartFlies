@@ -444,12 +444,21 @@ def get_episode_metadata(log, odor_threshold=ODOR_THRESHOLD, squash_action=False
 
 
 def get_activity(log, is_recurrent, do_plot=False):
+    '''
+        This function retrieves the neural activity from the log data.
+        
+        Parameters:
+        - log: The log data containing the neural activity.
+        - is_recurrent: A boolean indicating whether the activity is recurrent or not. Always is. 
+        - do_plot: A boolean indicating whether to plot the activity or not.
+        
+        Returns:
+        - ep_activity: The neural activity data.
+    '''
     if is_recurrent:
         ep_activity = pd.DataFrame(log['activity'])['rnn_hxs'].to_list()
     else:
         ep_activity = pd.DataFrame(log['activity'])['hx1_actor'].to_list()
-    #     ep_activity = pd.DataFrame(log['activity'])['hidden_actor'].to_list()
-    # ep_activity = pd.DataFrame(log['activity'])['h_actor'].to_list()
     ep_activity = np.stack(ep_activity)
 
     if do_plot:
