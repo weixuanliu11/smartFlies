@@ -308,7 +308,7 @@ def get_traj_df(episode_log,
         for record in episode_log['infos']]
     traj_df['wind_angle_ground'] = [ shift_scale_theta( 
         wind_xy_to_theta(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
-    traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0]['ambient_windq']) for record in episode_log['infos']]
+    traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0]['ambient_wind']) for record in episode_log['infos']]
 
 
     if extended_metadata:
