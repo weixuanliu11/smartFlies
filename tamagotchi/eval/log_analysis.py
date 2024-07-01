@@ -24,6 +24,7 @@ ODOR_THRESHOLD = config.env['odor_threshold']
 
 def wind_xy_to_theta(x, y):
     """
+    # https://physicsclassroom.com/mmedia/vectors/vd.cfm#:~:text=The%20convention%20upon%20which%20we,of%20rotation%20from%20due%20east.
     Standard CCW notation, centered at 0
     Returns +1 is +180-deg, and -0.999 is -180-deg 
     wind_xy_to_theta(0,0) # 0.0
