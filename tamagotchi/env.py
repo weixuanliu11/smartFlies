@@ -961,7 +961,6 @@ class PlumeEnvironment_v2(gym.Env):
     wind_magnitude = np.linalg.norm(np.array( wind_absolute ))/self.wind_obsx
     wind_observation = [ x*wind_magnitude for x in wind_observation ] # convert back to velocity
 
-
     if self.verbose > 1:
         print('wind egocentric', wind_observation)
         print('agent_angle', self.agent_angle)
@@ -1383,6 +1382,10 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
             egocentric_course_direction_radian = allocentric_course_direction_radian - allocentric_head_direction_radian # leftward positive - standard CWW convention
             if self.flip_ventral_optic_flow:
                 egocentric_course_direction_radian = allocentric_head_direction_radian - allocentric_course_direction_radian # rightward positive - for eval to see the behavioral impact of flipping course direction perception.
+            # add observation noise
+            allocentric_head_direction_radian = allocentric_head_direction_radian*(1.0+np.random.uniform(-self.obs_noise, +self.obs_noise))
+            egocentric_course_direction_radian = egocentric_course_direction_radian*(1.0+np.random.uniform(-self.obs_noise, +self.obs_noise))
+            
             observation = np.append(observation, [np.cos(allocentric_head_direction_radian), np.sin(allocentric_head_direction_radian), np.cos(egocentric_course_direction_radian), np.sin(egocentric_course_direction_radian)])
         if self.verbose > 1:
             print('observation', observation)
