@@ -608,7 +608,7 @@ def animate_activity_1episode(ep_activity, traj_df, episode_idx,
         ax.set_ylabel(f'PC2 (VarExp: {pca.explained_variance_ratio_[1]:0.2f})')
         if title:
             plt.title(title_text)
-        # plt.tight_layout()
+        plt.tight_layout()
         if invert_colors:
             fig.set_facecolor('black')
             ax.set_facecolor('black')
@@ -629,7 +629,10 @@ def animate_activity_1episode(ep_activity, traj_df, episode_idx,
         common_suffix = '_common' if pca_common is not None else '' 
         output_fname = f'{outprefix}/tmp/{fprefix}_pca{pca_dims}d{common_suffix}_ep{episode_idx}_step{t_idx:05d}.png'
         output_fnames.append(output_fname)
-        plt.savefig(output_fname, bbox_inches='tight')
+        # plt.savefig(output_fname, bbox_inches='tight')
+        # plt.subplots_adjust(left=0.05, right=0.8, top=0.95, bottom=0.05)
+        plt.savefig(output_fname, bbox_inches='tight', pad_inches=0.3)
+        # plt.savefig(output_fname)
 
     output_fnames = natsorted(output_fnames,reverse=False)
     clips = [ImageClip(f).set_duration(0.08) for f in output_fnames] # 
