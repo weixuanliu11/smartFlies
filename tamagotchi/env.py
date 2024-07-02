@@ -942,7 +942,7 @@ class PlumeEnvironment_v2(gym.Env):
     # Use apparent wind (negative of air velocity) for training
     if self.apparent_wind:
         if self.apparent_wind_allo:
-            wind_absolute = - self.air_velocity # allocentric pparent wind = negative of air velocity (allocentric)
+            wind_absolute = - self.air_velocity # allocentric apparent wind = negative of air velocity (allocentric)
         else:
             wind_absolute = [ np.cos(np.pi), np.sin(np.pi) ]  # egocentric apparent wind - always antiparallel to self 
     if self.verbose > 1:
@@ -952,13 +952,15 @@ class PlumeEnvironment_v2(gym.Env):
     # Get wind relative angle
     agent_angle_radians = np.angle( self.agent_angle[0] + 1j*self.agent_angle[1], deg=False )
     wind_angle_radians = np.angle( wind_absolute[0] + 1j*wind_absolute[1], deg=False )
-    wind_relative_angle_radians = wind_angle_radians - agent_angle_radians
+    # Add observation noise
+    wind_angle_radians = wind_angle_radians*(1.0+np.random.uniform(-self.obs_noise, +self.obs_noise))
+   
+    wind_relative_angle_radians = wind_angle_radians - agent_angle_radians 
     wind_observation = [ np.cos(wind_relative_angle_radians), np.sin(wind_relative_angle_radians) ]    
     # Un-normalize wind observation by multiplying by magnitude
     wind_magnitude = np.linalg.norm(np.array( wind_absolute ))/self.wind_obsx
     wind_observation = [ x*wind_magnitude for x in wind_observation ] # convert back to velocity
-    # Add observation noise
-    wind_observation = [ x*(1.0+np.random.uniform(-self.obs_noise, +self.obs_noise)) for x in wind_observation ]
+
 
     if self.verbose > 1:
         print('wind egocentric', wind_observation)
