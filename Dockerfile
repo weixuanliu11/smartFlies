@@ -9,4 +9,7 @@ RUN pip install scikit-learn==1.1.2 yapf==0.33.0 gym==0.21.0 h5py spyder stable_
 tqdm urllib3 virtualenv joblib natsort mpl_scatter_density setproctitle \
 statsmodels "imageio==2.6.0" "imageio-ffmpeg==0.4.2" array2gif datajoint
 RUN pip install git+https://github.com/webermarcolivier/statannot.git
+COPY ./orca.deb /root/orca.deb
+RUN dpkg -i /root/orca.deb
+
 # git cloRUN git clone https://github.com/example/example.git && cd example && git checkout 0123abcdef
