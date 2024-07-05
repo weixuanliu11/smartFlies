@@ -17,4 +17,4 @@ services:
             count: 2
             capabilities: [gpu]
     env_file: .env # Load environment variables from .env file- 
-    command: sleep infinity
+    command: pip3 install . && sleep infinity
