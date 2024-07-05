@@ -20,7 +20,7 @@
 		// Configure properties specific to VS Code.
 		"vscode": {
 		  // Add the IDs of extensions you want installed when the container is created.
-		  "extensions": ["ms-python.python", "ms-toolsai.jupyter"]
+		  "extensions": ["ms-python.python", "ms-toolsai.jupyter", "GitHub.copilot"]
 		}
 	}
 	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
