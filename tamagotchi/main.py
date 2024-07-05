@@ -145,7 +145,16 @@ def main(args=None):
     else:
         # turn a dict into a parsed arg object.
         args = argparse.Namespace(**args)
+        # default_args = get_args()
+        # defaults = {param.name: param.default for param in default_args.parameters.values() if param.default != inspect.Parameter.empty}
+        # defaults.update({param.name: param.default for param in init_signature_vis_fb_params.parameters.values() if param.default != inspect.Parameter.empty})
+        # Write into args if not already present
+        # for key, value in defaults.items():
+        #     if not hasattr(args, key):
+        #         setattr(args, key, value)
+        # Only default values
         args.dryrun = False
+        args.flip_ventral_optic_flow = False
         
     print("PPO Args --->", args)
     print(args.seed)
