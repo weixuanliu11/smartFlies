@@ -244,7 +244,7 @@ def get_traj_df(episode_log,
         obs = obs.iloc[:, -3:] # handles STACKING > 0 # keep line from sat's code. Not sure why this is here
         obs.columns = ['wind_x', 'wind_y', 'odor']
     elif obs.shape[1] == 7:
-        obs =  obs.iloc[:, -7:] # obs in PEv3 has 7 columns
+        obs =  obs.iloc[:, -7:] # obs in PEv3 has 7 columns - works as expected # this are normalized observations
         obs.columns = ['wind_x', 'wind_y', 'odor', 'agent_angle_x', 'agent_angle_y', 'ego_course_direction_x', 'ego_course_direction_y']
     
     # write wind observation into df
