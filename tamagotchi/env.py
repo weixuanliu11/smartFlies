@@ -1396,7 +1396,7 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
             # Wind can either be relative wind or apparent wind, depending on the setting
         observation = super(PlumeEnvironment_v3, self).reset()
         if len(observation) == 7:
-            observation[5:] = 0 # course direction to 0
+            observation[6:] = 0 # course direction to 0
         return observation
     
     def step(self, action):
