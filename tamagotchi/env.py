@@ -1538,7 +1538,11 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
             'done': done_reason if done else None,
             'radiusx': self.radiusx,
             'air_velcity': self.air_velocity,
-            'ground_velocity': self.ground_velocity
+            'ground_velocity': self.ground_velocity,
+            'wind_obs': observation[:2],
+            'odor_obs': observation[2],
+            'allocentric_head_direction': observation[3:5],
+            'egocentric_course_direction': observation[5:7] # within SubprocVecEnv, unnormalized obs. Later nomalized in VecPyTorch
             }
 
         if done:
