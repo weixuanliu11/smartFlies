@@ -110,8 +110,6 @@ def visualize_single_episode(data_puffs, data_wind, traj_df,
         colorby = 'custom'
 
     # Line for trajectory
-    # linecolor = 'grey' if colorby is not None else 'red'
-    # linecolor = 'black' if colorby is not None else 'red'
     linecolor='black'
     plt.plot(traj_df.iloc[:,0], traj_df.iloc[:,1], c=linecolor, lw=0.5) # Red line!
     ax.scatter(traj_df.iloc[0,0], traj_df.iloc[0,1], c='black', 
@@ -166,26 +164,9 @@ def visualize_single_episode(data_puffs, data_wind, traj_df,
         print(ylims)
         plt.ylim(ylims[0], ylims[1])
 
-    # if title_text is not None and zoom > 0:
-    #     plt.title(title_text)
-
-    # plt.xticks([])
-    # plt.yticks([])
     if zoom > 0:
         plt.xlabel('Arena length [m]')
         plt.ylabel('Arena width [m]')
-
-
-    # Tweet
-    # text(0.5, 0.92, title_text,
-    #  horizontalalignment='center',
-    #  verticalalignment='center',
-    #  fontsize=12,
-    #  transform = ax.transAxes)
-    # plt.xticks([])
-    # plt.yticks([])
-    # plt.xlabel('')
-    # plt.ylabel('')
 
     if legend:
         handles, labels = plt.gca().get_legend_handles_labels()
