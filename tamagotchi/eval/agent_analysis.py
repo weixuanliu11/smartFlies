@@ -473,3 +473,38 @@ def get_obs_act_for_episode(episode, plot=True, stacked=True):
 
 ######################################################################################
 ### Neural activity analysis ###
+
+#######################################################################################
+### visualize sensory inputs over a trajectory ###
+
+def animate_visual_feedback_angles_1episode(traj_df):
+    def animate_visual_feedback_angles_single_frame(df_current_time_step):
+            # get visual feedback angles
+            allo_head_direction_theta = np.arctan2(df_current_time_step['agent_angle_y'], df_current_time_step['agent_angle_x'])
+            ego_course_direction_theta = np.arctan2(df_current_time_step['ego_course_direction_y'], df_current_time_step['ego_course_direction_x'])
+            print(f"allo_head_direction_theta {allo_head_direction_theta}, ego_course_direction_theta {ego_course_direction_theta}")
+            # plot unit vector of head direction in polar axis
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='polar')
+            # plot allocentric head direction
+            ax.quiver(0,0, allo_head_direction_theta, 1, angles='xy', scale_units='xy', scale=1., color='red')
+            ax.quiver(0,0, allo_head_direction_theta + ego_course_direction_theta, 1, angles='xy', scale_units='xy', scale=1., color='orange')
+            # plot this dot to set the figure at the center
+            ax.plot(0, 2, color='black', marker='o', markersize=5)
+            ax.set_rmax(1)
+            ax.set_rticks([])  # less radial ticks
+            plt.title('Allocentric head direction and course direction')
+
+            fig= plt.figure()
+            ax = fig.add_subplot(111, projection='polar')
+            # plot unit vector of head direction
+            ax.quiver(0,0, 0, 1, angles='xy', scale_units='xy', scale=1., color='red')
+            ax.quiver(0,0, ego_course_direction_theta, 1, angles='xy', scale_units='xy', scale=1, color = 'orange')
+            ax.plot(0, 2, color='black', marker='o', markersize=5)
+            ax.set_rmax(1)
+            ax.set_rticks([])  # less radial ticks
+            plt.title('Egocentric course direction')
+            ax.set_theta_zero_location("N")
+
+    for i, df_current_time_step in traj_df.iterrows():
+        animate_visual_feedback_angles_single_frame(df_current_time_step)
