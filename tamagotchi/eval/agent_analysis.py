@@ -458,6 +458,7 @@ def get_obs_act_for_episode(episode, plot=True, stacked=True):
 #######################################################################################
 ### visualize sensory inputs over a trajectory ###
 
+
 def animate_visual_feedback_angles_1episode(traj_df, outprefix, fprefix, episode_idx):
     def animate_visual_feedback_angles_single_frame(df_current_time_step, output_fname):
             allocentric_fname = output_fname.replace('.png', '_allocentric.png')
@@ -490,7 +491,7 @@ def animate_visual_feedback_angles_1episode(traj_df, outprefix, fprefix, episode
             plt.title('Egocentric head direction and course direction')
             ax.set_theta_zero_location("N")
             plt.savefig(egocentric_fname, bbox_inches='tight')
-            return fig, ax
+            # return fig, ax
 
     for t_idx, df_current_time_step in traj_df.iterrows():
         output_fnames = [] 
@@ -501,9 +502,6 @@ def animate_visual_feedback_angles_1episode(traj_df, outprefix, fprefix, episode
 
         animate_visual_feedback_angles_single_frame(df_current_time_step, output_fname)
         output_fnames = natsorted(output_fnames,reverse=False)
-        if len(output_fnames) == 0:
-            print("No valid frames!")
-            return
     
     clips = [ImageClip(f).set_duration(0.08) for f in output_fnames] # 
     concat_clip = concatenate_videoclips(clips, method="compose")
