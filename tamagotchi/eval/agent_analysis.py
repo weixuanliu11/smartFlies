@@ -477,7 +477,7 @@ def get_obs_act_for_episode(episode, plot=True, stacked=True):
 #######################################################################################
 ### visualize sensory inputs over a trajectory ###
 
-def animate_visual_feedback_angles_1episode(traj_df):
+def animate_visual_feedback_angles_1episode(traj_df, outprefix):
     def animate_visual_feedback_angles_single_frame(df_current_time_step):
             # get visual feedback angles
             allo_head_direction_theta = np.arctan2(df_current_time_step['agent_angle_y'], df_current_time_step['agent_angle_x'])
