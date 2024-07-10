@@ -81,11 +81,11 @@ def post_eval(args):
     else:
         subset_df = selected_df.groupby(['dataset', 'outcome']).head(args.viz_episodes)
 
-    for idx, row in subset_df.iterrows():
+    for idx, row in subset_df.iterrows(): # each row is a trial/episode
         ep_activity = log_analysis.get_activity(row['log'], 
             is_recurrent, 
             do_plot=False)
-        traj_df = log_analysis.get_traj_df(row['log'], 
+        traj_df = log_analysis.get_traj_df_tmp(row['log'], # use the tmp version before rerunning eval where unnormalized values are saved to infos. 
                     extended_metadata=False, 
                     squash_action=squash_action)
         dataset = row['dataset']
@@ -112,7 +112,7 @@ def post_eval(args):
                                               legend=False,
                                               invert_colors=args.invert_colors,
                                              )    
-
+            agent_analysis.animate_visual_feedback_angles_1episode(traj_df, OUTPREFIX)
             log_analysis.animate_activity_1episode(ep_activity, 
                     traj_df, 
                     row['idx'], 
