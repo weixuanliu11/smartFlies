@@ -112,7 +112,7 @@ def post_eval(args):
                                               legend=False,
                                               invert_colors=args.invert_colors,
                                              )    
-            agent_analysis.animate_visual_feedback_angles_1episode(traj_df, OUTPREFIX, fprefix, episode_idx)
+            agent_analysis.animate_visual_feedback_angles_1episode(traj_df, OUTPREFIX, fprefix, row['idx'])
             log_analysis.animate_activity_1episode(ep_activity, 
                     traj_df, 
                     row['idx'], 
