@@ -464,8 +464,8 @@ def animate_visual_feedback_angles_1episode(traj_df, outprefix, fprefix, episode
             allocentric_fname = output_fname.replace('.png', '_allocentric.png')
             egocentric_fname = output_fname.replace('.png', '_egocentric.png')
             # get visual feedback angles
-            allo_head_direction_theta = np.arctan2(df_current_time_step['agent_angle_y'], df_current_time_step['agent_angle_x'])
-            ego_course_direction_theta = np.arctan2(df_current_time_step['ego_course_direction_y'], df_current_time_step['ego_course_direction_x'])
+            allo_head_direction_theta = np.angle(df_current_time_step['agent_angle_x'] + 1j*df_current_time_step['agent_angle_y'], deg=False )
+            ego_course_direction_theta = np.angle(df_current_time_step['ego_course_direction_x'] + 1j*df_current_time_step['ego_course_direction_y'], deg=False ) - np.pi # subtract pi because currently the ground velocity calculation is flipped
             # print(f"allo_head_direction_theta {allo_head_direction_theta}, ego_course_direction_theta {ego_course_direction_theta}")
             # plot unit vector of angles in allocentric frame
             fig = plt.figure()
@@ -492,9 +492,8 @@ def animate_visual_feedback_angles_1episode(traj_df, outprefix, fprefix, episode
             ax.set_theta_zero_location("N")
             plt.savefig(egocentric_fname, bbox_inches='tight')
             # return fig, ax
-
-    for t_idx, df_current_time_step in traj_df.iterrows():
-        output_fnames = [] 
+    output_fnames = [] 
+    for t_idx, df_current_time_step in traj_df.iterrows():    
         if not os.path.exists(f'{outprefix}/tmp/'):
             os.makedirs(f'{outprefix}/tmp/')
         output_fname = f'{outprefix}/tmp/{fprefix}_ep{episode_idx}_step{t_idx:05d}.png'
@@ -502,13 +501,15 @@ def animate_visual_feedback_angles_1episode(traj_df, outprefix, fprefix, episode
 
         animate_visual_feedback_angles_single_frame(df_current_time_step, output_fname)
         output_fnames = natsorted(output_fnames,reverse=False)
-    
-    clips = [ImageClip(f).set_duration(0.08) for f in output_fnames] # 
-    concat_clip = concatenate_videoclips(clips, method="compose")
-    fanim = f"{outprefix}/{fprefix}_ep{episode_idx:03d}_angles.mp4"
-    concat_clip.write_videofile(fanim, fps=15, verbose=False, logger=None)
-    print("Saved", fanim)
-    
+
+    for plot_type in ['allocentric', 'egocentric']:
+        cur_fnames = [f.replace('.png', f"_{plot_type}.png") for f in output_fnames]
+        clips = [ImageClip(f).set_duration(0.08) for f in cur_fnames] 
+        concat_clip = concatenate_videoclips(clips, method="compose")
+        fanim = f"{outprefix}/{fprefix}_ep{episode_idx:03d}_{plot_type}.mp4"
+        concat_clip.write_videofile(fanim, fps=15, verbose=False, logger=None)
+        print("Saved", fanim)
+        
     for f in output_fnames:
         # https://stackoverflow.com/questions/10840533/most-pythonic-way-to-delete-a-file-which-may-not-exist
         with contextlib.suppress(FileNotFoundError):
