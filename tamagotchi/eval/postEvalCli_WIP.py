@@ -74,13 +74,17 @@ def post_eval(args):
         net = actor_critic.base.rnn #.weight_hh_l0.detach().numpy()
         J0 = net.weight_hh_l0.detach().numpy()
 
+    if args.viz_wind_reg:
+        # fit a linear regression that predicts wind angle from neural activity
+        reg = agent_analysis.fit_regression_from_neural_activity_to_latent(selected_df, \
+            'wind_angle_ground_theta', stacked_neural_activity = h_episodes_stacked) 
+
     if args.viz_only_these_episodes:
         print(f"Visualizing episodes {args.viz_only_these_episodes}...")
         subset_df = selected_df[selected_df['idx'].isin(args.viz_only_these_episodes)]
         print(f"Found these episodes {set(subset_df.idx)}...")
     else:
         subset_df = selected_df.groupby(['dataset', 'outcome']).head(args.viz_episodes)
-
     for episode_idx, row in subset_df.iterrows(): # each row is a trial/episode
         ep_activity = log_analysis.get_activity(row['log'], 
             is_recurrent, 
@@ -94,47 +98,49 @@ def post_eval(args):
         OUTPREFIX = smart_outprefix(args.model_dir, dataset, args.out_reldir)
 
         try:
-            # Need to regenerate since no guarantee present already?
-            zoom = 1 if 'constant' in dataset else 2    
-            zoom = 4 if ('constant' in dataset) and ('HOME' not in outcome) else zoom 
-            # zoom = 0 
-            zoom = 3 if args.walking else zoom
-            agent_analysis.visualize_episodes(episode_logs=[row['log']], 
-                                              traj_df=traj_df,
-                                              episode_idxs=[row['idx']],
-                                              zoom=zoom, 
-                                              dataset=row['dataset'],
-                                              animate=True,
-                                              fprefix=fprefix,
-                                              diffusionx=args.diffusionx,
-                                              outprefix=OUTPREFIX,
-                                              title_text=False, # not supported anyway
-                                              legend=False,
-                                              invert_colors=args.invert_colors,
-                                             )    
-            agent_analysis.animate_visual_feedback_angles_1episode(traj_df, OUTPREFIX, fprefix, row['idx'])
-            log_analysis.animate_activity_1episode(ep_activity, 
-                    traj_df, 
-                    row['idx'], 
-                    fprefix=fprefix,
-                    outprefix=OUTPREFIX,
-                    pca_dims=3,
-                    pca_common=pca_common,
-                    invert_colors=args.invert_colors,
-                    title=False)
+        #     # Need to regenerate since no guarantee present already?
+        #     zoom = 1 if 'constant' in dataset else 2    
+        #     zoom = 4 if ('constant' in dataset) and ('HOME' not in outcome) else zoom 
+        #     # zoom = 0 
+        #     zoom = 3 if args.walking else zoom
+        #     agent_analysis.visualize_episodes(episode_logs=[row['log']], 
+        #                                       traj_df=traj_df,
+        #                                       episode_idxs=[row['idx']],
+        #                                       zoom=zoom, 
+        #                                       dataset=row['dataset'],
+        #                                       animate=True,
+        #                                       fprefix=fprefix,
+        #                                       diffusionx=args.diffusionx,
+        #                                       outprefix=OUTPREFIX,
+        #                                       title_text=False, # not supported anyway
+        #                                       legend=False,
+        #                                       invert_colors=args.invert_colors,
+        #                                      )    
+        #     agent_analysis.animate_visual_feedback_angles_1episode(traj_df, OUTPREFIX, fprefix, row['idx'])
+        #     log_analysis.animate_activity_1episode(ep_activity, 
+        #             traj_df, 
+        #             row['idx'], 
+        #             fprefix=fprefix,
+        #             outprefix=OUTPREFIX,
+        #             pca_dims=3,
+        #             pca_common=pca_common,
+        #             invert_colors=args.invert_colors,
+        #             title=False)
+        #     # eig animations/plots
+        #     eig_df = archu.get_eig_df_episode(net, row['log'])
+        #     fname_suffix = f"{fprefix}_ep{row['idx']}"
+        #     archu.animate_Jh_episode(eig_df, 
+        #         fname_suffix=fname_suffix, 
+        #         outprefix=OUTPREFIX)
+        #     eig_vals, eig_vecs = np.linalg.eig(J0)
+        #     archu.plot_eigvec_projections(eig_vals, 
+        #         eig_vecs, 
+        #         ep_activity, 
+        #         fname_suffix=fname_suffix, 
+        #         outprefix=OUTPREFIX)
+            if args.viz_wind_reg:
+                agent_analysis.animate_prediction_error_1episode(reg, 'wind_angle_ground_theta', ep_activity, traj_df, OUTPREFIX, fprefix, row['idx'])
 
-            # eig animations/plots
-            eig_df = archu.get_eig_df_episode(net, row['log'])
-            fname_suffix = f"{fprefix}_ep{row['idx']}"
-            archu.animate_Jh_episode(eig_df, 
-                fname_suffix=fname_suffix, 
-                outprefix=OUTPREFIX)
-            eig_vals, eig_vecs = np.linalg.eig(J0)
-            archu.plot_eigvec_projections(eig_vals, 
-                eig_vecs, 
-                ep_activity, 
-                fname_suffix=fname_suffix, 
-                outprefix=OUTPREFIX)
 
         except Exception as e:
             print(f"Exception: {e}", traceback.print_exc())
@@ -226,6 +232,7 @@ if __name__ == "__main__":
     parser.add_argument('--diffusionx',  type=float, default=1.0)
     parser.add_argument('--out_reldir', type=str, default='2_videos')
     parser.add_argument('--invert_colors', type=bool, default=False)
+    parser.add_argument('--viz_wind_reg', type=bool, default=False, help='Visualize wind regression. Fit a line from neural activity to wind direction, and animate the prediction error')
     parser.add_argument('--use_datasets', type=str,  nargs='+', 
                         default=['constantx5b5', 'switch45x5b5', 'noisy3x5b5'])
 
