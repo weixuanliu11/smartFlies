@@ -1452,7 +1452,7 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
         ]
         # Air and ground velocity
         self.air_velocity = np.array([agent_move_x, agent_move_y])/self.dt # Rel_wind = Amb_wind - Air_vel
-        self.ground_velocity = (self.agent_location_last - np.array(self.agent_location))/self.dt
+        self.ground_velocity = (np.array(self.agent_location) - self.agent_location_last)/self.dt
         
         ### ----------------- End conditions / Is the trial over ----------------- ### 
         is_home = np.linalg.norm(self.agent_location) <= self.homed_radius 
