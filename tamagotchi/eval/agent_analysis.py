@@ -1,6 +1,6 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
-
+import sklearn
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -460,38 +460,58 @@ def get_obs_act_for_episode(episode, plot=True, stacked=True):
 
 
 def animate_visual_feedback_angles_1episode(traj_df, outprefix, fprefix, episode_idx):
-    def animate_visual_feedback_angles_single_frame(df_current_time_step, output_fname):
-            allocentric_fname = output_fname.replace('.png', '_allocentric.png')
-            egocentric_fname = output_fname.replace('.png', '_egocentric.png')
-            # get visual feedback angles
-            allo_head_direction_theta = np.angle(df_current_time_step['agent_angle_x'] + 1j*df_current_time_step['agent_angle_y'], deg=False )
-            ego_course_direction_theta = np.angle(df_current_time_step['ego_course_direction_x'] + 1j*df_current_time_step['ego_course_direction_y'], deg=False ) - np.pi # subtract pi because currently the ground velocity calculation is flipped
-            # print(f"allo_head_direction_theta {allo_head_direction_theta}, ego_course_direction_theta {ego_course_direction_theta}")
-            # plot unit vector of angles in allocentric frame
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='polar')
-            # plot allocentric head direction
-            ax.quiver(0,0, allo_head_direction_theta, 1, angles='xy', scale_units='xy', scale=1., color='red') # (x,y,u,v) x,y is the starting point, u,v is the direction and magnitude
-            ax.quiver(0,0, allo_head_direction_theta + ego_course_direction_theta, 1, angles='xy', scale_units='xy', scale=1., color='orange')
-            # plot this dot to set the figure at the center
-            ax.plot(0, 2, color='black', marker='o', markersize=5)
-            ax.set_rmax(1)
-            ax.set_rticks([])  # less radial ticks
-            plt.title('Allocentric head direction and course direction')
-            plt.savefig(allocentric_fname, bbox_inches='tight')
+    """
+    Animates the visual feedback angles for a single episode.
 
-            fig= plt.figure()
-            ax = fig.add_subplot(111, projection='polar')
-            # plot unit vector of angles in egocentric frame
-            ax.quiver(0,0, 0, 1, angles='xy', scale_units='xy', scale=1., color='red')
-            ax.quiver(0,0, ego_course_direction_theta, 1, angles='xy', scale_units='xy', scale=1, color = 'orange')
-            ax.plot(0, 2, color='black', marker='o', markersize=5)
-            ax.set_rmax(1)
-            ax.set_rticks([])  # less radial ticks
-            plt.title('Egocentric head direction and course direction')
-            ax.set_theta_zero_location("N")
-            plt.savefig(egocentric_fname, bbox_inches='tight')
-            # return fig, ax
+    Args:
+        traj_df (DataFrame): The trajectory DataFrame containing the time steps.
+        outprefix (str): The output prefix for saving the animation files.
+        fprefix (str): The file prefix for naming the animation files.
+        episode_idx (int): The index of the episode.
+
+    Returns:
+        None
+    """
+    def animate_visual_feedback_angles_single_frame(df_current_time_step, output_fname):
+        """
+        Animates the visual feedback angles for a single frame.
+
+        Args:
+            df_current_time_step (DataFrame): The DataFrame for the current time step.
+            output_fname (str): The output filename for saving the animation.
+
+        Returns:
+            None
+        """
+        allocentric_fname = output_fname.replace('.png', '_allocentric.png')
+        egocentric_fname = output_fname.replace('.png', '_egocentric.png')
+        # get visual feedback angles
+        allo_head_direction_theta = np.angle(df_current_time_step['agent_angle_x'] + 1j*df_current_time_step['agent_angle_y'], deg=False)
+        ego_course_direction_theta = np.angle(df_current_time_step['ego_course_direction_x'] + 1j*df_current_time_step['ego_course_direction_y'], deg=False) - np.pi # subtract pi because currently the ground velocity calculation is flipped
+
+        # plot unit vector of angles in allocentric frame
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='polar')
+        ax.quiver(0,0, allo_head_direction_theta, 1, angles='xy', scale_units='xy', scale=1., color='red')
+        ax.quiver(0,0, allo_head_direction_theta + ego_course_direction_theta, 1, angles='xy', scale_units='xy', scale=1., color='orange')
+        ax.plot(0, 2, color='black', marker='o', markersize=5)
+        ax.set_rmax(1)
+        ax.set_rticks([])
+        plt.title('Allocentric head direction and course direction')
+        plt.savefig(allocentric_fname, bbox_inches='tight')
+
+        # plot unit vector of angles in egocentric frame
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='polar')
+        ax.quiver(0,0, 0, 1, angles='xy', scale_units='xy', scale=1., color='red')
+        ax.quiver(0,0, ego_course_direction_theta, 1, angles='xy', scale_units='xy', scale=1, color='orange')
+        ax.plot(0, 2, color='black', marker='o', markersize=5)
+        ax.set_rmax(1)
+        ax.set_rticks([])
+        plt.title('Egocentric head direction and course direction')
+        ax.set_theta_zero_location("N")
+        plt.savefig(egocentric_fname, bbox_inches='tight')
+
     output_fnames = [] 
     for t_idx, df_current_time_step in traj_df.iterrows():    
         if not os.path.exists(f'{outprefix}/tmp/'):
@@ -500,7 +520,7 @@ def animate_visual_feedback_angles_1episode(traj_df, outprefix, fprefix, episode
         output_fnames.append(output_fname)
 
         animate_visual_feedback_angles_single_frame(df_current_time_step, output_fname)
-        output_fnames = natsorted(output_fnames,reverse=False)
+    output_fnames = natsorted(output_fnames, reverse=False)
 
     for plot_type in ['allocentric', 'egocentric']:
         cur_fnames = [f.replace('.png', f"_{plot_type}.png") for f in output_fnames]
@@ -511,6 +531,122 @@ def animate_visual_feedback_angles_1episode(traj_df, outprefix, fprefix, episode
         print("Saved", fanim)
         
     for f in output_fnames:
-        # https://stackoverflow.com/questions/10840533/most-pythonic-way-to-delete-a-file-which-may-not-exist
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(f)
+
+
+def fit_regression_from_neural_activity_to_latent(eval_log_pkl_df: pd.DataFrame, latent_col_name: str, stacked_neural_activity: np.ndarray = None, stacked_traj_df: pd.DataFrame = None) -> sklearn.linear_model.LinearRegression:
+    """
+    Fits a linear regression model to predict the latent variable from neural activity.
+
+    Args:
+        eval_log_pkl_df (pd.DataFrame): DataFrame containing evaluation logs.
+        latent_col_name (str): Name of the column representing the latent variable.
+        stacked_neural_activity (np.ndarray, optional): Stacked neural activity data. If not provided, it will be loaded from the evaluation logs.
+        stacked_traj_df (pd.DataFrame, optional): Stacked trajectory DataFrame. If not provided, it will be loaded from the evaluation logs.
+
+    Returns:
+        sklearn.linear_model.LinearRegression: Fitted linear regression model.
+    """
+    
+    # load and stack data if not provided
+    get_neural_activity = get_traj_df = False
+    if stacked_neural_activity is None:
+        get_neural_activity = True
+    if stacked_traj_df is None:
+        get_traj_df = True
+    if get_neural_activity or get_traj_df:    
+        is_recurrent = True
+        squash_action = True
+        h_episodes = []
+        traj_dfs = []
+        for idx, row  in tqdm.tqdm(eval_log_pkl_df.iterrows()):
+            episode_log = row['log']
+            if get_neural_activity:
+                ep_neural_activity = log_analysis.get_activity(episode_log, is_recurrent, do_plot=False)
+                h_episodes.append(ep_neural_activity)
+            if get_traj_df:
+                traj_df = log_analysis.get_traj_df_tmp(episode_log, 
+                                                extended_metadata=False, 
+                                                squash_action=squash_action)
+                traj_df['tidx'] = np.arange(traj_df.shape[0], dtype=int)
+                for colname in ['dataset', 'idx', 'outcome']:
+                    traj_df[colname] = row[colname] 
+                traj_dfs.append(traj_df)
+        if get_neural_activity:
+            stacked_neural_activity = np.vstack(h_episodes)
+        if get_traj_df:
+            stacked_traj_df = pd.concat(traj_dfs)
+    print(f"stacked_neural_activity.shape = {stacked_neural_activity.shape}")
+    print(f"stacked_traj_df.shape = {stacked_traj_df.shape}")
+    
+    # linear regression
+    Y = stacked_traj_df[latent_col_name]
+    X = stacked_neural_activity[ ~Y.isna() ]
+    Y = Y[ ~Y.isna() ]
+    reg = sklearn.linear_model.LinearRegression().fit(X, Y)
+    return reg
+    
+    
+def animate_prediction_error_1episode(reg, latent, ep_activity, traj_df, outprefix, fprefix, episode_idx):
+    """
+    Animates the visual feedback angles for a single episode.
+
+    Args:
+        traj_df (DataFrame): The trajectory DataFrame containing the time steps.
+        outprefix (str): The output prefix for saving the animation files.
+        fprefix (str): The file prefix for naming the animation files.
+        episode_idx (int): The index of the episode.
+
+    Returns:
+        None
+    """
+    def animate_prediction_error_single_frame(now_pred_errors, output_fname, xlim, ylim):
+        """
+        Animates the prediction error for a single frame.
+
+        Args:
+            prediction_errors (np.ndarray): The prediction errors.
+            output_fname (str): The output filename for saving the animation.
+
+        Returns:
+            None
+        """
+        plt.plot(now_pred_errors)
+        plt.xlim(0, xlim)
+        plt.ylim(0, ylim)
+        plt.xlabel('Time')
+        plt.ylabel('Absolute prediction error')
+        # R2 score
+        R2 = sklearn.metrics.r2_score(targets, predictions)
+        textstr = f"R\u00b2 = {R2}"
+        plt.text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=14,
+                verticalalignment='top')
+        plt.savefig(output_fname, bbox_inches='tight')
+    # predict latent
+    predictions = reg.predict(ep_activity)
+    targets = traj_df[latent]
+    # get errors
+    prediction_errors = np.abs(predictions - targets)  
+    xlim = len(predictions)
+    ylim = np.max(prediction_errors)  
+    # plot prediction error over time
+    output_fnames = []
+    for i in range(len(prediction_errors)):
+        curr_errors = prediction_errors[:i] 
+        if not os.path.exists(f'{outprefix}/tmp/'):
+            os.makedirs(f'{outprefix}/tmp/')
+        output_fname = f'{outprefix}/tmp/{fprefix}_ep{episode_idx}_{latent}_pred_error_step{i:05d}.png'
+        output_fnames.append(output_fname)
+        animate_prediction_error_single_frame(curr_errors, output_fname, xlim, ylim)
+    output_fnames = natsorted(output_fnames, reverse=False)
+
+    clips = [ImageClip(f).set_duration(0.08) for f in output_fnames] 
+    concat_clip = concatenate_videoclips(clips, method="compose")
+    fanim = f'{outprefix}/{fprefix}_ep{episode_idx}_{latent}_pred_error.mp4'
+    concat_clip.write_videofile(fanim, fps=15, verbose=False, logger=None)
+    print("Saved", fanim)
+        
+    for f in output_fnames:
         with contextlib.suppress(FileNotFoundError):
             os.remove(f)
