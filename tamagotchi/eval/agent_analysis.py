@@ -577,8 +577,7 @@ def fit_regression_from_neural_activity_to_latent(eval_log_pkl_df: pd.DataFrame,
             stacked_neural_activity = np.vstack(h_episodes)
         if get_traj_df:
             stacked_traj_df = pd.concat(traj_dfs)
-    print(f"stacked_neural_activity.shape = {stacked_neural_activity.shape}")
-    print(f"stacked_traj_df.shape = {stacked_traj_df.shape}")
+
     
     # linear regression
     Y = stacked_traj_df[latent_col_name]
