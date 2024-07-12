@@ -611,17 +611,19 @@ def animate_prediction_error_1episode(reg, latent, ep_activity, traj_df, outpref
         Returns:
             None
         """
-        plt.plot(now_pred_errors)
+        plt.plot(now_pred_errors, color='black')
         plt.xlim(0, xlim)
         plt.ylim(0, ylim)
         plt.xlabel('Time')
         plt.ylabel('Absolute prediction error')
+        # figure size
+        plt.gcf().set_size_inches(10, 3)
         # R2 score
         R2 = sklearn.metrics.r2_score(targets, predictions)
         textstr = f"R\u00b2 = {R2}"
         plt.text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=14,
                 verticalalignment='top')
-        plt.savefig(output_fname, bbox_inches='tight')
+        plt.savefig(output_fname, bbox_inches='tight', dpi=300)
     # predict latent
     predictions = reg.predict(ep_activity)
     targets = traj_df[latent]
