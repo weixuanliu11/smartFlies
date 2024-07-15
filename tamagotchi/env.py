@@ -1623,10 +1623,14 @@ def make_vec_envs(env_name,
         envs = DummyVecEnv(envs)
         
     if len(envs.observation_space.shape) == 1:
-        if gamma is None:
-            envs = VecNormalize(envs, ret=False)
+        if raw_kwargs:
+            if 'vecNormalize_pkl_file' in raw_kwargs:
+                envs = VecNormalize.load(raw_kwargs['vecNormalize_pkl_file'], envs)
         else:
-            envs = VecNormalize(envs, gamma=gamma) # type(envs.action_space) = <class 'gym.spaces.box.Box'>
+            if gamma is None:
+                envs = VecNormalize(envs, ret=False)
+            else:
+                envs = VecNormalize(envs, gamma=gamma) # type(envs.action_space) = <class 'gym.spaces.box.Box'> # gamma, reward discount factor = 0.99 always 
         
     envs = VecPyTorch(envs, device)
 
