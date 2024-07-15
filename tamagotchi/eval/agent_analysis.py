@@ -611,7 +611,8 @@ def animate_prediction_error_1episode(reg, latent, ep_activity, traj_df, outpref
         Returns:
             None
         """
-        plt.plot(now_pred_errors, color='black')
+        fig = plt.figure()
+        fig.plot(now_pred_errors, color='black')
         plt.xlim(0, xlim)
         plt.ylim(0, ylim)
         plt.xlabel('Time')
