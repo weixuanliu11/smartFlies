@@ -210,7 +210,7 @@ def eval_loop(args, actor_critic, test_sparsity=True):
             if not hasattr(args, key):
                 setattr(args, key, value)
         vecNormalize_pkl_file = args.model_fname.replace('.pt', '_vecNormalize.pkl')
-        kwargs = {'vecNormalize_pkl_file': vecNormalize_pkl_file}
+        kwargs = {'vecNormalize_pkl_file': vecNormalize_pkl_file, 'eval': True} # init settings file path and mode eval to be true 
         #### ------- Nonsparse ------- #### 
         env = make_vec_envs(
             args.env_name,

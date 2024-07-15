@@ -1626,6 +1626,13 @@ def make_vec_envs(env_name,
         if raw_kwargs:
             if 'vecNormalize_pkl_file' in raw_kwargs:
                 envs = VecNormalize.load(raw_kwargs['vecNormalize_pkl_file'], envs)
+                if 'eval' in raw_kwargs: # if eval is true, then set envs to eval mode to stop updating the statistics and reward norm
+                    if raw_kwargs['eval']:
+                        envs.eval()
+                    else:
+                        envs.train()
+                else: # if not specified, assume it's training. May be relevant when using checkpoint
+                    envs.train()
         else:
             if gamma is None:
                 envs = VecNormalize(envs, ret=False)
