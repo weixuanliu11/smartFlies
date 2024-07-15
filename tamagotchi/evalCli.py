@@ -209,6 +209,8 @@ def eval_loop(args, actor_critic, test_sparsity=True):
         for key, value in defaults.items():
             if not hasattr(args, key):
                 setattr(args, key, value)
+        vecNormalize_pkl_file = args.model_fname.replace('.pt', '_vecNormalize.pkl')
+        kwargs = {'vecNormalize_pkl_file': vecNormalize_pkl_file}
         #### ------- Nonsparse ------- #### 
         env = make_vec_envs(
             args.env_name,
@@ -219,7 +221,9 @@ def eval_loop(args, actor_critic, test_sparsity=True):
             # device='cpu',
             device=args.device,
             args=args,
-            allow_early_resets=False)
+            allow_early_resets=False,
+            **kwargs
+            )
 
         if 'switch' in args.dataset: 
             venv = env.unwrapped.envs[0].venv
