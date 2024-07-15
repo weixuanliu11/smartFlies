@@ -1588,7 +1588,6 @@ def make_vec_envs(env_name,
                   args=None,
                   num_frame_stack=None, 
                   **raw_kwargs # raw because it may contain parameters that are already in args, in which case overwrite args. 
-                                # this would change args object globally, which is fine since args will have been saved at the beginning of the training loop
                   ):
     envs = []
     if raw_kwargs:
