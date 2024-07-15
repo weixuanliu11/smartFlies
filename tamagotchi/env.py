@@ -1633,6 +1633,11 @@ def make_vec_envs(env_name,
                         envs.train()
                 else: # if not specified, assume it's training. May be relevant when using checkpoint
                     envs.train()
+            else:
+                if gamma is None:
+                    envs = VecNormalize(envs, ret=False)
+                else:
+                    envs = VecNormalize(envs, gamma=gamma) 
         else:
             if gamma is None:
                 envs = VecNormalize(envs, ret=False)
