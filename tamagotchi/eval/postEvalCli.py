@@ -246,6 +246,7 @@ if __name__ == "__main__":
     parser.add_argument('--viz_wind_reg', type=bool, default=False, help='Visualize wind regression. Fit a line from neural activity to wind direction, and animate the prediction error')
     parser.add_argument('--viz_sensory_angles', type=bool, default=False, help='Visualize sensory angles - only head direction and drift direction at the moment')
     parser.add_argument('--viz_neural_activity', type=bool, default=False, help='Visualize neural population activity of the RNN')
+    parser.add_argument('--viz_eigen_values', type=bool, default=False, help='Visualize the eigen spectrum of the RNN population activity')
     parser.add_argument('--use_datasets', type=str,  nargs='+', 
                         default=['constantx5b5', 'switch45x5b5', 'noisy3x5b5'])
 
