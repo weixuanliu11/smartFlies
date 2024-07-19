@@ -74,18 +74,22 @@ def post_eval(args):
         net = actor_critic.base.rnn #.weight_hh_l0.detach().numpy()
         J0 = net.weight_hh_l0.detach().numpy()
 
+    if args.viz_wind_reg:
+        # fit a linear regression that predicts wind angle from neural activity
+        reg = agent_analysis.fit_regression_from_neural_activity_to_latent(selected_df, \
+            'wind_angle_ground_theta', stacked_neural_activity = h_episodes_stacked) 
+
     if args.viz_only_these_episodes:
         print(f"Visualizing episodes {args.viz_only_these_episodes}...")
         subset_df = selected_df[selected_df['idx'].isin(args.viz_only_these_episodes)]
         print(f"Found these episodes {set(subset_df.idx)}...")
     else:
         subset_df = selected_df.groupby(['dataset', 'outcome']).head(args.viz_episodes)
-
-    for idx, row in subset_df.iterrows():
+    for episode_idx, row in subset_df.iterrows(): # each row is a trial/episode
         ep_activity = log_analysis.get_activity(row['log'], 
             is_recurrent, 
             do_plot=False)
-        traj_df = log_analysis.get_traj_df(row['log'], 
+        traj_df = log_analysis.get_traj_df_tmp(row['log'], # use the tmp version before rerunning eval where unnormalized values are saved to infos. 
                     extended_metadata=False, 
                     squash_action=squash_action)
         dataset = row['dataset']
@@ -112,7 +116,7 @@ def post_eval(args):
                                               legend=False,
                                               invert_colors=args.invert_colors,
                                              )    
-
+            agent_analysis.animate_visual_feedback_angles_1episode(traj_df, OUTPREFIX, fprefix, row['idx'])
             log_analysis.animate_activity_1episode(ep_activity, 
                     traj_df, 
                     row['idx'], 
@@ -122,7 +126,6 @@ def post_eval(args):
                     pca_common=pca_common,
                     invert_colors=args.invert_colors,
                     title=False)
-
             # eig animations/plots
             eig_df = archu.get_eig_df_episode(net, row['log'])
             fname_suffix = f"{fprefix}_ep{row['idx']}"
@@ -135,6 +138,9 @@ def post_eval(args):
                 ep_activity, 
                 fname_suffix=fname_suffix, 
                 outprefix=OUTPREFIX)
+            if args.viz_wind_reg:
+                agent_analysis.animate_prediction_error_1episode(reg, 'wind_angle_ground_theta', ep_activity, traj_df, OUTPREFIX, fprefix, row['idx'])
+
 
         except Exception as e:
             print(f"Exception: {e}", traceback.print_exc())
@@ -226,6 +232,7 @@ if __name__ == "__main__":
     parser.add_argument('--diffusionx',  type=float, default=1.0)
     parser.add_argument('--out_reldir', type=str, default='2_videos')
     parser.add_argument('--invert_colors', type=bool, default=False)
+    parser.add_argument('--viz_wind_reg', type=bool, default=False, help='Visualize wind regression. Fit a line from neural activity to wind direction, and animate the prediction error')
     parser.add_argument('--use_datasets', type=str,  nargs='+', 
                         default=['constantx5b5', 'switch45x5b5', 'noisy3x5b5'])
 
