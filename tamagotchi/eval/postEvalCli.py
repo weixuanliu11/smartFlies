@@ -116,7 +116,8 @@ def post_eval(args):
                                               legend=False,
                                               invert_colors=args.invert_colors,
                                              )    
-            agent_analysis.animate_visual_feedback_angles_1episode(traj_df, OUTPREFIX, fprefix, row['idx'])
+            if args.viz_sensory_angles:
+                agent_analysis.animate_visual_feedback_angles_1episode(traj_df, OUTPREFIX, fprefix, row['idx'])
             log_analysis.animate_activity_1episode(ep_activity, 
                     traj_df, 
                     row['idx'], 
@@ -233,6 +234,7 @@ if __name__ == "__main__":
     parser.add_argument('--out_reldir', type=str, default='2_videos')
     parser.add_argument('--invert_colors', type=bool, default=False, help="Make plots with inverted colors - BW")
     parser.add_argument('--viz_wind_reg', type=bool, default=False, help='Visualize wind regression. Fit a line from neural activity to wind direction, and animate the prediction error')
+    parser.add_argument('--viz_sensory_angles', type=bool, default=False, help='Visualize sensory angles - only head direction and drift direction at the moment')
     parser.add_argument('--use_datasets', type=str,  nargs='+', 
                         default=['constantx5b5', 'switch45x5b5', 'noisy3x5b5'])
 
