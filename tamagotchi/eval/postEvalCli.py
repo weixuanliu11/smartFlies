@@ -231,7 +231,7 @@ if __name__ == "__main__":
     parser.add_argument('--birthxs', type=float, nargs='+', default=[None])
     parser.add_argument('--diffusionx',  type=float, default=1.0)
     parser.add_argument('--out_reldir', type=str, default='2_videos')
-    parser.add_argument('--invert_colors', type=bool, default=False)
+    parser.add_argument('--invert_colors', type=bool, default=False, help="Make plots with inverted colors - BW")
     parser.add_argument('--viz_wind_reg', type=bool, default=False, help='Visualize wind regression. Fit a line from neural activity to wind direction, and animate the prediction error')
     parser.add_argument('--use_datasets', type=str,  nargs='+', 
                         default=['constantx5b5', 'switch45x5b5', 'noisy3x5b5'])
