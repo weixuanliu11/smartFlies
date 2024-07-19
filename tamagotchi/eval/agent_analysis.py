@@ -238,7 +238,10 @@ def animate_single_episode(
             legend=legend,
             invert_colors=invert_colors
             )
-        
+        # release memory from matplotlib
+        fig.clf()
+        ax.cla()
+        plt.close()
     if skipped_frames > 0:
         print(f"Skipped {skipped_frames} out of {n_tvals} frames!")
     output_fnames = natsorted(output_fnames,reverse=False)
@@ -499,6 +502,10 @@ def animate_visual_feedback_angles_1episode(traj_df, outprefix, fprefix, episode
         ax.set_rticks([])
         plt.title('Allocentric head direction and course direction')
         plt.savefig(allocentric_fname, bbox_inches='tight')
+        # release memory from matplotlib
+        fig.clf()
+        ax.cla()
+        plt.close()
 
         # plot unit vector of angles in egocentric frame
         fig = plt.figure()
@@ -511,6 +518,10 @@ def animate_visual_feedback_angles_1episode(traj_df, outprefix, fprefix, episode
         plt.title('Egocentric head direction and course direction')
         ax.set_theta_zero_location("N")
         plt.savefig(egocentric_fname, bbox_inches='tight')
+        # release memory from matplotlib
+        fig.clf()
+        ax.cla()
+        plt.close()
 
     output_fnames = [] 
     for t_idx, df_current_time_step in traj_df.iterrows():    
@@ -625,6 +636,9 @@ def animate_prediction_error_1episode(reg, latent, ep_activity, traj_df, outpref
         plt.text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=14,
                 verticalalignment='top')
         plt.savefig(output_fname, bbox_inches='tight', dpi=300)
+        # release memory from matplotlib
+        fig.clf()
+        plt.close()
     # predict latent
     predictions = reg.predict(ep_activity)
     targets = traj_df[latent]

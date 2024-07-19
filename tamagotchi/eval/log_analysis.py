@@ -810,6 +810,10 @@ def animate_activity_1episode(ep_activity, traj_df, episode_idx,
         # plt.savefig(output_fname, bbox_inches='tight')
         # plt.subplots_adjust(left=0.05, right=0.8, top=0.95, bottom=0.05)
         plt.savefig(output_fname, bbox_inches='tight', pad_inches=0.3)
+        # release memory from matplotlib
+        fig.clf()
+        ax.cla()
+        plt.close()
         # plt.savefig(output_fname)
 
     output_fnames = natsorted(output_fnames,reverse=False)
