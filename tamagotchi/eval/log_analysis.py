@@ -803,6 +803,11 @@ def animate_activity_1episode(ep_activity, traj_df, episode_idx,
             ax.set_xlabel(f'PC1')
             ax.set_ylabel(f'PC2')
             ax.set_zlabel(f'PC3')
+        # # no ticks and truncated axis labels
+        # ax.tick_params(color='white', labelcolor='white')
+        # ax.set_xlabel(f'PC1')
+        # ax.set_ylabel(f'PC2')
+        # ax.set_zlabel(f'PC3')
 
         common_suffix = '_common' if pca_common is not None else '' 
         output_fname = f'{outprefix}/tmp/{fprefix}_pca{pca_dims}d{common_suffix}_ep{episode_idx}_step{t_idx:05d}.png'
