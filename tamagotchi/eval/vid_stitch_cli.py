@@ -72,7 +72,8 @@ def merge_trajectory_neural_clips(ftraj, fneural, feig, fsuffix):
         clip3 = VideoFileClip(feig).resize(height=clip2.size[1])
         clips = [[clip1, clip2, clip3]]
         fsuffix += "3p"        
-    final = clips_array(clips, bg_color=(255,255,255))
+    # final = clips_array(clips, bg_color=(0,0,0)) # 0,0,0 for black; 255,255,255 for white
+    final = clips_array(clips, bg_color=(255,255,255)) # 0,0,0 for black; 255,255,255 for white
         
     fname = fneural.replace('pca3d', fsuffix)
     print(fsuffix, fname)
