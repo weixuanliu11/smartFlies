@@ -10,6 +10,9 @@ services:
     # - ../smartFlies/.git/:/src/smartFlies/.git # Map .git folder into container
     deploy:
       resources:
+        limits:
+          cpus: '24'
+          memory: 32G
         reservations:
           devices:
           - driver: nvidia
