@@ -225,6 +225,8 @@ def post_eval(args):
                         ep_activity, 
                         fname_suffix=fname_suffix, 
                         outprefix=OUTPREFIX)
+                if args.viz_wind_reg:
+                    agent_analysis.animate_prediction_error_1episode(reg, 'wind_angle_ground_theta', ep_activity, traj_df, OUTPREFIX, fprefix, row['idx'])
 
             except Exception as e:
                 print(f"Exception: {e}", traceback.print_exc())
