@@ -677,15 +677,18 @@ def import_orthogonal_basis(fname):
     # generated from /src/JH_boilerplate/agent_evaluatiion/wind_encoding_perturbation/perturb_along_dim.ipynb
     # expected shape: (64 x64), where each row is a basis vector and the first row is the wind encoding subspace
     ortho_set = np.load(fname)
+    # check for orthogonality
+    assert(np.allclose(ortho_set, np.eye(64,64), atol=1e-2)), "The basis vectors failed the orthogonality set - check the loaded file"
+    
     return ortho_set
 
 
 def express_vec_as_sum_of_basis(v, basis):
     # express a vector v as a linear combination of basis vectors
     # returns the coefficients of the linear combination
+    # This arithmetic was verified in /src/JH_boilerplate/agent_evaluatiion/wind_encoding_perturbation/perturb_along_dim.ipynb
     coef = np.dot(v, basis.T) / np.dot(basis, basis.T)
-    coef = np.diagonal(coef)
-    return coef
+    return np.diagonal(coef)
 
 
 def generate_white_noise(rnn_dim=64, mean=0, sigma=0.1):
@@ -696,7 +699,7 @@ def generate_white_noise(rnn_dim=64, mean=0, sigma=0.1):
 def perturb_rnn_activity(rnn_activity, ortho_set, sigma=0.1, mode='subspace'):
     # perturb along the wind encoding dimension
     # generate white noise
-    noise = generate_white_noise(rnn_dim=64, sigma=sigma)
+    noise = generate_white_noise(sigma=sigma)
     # express the noise as a linear combination of the basis vectors
     coef = express_vec_as_sum_of_basis(noise, ortho_set)
     # perturb the rnn activity
