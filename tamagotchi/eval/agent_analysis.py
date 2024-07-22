@@ -666,3 +666,44 @@ def animate_prediction_error_1episode(reg, latent, ep_activity, traj_df, outpref
     for f in output_fnames:
         with contextlib.suppress(FileNotFoundError):
             os.remove(f)
+            
+            
+#######################################################################################
+### code for perturbing along a dimension of interest ###
+#######################################################################################
+
+def import_orthogonal_basis(fname):
+    # Example file: /src/data/wind_sensing/apparent_wind_visual_feedback/sw_dist_logstep_ALL_noisy_wind_0.001/eval/plume_951_23354e57874d619687478a539a360146/orthogonal_basis_with_wind_encoding_subspace_951.npy
+    # generated from /src/JH_boilerplate/agent_evaluatiion/wind_encoding_perturbation/perturb_along_dim.ipynb
+    # expected shape: (64 x64), where each row is a basis vector and the first row is the wind encoding subspace
+    ortho_set = np.load(fname)
+    return ortho_set
+
+
+def express_vec_as_sum_of_basis(v, basis):
+    # express a vector v as a linear combination of basis vectors
+    # returns the coefficients of the linear combination
+    coef = np.dot(v, basis.T) / np.dot(basis, basis.T)
+    coef = np.diagonal(coef)
+    return coef
+
+
+def generate_white_noise(rnn_dim=64, mean=0, sigma=0.1):
+    # generate white noise
+    return np.random.normal(mean, sigma, (1, rnn_dim)) # np.random.normal(0, std, (n_samples, n_features))
+
+
+def perturb_rnn_activity(rnn_activity, ortho_set, sigma=0.1, mode='subspace'):
+    # perturb along the wind encoding dimension
+    # generate white noise
+    noise = generate_white_noise(rnn_dim=64, sigma=sigma)
+    # express the noise as a linear combination of the basis vectors
+    coef = express_vec_as_sum_of_basis(noise, ortho_set)
+    # perturb the rnn activity
+    if mode == 'subspace':
+        rnn_activity_perturbed = rnn_activity + coef[0] * ortho_set[0]
+    elif mode == 'all':
+        rnn_activity_perturbed = rnn_activity + np.dot(coef, ortho_set)
+    else:
+        raise ValueError("mode should be 'subspace' or 'all'")
+    return rnn_activity_perturbed
