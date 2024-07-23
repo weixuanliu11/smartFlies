@@ -87,12 +87,13 @@ def evaluate_agent(actor_critic, env, args):
             venv.fixed_x = grid[i_episode, 2] # meters
             venv.fixed_time_offset = grid[i_episode, 3] # seconds
 
-        # recurrent_hidden_states = torch.zeros(1, 
-                    # actor_critic.recurrent_hidden_state_size, device='cpu')
         recurrent_hidden_states = torch.zeros(1, 
                     actor_critic.recurrent_hidden_state_size, device=args.device)
-        # masks = torch.zeros(1, 1, device='cpu')
         masks = torch.zeros(1, 1, device=args.device)
+        if args.perturb_along_subspace:
+            orthogonal_basis = agent_analysis.import_orthogonal_basis(args.perturb_along_subspace) # 64x64, where the first row is the wind encoding subspace
+            recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma=0.1, mode='subspace')
+            
         obs = env.reset()
 
         reward_sum = 0    
@@ -104,7 +105,6 @@ def evaluate_agent(actor_critic, env, args):
         infos = []
         activities = []
 
-
         while True:
             with torch.no_grad():
                 value, action, _, recurrent_hidden_states, activity = actor_critic.act(
@@ -112,7 +112,9 @@ def evaluate_agent(actor_critic, env, args):
                     recurrent_hidden_states, 
                     masks, 
                     deterministic=True)
-
+                if args.perturb_along_subspace:
+                    recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma=0.1, mode='subspace')
+                    
             obs, reward, done, info = env.step(action)
             masks.fill_(0.0 if done else 1.0)
 
@@ -145,14 +147,19 @@ def evaluate_agent(actor_critic, env, args):
             rewards.append( _reward )
             infos.append( [_info] )
             if args.device != 'cpu':
-                activities.append( {
-                    'rnn_hxs': activity['rnn_hxs'].to("cpu").numpy().squeeze(),
-                    'hx1_actor': activity['hx1_actor'].to("cpu").numpy().squeeze(),
-                    # 'hx1_critic': activity['hx1_critic'].detach().numpy().squeeze(), # don't care
-                    # 'hidden_actor': activity['hidden_actor'].detach().numpy().squeeze(), # don't care
-                    # 'hidden_critic': activity['hidden_critic'].detach().numpy().squeeze(), # don't care
-                    'value': activity['value'].to("cpu").numpy().squeeze(),
-                } )
+                if args.perturb_along_subspace:
+                    activities.append( {
+                        'rnn_hxs': activity['rnn_hxs'].to("cpu").numpy().squeeze(), # returned from a2c_ppo_acktr.model.MLPBase.forward; a copy of the hidden states
+                        'rnn_hxs_perturbed': recurrent_hidden_states.to("cpu").numpy().squeeze(), # recurrent_hidden_states object has been perturbed 
+                        'hx1_actor': activity['hx1_actor'].to("cpu").numpy().squeeze(),
+                        'value': activity['value'].to("cpu").numpy().squeeze(),
+                    } )
+                else:
+                    activities.append( {
+                        'rnn_hxs': activity['rnn_hxs'].to("cpu").numpy().squeeze(), # returned from a2c_ppo_acktr.model.MLPBase.forward; a copy of the hidden states
+                        'hx1_actor': activity['hx1_actor'].to("cpu").numpy().squeeze(),
+                        'value': activity['value'].to("cpu").numpy().squeeze(),
+                    } )
             else:
                 activities.append( {
                     'rnn_hxs': activity['rnn_hxs'].detach().numpy().squeeze(),
