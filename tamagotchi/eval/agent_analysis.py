@@ -13,6 +13,7 @@ from natsort import natsorted
 import contextlib
 import os
 import tqdm
+import torch
 
 ######################################################################################
 ### Helper functions ###
@@ -679,7 +680,8 @@ def import_orthogonal_basis(fname):
     # expected shape: (64 x64), where each row is a basis vector and the first row is the wind encoding subspace
     ortho_set = np.load(fname)
     # check for orthogonality
-    assert(np.allclose(ortho_set, np.eye(64,64), atol=1e-2)), "The basis vectors failed the orthogonality set - check the loaded file"
+    dot_product = np.dot(ortho_set, ortho_set.T)
+    assert(np.allclose(dot_product, np.eye(64,64), atol=1e-2)), "The basis vectors failed the orthogonality set - check the loaded file"
     
     return ortho_set
 
@@ -693,7 +695,7 @@ def express_vec_as_sum_of_basis(v, basis):
 
 
 def generate_white_noise(rnn_dim=64, mean=0, sigma=0.1):
-    # generate white noise
+    # generate white noise: np.ndarray 1 x rnn_dim
     return np.random.normal(mean, sigma, (1, rnn_dim)) # np.random.normal(0, std, (n_samples, n_features))
 
 
@@ -705,9 +707,11 @@ def perturb_rnn_activity(rnn_activity, ortho_set, sigma=0.1, mode='subspace'):
     coef = express_vec_as_sum_of_basis(noise, ortho_set)
     # perturb the rnn activity
     if mode == 'subspace':
-        rnn_activity_perturbed = rnn_activity + coef[0] * ortho_set[0]
+        perturb_by = coef[0] * ortho_set[0] # first row is the wind encoding subspace
     elif mode == 'all':
-        rnn_activity_perturbed = rnn_activity + np.dot(coef, ortho_set)
+        perturb_by = noise # equivalent to perturbing along all dimensions: np.dot(coef, ortho_set)
     else:
         raise ValueError("mode should be 'subspace' or 'all'")
-    return rnn_activity_perturbed
+    perturb_by = torch.from_numpy(perturb_by)
+    perturb_by = perturb_by.to(rnn_activity.device.type)
+    return rnn_activity + perturb_by
