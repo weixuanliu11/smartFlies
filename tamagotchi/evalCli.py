@@ -209,8 +209,11 @@ def eval_loop(args, actor_critic, test_sparsity=True):
         for key, value in defaults.items():
             if not hasattr(args, key):
                 setattr(args, key, value)
-        vecNormalize_pkl_file = args.model_fname.replace('.pt', '_vecNormalize.pkl')
-        kwargs = {'vecNormalize_pkl_file': vecNormalize_pkl_file, 'eval': True} # init settings file path and mode eval to be true 
+        if not args.no_vec_norm_stats:
+            vecNormalize_pkl_file = args.model_fname.replace('.pt', '_vecNormalize.pkl')
+            kwargs = {'vecNormalize_pkl_file': vecNormalize_pkl_file, 'eval': True} # init settings file path and mode eval to be true 
+        else:
+            kwargs = {}
         #### ------- Nonsparse ------- #### 
         env = make_vec_envs(
             args.env_name,
@@ -376,6 +379,8 @@ if __name__ == "__main__":
     parser.add_argument('--apparent_wind', type=bool, default=False)
     parser.add_argument('--visual_feedback', type=bool, default=False)
     parser.add_argument('--flip_ventral_optic_flow', type=bool, default=False) # for eval to see the behavioral impact of flipping course direction perception.
+    parser.add_argument('--perturb_along_subspace', type=str, default=None, help='a file that stores a orthogonal basis, where the first vector is the wind encoding subspace')
+    parser.add_argument('--no_vec_norm_stats', action='store_true', default=False, help='an agent that is trained without storing vecNormalize stats, or did not use it during training')
     parser.add_argument('--out_dir', type=str, default='eval')
 
 
