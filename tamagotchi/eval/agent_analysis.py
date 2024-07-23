@@ -595,6 +595,7 @@ def fit_regression_from_neural_activity_to_latent(eval_log_pkl_df: pd.DataFrame,
     X = stacked_neural_activity[ ~Y.isna() ]
     Y = Y[ ~Y.isna() ]
     reg = sklearn.linear_model.LinearRegression().fit(X, Y)
+    print("R2 score:", reg.score(X, Y))
     return reg
     
     
