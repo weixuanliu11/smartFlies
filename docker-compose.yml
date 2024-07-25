@@ -1,6 +1,6 @@
 version: "3.9" # Docker-compose version, just using the latest for now
 services: 
-  tamagotchi: # Name of the service, can be whatever you want
+  tamagotchi_dev_container: # Name of the service, can be whatever you want
     build: # The . here is similar to the docker build . which specifiy the context in which to build the docker image under
       context: .
     volumes:

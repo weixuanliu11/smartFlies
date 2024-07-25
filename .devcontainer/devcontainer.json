@@ -3,7 +3,7 @@
 {
 	"name": "Existing Dockerfile",
 	"dockerComposeFile": "../docker-compose.yml",
-    "service": "tamagotchi",
+    "service": "tamagotchi_dev_container",
 	"workspaceFolder": "/src",
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
