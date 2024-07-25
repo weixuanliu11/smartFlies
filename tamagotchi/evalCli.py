@@ -92,7 +92,7 @@ def evaluate_agent(actor_critic, env, args):
         masks = torch.zeros(1, 1, device=args.device)
         if args.perturb_along_subspace:
             orthogonal_basis = agent_analysis.import_orthogonal_basis(args.perturb_along_subspace) # 64x64, where the first row is the wind encoding subspace
-            recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma=0.1, mode='subspace')
+            recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma=0.01, mode='subspace')
             
         obs = env.reset()
 

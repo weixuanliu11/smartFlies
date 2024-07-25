@@ -694,15 +694,13 @@ def express_vec_as_sum_of_basis(v, basis):
     return np.diagonal(coef)
 
 
-def generate_white_noise(rnn_dim=64, mean=0, sigma=0.1):
+def generate_white_noise(sigma, rnn_dim=64, mean=0):
     # generate white noise: np.ndarray 1 x rnn_dim
     return np.random.normal(mean, sigma, (1, rnn_dim)) # np.random.normal(0, std, (n_samples, n_features))
-
-
-def perturb_rnn_activity(rnn_activity, ortho_set, sigma=0.1, mode='subspace'):
+def perturb_rnn_activity(rnn_activity, ortho_set, sigma, mode='subspace'):
     # perturb along the wind encoding dimension
     # generate white noise
-    noise = generate_white_noise(sigma=sigma)
+    noise = generate_white_noise(sigma) # 0.01 by default, per variance in the wind encoding subspace of 951
     # express the noise as a linear combination of the basis vectors
     coef = express_vec_as_sum_of_basis(noise, ortho_set)
     # perturb the rnn activity
@@ -713,5 +711,5 @@ def perturb_rnn_activity(rnn_activity, ortho_set, sigma=0.1, mode='subspace'):
     else:
         raise ValueError("mode should be 'subspace' or 'all'")
     perturb_by = torch.from_numpy(perturb_by)
-    perturb_by = perturb_by.to(rnn_activity.device.type)
+    perturb_by = perturb_by.to(device=rnn_activity.device.type, dtype=torch.float32)
     return rnn_activity + perturb_by
