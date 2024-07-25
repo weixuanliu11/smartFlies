@@ -386,7 +386,8 @@ def get_traj_df_tmp(episode_log,
     seed: int = None,
     ) -> pd.DataFrame:
     '''
-    A temporary version that calculates ego_course_direction from info instead of using from observations.
+    A temporary version that calculates ego_course_direction from info instead of using from observations, and gets agent_angle from info instead of observations. 
+    This is used for agent 951 analyses because the sensory observations have been normalized by the VecNormalize filter. Need to plot with the raw observations which were saved before normalization.
     
     Generate a trajectory DataFrame from an episode log.
 
