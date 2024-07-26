@@ -40,7 +40,7 @@ def vec2rad_norm_by_pi(x, y):
     """
     return np.angle( x + 1j*y, deg=False )/np.pi # note div by np.pi!
 
-def shift_scale_theta(theta):
+def rad_over_pi_shift2_01(theta):
     """
     input: between -1 (-180-deg) and +1 (+180 deg)
     output: between 0 (-180-deg) and +1 (+180 deg)
@@ -226,26 +226,26 @@ def get_traj_df(episode_log,
     
     # write wind observation into df
     obs['wind_theta_obs'] = obs.apply(lambda row: vec2rad_norm_by_pi(row['wind_x'], row['wind_y']), axis=1)
-    traj_df['wind_theta_obs'] = shift_scale_theta(obs['wind_theta_obs'])
+    traj_df['wind_theta_obs'] = rad_over_pi_shift2_01(obs['wind_theta_obs'])
     traj_df['wind_x_obs'] = obs['wind_x']
     traj_df['wind_y_obs'] = obs['wind_y']
     # write agent angle observation into df
-    agent_angle_theta = shift_scale_theta(obs.apply(lambda row: vec2rad_norm_by_pi(row['agent_angle_x'], row['agent_angle_y']), axis=1))
+    agent_angle_theta = rad_over_pi_shift2_01(obs.apply(lambda row: vec2rad_norm_by_pi(row['agent_angle_x'], row['agent_angle_y']), axis=1))
     traj_df['agent_angle_x'] = obs['agent_angle_x']
     traj_df['agent_angle_y'] = obs['agent_angle_y']
     traj_df['agent_angle_theta'] = agent_angle_theta
     # get from info, instead of obs
-    traj_df['agent_angle_ground_theta'] = [ shift_scale_theta( 
+    traj_df['agent_angle_ground_theta'] = [ rad_over_pi_shift2_01( 
         vec2rad_norm_by_pi(record[0]['angle'][0], record[0]['angle'][1]) ) \
         for record in episode_log['infos']]
     # write course direction observation into df
-    ego_course_direction_theta = shift_scale_theta(obs.apply(lambda row: vec2rad_norm_by_pi(row['ego_course_direction_x'], row['ego_course_direction_y']), axis=1))
+    ego_course_direction_theta = rad_over_pi_shift2_01(obs.apply(lambda row: vec2rad_norm_by_pi(row['ego_course_direction_x'], row['ego_course_direction_y']), axis=1))
     traj_df['ego_course_direction_x'] = obs['ego_course_direction_x']
     traj_df['ego_course_direction_y'] = obs['ego_course_direction_y']
     traj_df['ego_course_direction_theta'] = ego_course_direction_theta
     
     # get true wind info from info
-    traj_df['wind_angle_ground_theta'] = [ shift_scale_theta( 
+    traj_df['wind_angle_ground_theta'] = [ rad_over_pi_shift2_01( 
         vec2rad_norm_by_pi(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
     traj_df['wind_angle_ground_x'] = [ record[0]['ambient_wind'][0] for record in episode_log['infos']]
     traj_df['wind_angle_ground_y'] = [ record[0]['ambient_wind'][1] for record in episode_log['infos']]
@@ -403,13 +403,13 @@ def get_traj_df_tmp(episode_log,
     
     # write wind observation into df
     obs['wind_theta_obs'] = obs.apply(lambda row: vec2rad_norm_by_pi(row['wind_x'], row['wind_y']), axis=1)
-    traj_df['wind_theta_obs'] = shift_scale_theta(obs['wind_theta_obs'])
+    traj_df['wind_theta_obs'] = rad_over_pi_shift2_01(obs['wind_theta_obs'])
     traj_df['wind_x_obs'] = obs['wind_x']
     traj_df['wind_y_obs'] = obs['wind_y']
     # calc agent angle observation from info 
     traj_df['agent_angle_x'] = [ record[0]['angle'][0] for record in episode_log['infos']]
     traj_df['agent_angle_y'] = [ record[0]['angle'][1] for record in episode_log['infos']]
-    traj_df['agent_angle_ground_theta'] = [ shift_scale_theta( 
+    traj_df['agent_angle_ground_theta'] = [ rad_over_pi_shift2_01( 
         vec2rad_norm_by_pi(record[0]['angle'][0], record[0]['angle'][1]) ) \
         for record in episode_log['infos']]
     # calculate course direction from info
@@ -419,12 +419,12 @@ def get_traj_df_tmp(episode_log,
     allocentric_head_direction_radian = [np.angle(record[0]['angle'][0] + 1j*record[0]['angle'][1], deg=False) for record in episode_log['infos']] 
     egocentric_course_direction_radian = np.array(allocentric_course_direction_radian) - np.array(allocentric_head_direction_radian) # leftward positive - standard CWW convention
     ego_course_direction_x, ego_course_direction_y = np.cos(egocentric_course_direction_radian), np.sin(egocentric_course_direction_radian)
-    egocentric_course_direction_theta = [shift_scale_theta(r) for r in egocentric_course_direction_radian]
+    egocentric_course_direction_theta = [rad_over_pi_shift2_01(r) for r in egocentric_course_direction_radian]
     traj_df['ego_course_direction_x'] = ego_course_direction_x
     traj_df['ego_course_direction_y'] = ego_course_direction_y
     traj_df['ego_course_direction_theta'] = egocentric_course_direction_theta
     # get true wind info from info
-    traj_df['wind_angle_ground_theta'] = [ shift_scale_theta( 
+    traj_df['wind_angle_ground_theta'] = [ rad_over_pi_shift2_01( 
         vec2rad_norm_by_pi(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
     traj_df['wind_angle_ground_x'] = [ record[0]['ambient_wind'][0] for record in episode_log['infos']]
     traj_df['wind_angle_ground_y'] = [ record[0]['ambient_wind'][1] for record in episode_log['infos']]
