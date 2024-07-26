@@ -369,7 +369,7 @@ def visualize_episodes_metadata(episode_logs, zoom=1, outprefix=None):
         obs = [ x[0] for x in episode_logs[episode_idx]['observations'] ]
         obs = pd.DataFrame(obs)
         obs.columns = ['wind_x', 'wind_y', 'odor']
-        obs['wind_theta'] = obs.apply(lambda row: wind_xy_to_theta(row['wind_x'], row['wind_y']), axis=1)
+        obs['wind_theta'] = obs.apply(lambda row: vec2rad_norm_by_pi(row['wind_x'], row['wind_y']), axis=1)
         # axs = obs.loc[:,['wind_theta','odor']].plot(subplots=True, figsize=(10,4), title='Observations over time')
         # axs[-1].set_xlabel("Timesteps")
 
@@ -416,14 +416,14 @@ def get_samples(agent, N=1000, off_plume=False):
 
 
 # Add a wind_theta column
-def wind_xy_to_theta(x, y):
+def vec2rad_norm_by_pi(x, y):
     return np.angle( x + 1j*y, deg=False )/np.pi # note div by np.pi!
 
 def get_sample_df(agent, N=1000, off_plume=False):
     samples = get_samples(agent, N, off_plume)
     sample_df = pd.DataFrame(samples)
     sample_df.columns = ['wind_x', 'wind_y', 'odor', 'step', 'turn']
-    sample_df['wind_theta'] = sample_df.apply(lambda row: wind_xy_to_theta(row['wind_x'], row['wind_y']), axis=1)
+    sample_df['wind_theta'] = sample_df.apply(lambda row: vec2rad_norm_by_pi(row['wind_x'], row['wind_y']), axis=1)
     return sample_df
 
 def visualize_policy_from_samples(sample_df, outprefix=None):
@@ -449,7 +449,7 @@ def get_obs_act_for_episode(episode, plot=True, stacked=True):
     if stacked: # Stacked models
         obs = obs.iloc[:, -3:]
     obs.columns = ['wind_x', 'wind_y', 'odor']
-    obs['wind_theta'] = obs.apply(lambda row: wind_xy_to_theta(row['wind_x'], row['wind_y']), axis=1)
+    obs['wind_theta'] = obs.apply(lambda row: vec2rad_norm_by_pi(row['wind_x'], row['wind_y']), axis=1)
     act = [ x[0] for x in episode['actions'] ]
     act = pd.DataFrame(act)
     act.columns = ['step', 'turn']

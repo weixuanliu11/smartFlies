@@ -22,21 +22,21 @@ import tqdm
 
 ODOR_THRESHOLD = config.env['odor_threshold']
 
-def wind_xy_to_theta(x, y):
+def vec2rad_norm_by_pi(x, y):
     """
     # https://physicsclassroom.com/mmedia/vectors/vd.cfm#:~:text=The%20convention%20upon%20which%20we,of%20rotation%20from%20due%20east.
     Standard CCW notation, centered at 0
     Returns +1 is +180-deg, and -0.999 is -180-deg 
-    wind_xy_to_theta(0,0) # 0.0
-    wind_xy_to_theta(1,0) # 0.0
-    wind_xy_to_theta(1,1) # 0.25
-    wind_xy_to_theta(0,1) # 0.5
-    wind_xy_to_theta(-1,1) # 0.75
-    wind_xy_to_theta(-1,0) # 1.0
-    wind_xy_to_theta(-1,-0.01) # -0.997 
-    wind_xy_to_theta(-1,-1) # -0.75
-    wind_xy_to_theta(0,-1) # -0.5
-    wind_xy_to_theta(+1,-1) # -0.25
+    vec2rad_norm_by_pi(0,0) # 0.0
+    vec2rad_norm_by_pi(1,0) # 0.0
+    vec2rad_norm_by_pi(1,1) # 0.25
+    vec2rad_norm_by_pi(0,1) # 0.5
+    vec2rad_norm_by_pi(-1,1) # 0.75
+    vec2rad_norm_by_pi(-1,0) # 1.0
+    vec2rad_norm_by_pi(-1,-0.01) # -0.997 
+    vec2rad_norm_by_pi(-1,-1) # -0.75
+    vec2rad_norm_by_pi(0,-1) # -0.5
+    vec2rad_norm_by_pi(+1,-1) # -0.25
     """
     return np.angle( x + 1j*y, deg=False )/np.pi # note div by np.pi!
 
@@ -225,28 +225,28 @@ def get_traj_df(episode_log,
         obs.columns = ['wind_x', 'wind_y', 'odor', 'agent_angle_x', 'agent_angle_y', 'ego_course_direction_x', 'ego_course_direction_y']
     
     # write wind observation into df
-    obs['wind_theta_obs'] = obs.apply(lambda row: wind_xy_to_theta(row['wind_x'], row['wind_y']), axis=1)
+    obs['wind_theta_obs'] = obs.apply(lambda row: vec2rad_norm_by_pi(row['wind_x'], row['wind_y']), axis=1)
     traj_df['wind_theta_obs'] = shift_scale_theta(obs['wind_theta_obs'])
     traj_df['wind_x_obs'] = obs['wind_x']
     traj_df['wind_y_obs'] = obs['wind_y']
     # write agent angle observation into df
-    agent_angle_theta = shift_scale_theta(obs.apply(lambda row: wind_xy_to_theta(row['agent_angle_x'], row['agent_angle_y']), axis=1))
+    agent_angle_theta = shift_scale_theta(obs.apply(lambda row: vec2rad_norm_by_pi(row['agent_angle_x'], row['agent_angle_y']), axis=1))
     traj_df['agent_angle_x'] = obs['agent_angle_x']
     traj_df['agent_angle_y'] = obs['agent_angle_y']
     traj_df['agent_angle_theta'] = agent_angle_theta
     # get from info, instead of obs
     traj_df['agent_angle_ground_theta'] = [ shift_scale_theta( 
-        wind_xy_to_theta(record[0]['angle'][0], record[0]['angle'][1]) ) \
+        vec2rad_norm_by_pi(record[0]['angle'][0], record[0]['angle'][1]) ) \
         for record in episode_log['infos']]
     # write course direction observation into df
-    ego_course_direction_theta = shift_scale_theta(obs.apply(lambda row: wind_xy_to_theta(row['ego_course_direction_x'], row['ego_course_direction_y']), axis=1))
+    ego_course_direction_theta = shift_scale_theta(obs.apply(lambda row: vec2rad_norm_by_pi(row['ego_course_direction_x'], row['ego_course_direction_y']), axis=1))
     traj_df['ego_course_direction_x'] = obs['ego_course_direction_x']
     traj_df['ego_course_direction_y'] = obs['ego_course_direction_y']
     traj_df['ego_course_direction_theta'] = ego_course_direction_theta
     
     # get true wind info from info
     traj_df['wind_angle_ground_theta'] = [ shift_scale_theta( 
-        wind_xy_to_theta(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
+        vec2rad_norm_by_pi(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
     traj_df['wind_angle_ground_x'] = [ record[0]['ambient_wind'][0] for record in episode_log['infos']]
     traj_df['wind_angle_ground_y'] = [ record[0]['ambient_wind'][1] for record in episode_log['infos']]
     traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0]['ambient_wind']) for record in episode_log['infos']]
@@ -402,7 +402,7 @@ def get_traj_df_tmp(episode_log,
         obs.columns = ['wind_x', 'wind_y', 'odor', 'agent_angle_x', 'agent_angle_y', 'ego_course_direction_x', 'ego_course_direction_y']
     
     # write wind observation into df
-    obs['wind_theta_obs'] = obs.apply(lambda row: wind_xy_to_theta(row['wind_x'], row['wind_y']), axis=1)
+    obs['wind_theta_obs'] = obs.apply(lambda row: vec2rad_norm_by_pi(row['wind_x'], row['wind_y']), axis=1)
     traj_df['wind_theta_obs'] = shift_scale_theta(obs['wind_theta_obs'])
     traj_df['wind_x_obs'] = obs['wind_x']
     traj_df['wind_y_obs'] = obs['wind_y']
@@ -410,10 +410,11 @@ def get_traj_df_tmp(episode_log,
     traj_df['agent_angle_x'] = [ record[0]['angle'][0] for record in episode_log['infos']]
     traj_df['agent_angle_y'] = [ record[0]['angle'][1] for record in episode_log['infos']]
     traj_df['agent_angle_ground_theta'] = [ shift_scale_theta( 
-        wind_xy_to_theta(record[0]['angle'][0], record[0]['angle'][1]) ) \
+        vec2rad_norm_by_pi(record[0]['angle'][0], record[0]['angle'][1]) ) \
         for record in episode_log['infos']]
     # calculate course direction from info
     allo_ground_velocity  = [record[0]['ground_velocity'] for record in episode_log['infos']]
+    # same calc as vec2rad_norm_by_pi, except do not normalize by pi
     allocentric_course_direction_radian = [np.angle(gv[0] + 1j*gv[1], deg=False) for gv in allo_ground_velocity]
     allocentric_head_direction_radian = [np.angle(record[0]['angle'][0] + 1j*record[0]['angle'][1], deg=False) for record in episode_log['infos']] 
     egocentric_course_direction_radian = np.array(allocentric_course_direction_radian) - np.array(allocentric_head_direction_radian) # leftward positive - standard CWW convention
@@ -424,7 +425,7 @@ def get_traj_df_tmp(episode_log,
     traj_df['ego_course_direction_theta'] = egocentric_course_direction_theta
     # get true wind info from info
     traj_df['wind_angle_ground_theta'] = [ shift_scale_theta( 
-        wind_xy_to_theta(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
+        vec2rad_norm_by_pi(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
     traj_df['wind_angle_ground_x'] = [ record[0]['ambient_wind'][0] for record in episode_log['infos']]
     traj_df['wind_angle_ground_y'] = [ record[0]['ambient_wind'][1] for record in episode_log['infos']]
     traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0]['ambient_wind']) for record in episode_log['infos']]
