@@ -174,35 +174,6 @@ def get_regimes(traj_df, outcome, RECOVER_MIN=12, RECOVER_MAX=25, seed=None):
     # Warm-up in RECOVER
     traj_df['regime'].iloc[:RECOVER_MIN] = 'RECOVER' 
 
-    # for i in range(traj_df.shape[0]):
-    #     last_enc_i = traj_df['odor_lastenc'][i] 
-    #     if last_enc_i <= RECOVER_MAX and last_enc_i >= RECOVER_MIN:
-    #         idx_start = i - last_enc_i + RECOVER_MIN # 
-    #         traj_df['regime'].iloc[ idx_start : i  ] = 'RECOVER'
-
-    # idx = traj_df.shape[0]
-    # while idx > 0:
-    #     if traj_df['odor_lastenc'][idx] >= RECOVER_MAX:
-
-    #         traj_df['regime'].iloc[ idx - traj_df['odor_lastenc'][idx] : idx] = 'RECOVER'
-
-    # for i in range(traj_df.shape[0]):
-    #     if traj_df['odor_lastenc'][i] >= RECOVER_MAX:
-    #         traj_df['regime'].iloc[ i - traj_df['odor_lastenc'][i] : i] = 'RECOVER'
-
-
-    # if traj_df['odor_01'][0] == 0:
-    # traj_df['regime'].iloc[:RECOVER_MIN] = 'WARMUP'
-
-    # RECOVER: First mark all off-plume times as RECOVER
-    # traj_df['regime'].loc[ traj_df['odor_01'] == 0 ] = 'RECOVER'
-    # for i in range(traj_df.shape[0]):
-    #     if traj_df['odor_01'][i] == 0:
-    #         traj_df['regime'].iloc[i] = 'RECOVER'
-    #     else:
-    #         break
-
-
     return traj_df['regime']
 
 def get_traj_df(episode_log, 
@@ -213,6 +184,12 @@ def get_traj_df(episode_log,
     ) -> pd.DataFrame:
     '''
     Generate a trajectory DataFrame from an episode log.
+    The following variables are extracted from obs. Only should do this when obs is not normalized.
+        wind_theta_obs
+        agent_angle_theta
+        ego_course_direction_theta
+        
+        Note: normalized inputs may be relevant for fitting LDS. Leave obs as normalized and read from infos in future. 
 
     Parameters:
     - episode_log (dict): The episode log containing trajectory data.
@@ -257,12 +234,23 @@ def get_traj_df(episode_log,
     traj_df['agent_angle_x'] = obs['agent_angle_x']
     traj_df['agent_angle_y'] = obs['agent_angle_y']
     traj_df['agent_angle_theta'] = agent_angle_theta
+    # get from info, instead of obs
+    traj_df['agent_angle_ground_theta'] = [ shift_scale_theta( 
+        wind_xy_to_theta(record[0]['angle'][0], record[0]['angle'][1]) ) \
+        for record in episode_log['infos']]
     # write course direction observation into df
     ego_course_direction_theta = shift_scale_theta(obs.apply(lambda row: wind_xy_to_theta(row['ego_course_direction_x'], row['ego_course_direction_y']), axis=1))
     traj_df['ego_course_direction_x'] = obs['ego_course_direction_x']
     traj_df['ego_course_direction_y'] = obs['ego_course_direction_y']
     traj_df['ego_course_direction_theta'] = ego_course_direction_theta
     
+    # get true wind info from info
+    traj_df['wind_angle_ground_theta'] = [ shift_scale_theta( 
+        wind_xy_to_theta(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
+    traj_df['wind_angle_ground_x'] = [ record[0]['ambient_wind'][0] for record in episode_log['infos']]
+    traj_df['wind_angle_ground_y'] = [ record[0]['ambient_wind'][1] for record in episode_log['infos']]
+    traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0]['ambient_wind']) for record in episode_log['infos']]
+
     act = episode_log['actions'] 
     act = pd.DataFrame(act)
     if squash_action:
@@ -296,18 +284,7 @@ def get_traj_df(episode_log,
     ### REGIMEs
     outcome = episode_log['infos'][-1][0]['done'] 
     traj_df['regime'] = get_regimes(traj_df, outcome, seed=seed)
-    ###
-
-    # Other
-    traj_df['agent_angle_ground_theta'] = [ shift_scale_theta( 
-        wind_xy_to_theta(record[0]['angle'][0], record[0]['angle'][1]) ) \
-        for record in episode_log['infos']]
-    traj_df['wind_angle_ground_theta'] = [ shift_scale_theta( 
-        wind_xy_to_theta(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
-    traj_df['wind_angle_ground_x'] = [ record[0]['ambient_wind'][0] for record in episode_log['infos']]
-    traj_df['wind_angle_ground_y'] = [ record[0]['ambient_wind'][1] for record in episode_log['infos']]
-    traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0]['ambient_wind']) for record in episode_log['infos']]
-
+    ##
 
     if extended_metadata:
         traj_df['t_val_norm'] = rescale_col(traj_df['t_val'], vmax=12) # 300/25 steps/fps
@@ -432,7 +409,9 @@ def get_traj_df_tmp(episode_log,
     # calc agent angle observation from info 
     traj_df['agent_angle_x'] = [ record[0]['angle'][0] for record in episode_log['infos']]
     traj_df['agent_angle_y'] = [ record[0]['angle'][1] for record in episode_log['infos']]
-    
+    traj_df['agent_angle_ground_theta'] = [ shift_scale_theta( 
+        wind_xy_to_theta(record[0]['angle'][0], record[0]['angle'][1]) ) \
+        for record in episode_log['infos']]
     # calculate course direction from info
     allo_ground_velocity  = [record[0]['ground_velocity'] for record in episode_log['infos']]
     allocentric_course_direction_radian = [np.angle(gv[0] + 1j*gv[1], deg=False) for gv in allo_ground_velocity]
@@ -443,8 +422,13 @@ def get_traj_df_tmp(episode_log,
     traj_df['ego_course_direction_x'] = ego_course_direction_x
     traj_df['ego_course_direction_y'] = ego_course_direction_y
     traj_df['ego_course_direction_theta'] = egocentric_course_direction_theta
+    # get true wind info from info
+    traj_df['wind_angle_ground_theta'] = [ shift_scale_theta( 
+        wind_xy_to_theta(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
+    traj_df['wind_angle_ground_x'] = [ record[0]['ambient_wind'][0] for record in episode_log['infos']]
+    traj_df['wind_angle_ground_y'] = [ record[0]['ambient_wind'][1] for record in episode_log['infos']]
+    traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0]['ambient_wind']) for record in episode_log['infos']]
 
-    
     act = episode_log['actions'] 
     act = pd.DataFrame(act)
     if squash_action:
@@ -479,17 +463,6 @@ def get_traj_df_tmp(episode_log,
     outcome = episode_log['infos'][-1][0]['done'] 
     traj_df['regime'] = get_regimes(traj_df, outcome, seed=seed)
     ###
-
-    # Other
-    traj_df['agent_angle_ground_theta'] = [ shift_scale_theta( 
-        wind_xy_to_theta(record[0]['angle'][0], record[0]['angle'][1]) ) \
-        for record in episode_log['infos']]
-    traj_df['wind_angle_ground_theta'] = [ shift_scale_theta( 
-        wind_xy_to_theta(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
-    traj_df['wind_angle_ground_x'] = [ record[0]['ambient_wind'][0] for record in episode_log['infos']]
-    traj_df['wind_angle_ground_y'] = [ record[0]['ambient_wind'][1] for record in episode_log['infos']]
-    traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0]['ambient_wind']) for record in episode_log['infos']]
-
 
     if extended_metadata:
         traj_df['t_val_norm'] = rescale_col(traj_df['t_val'], vmax=12) # 300/25 steps/fps
