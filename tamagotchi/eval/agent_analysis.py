@@ -491,6 +491,7 @@ def animate_visual_feedback_angles_1episode(traj_df, outprefix, fprefix, episode
         egocentric_fname = output_fname.replace('.png', '_egocentric.png')
         # get visual feedback angles
         allo_head_direction_theta = np.angle(df_current_time_step['agent_angle_x'] + 1j*df_current_time_step['agent_angle_y'], deg=False)
+        print(f"[NOTE] ego_course_direction_theta is assumed to be flipped by pi for the current implementation. Please check if this is the case for your data. This function is calculating ego_course_direction_theta from scatch.", flush=True)
         ego_course_direction_theta = np.angle(df_current_time_step['ego_course_direction_x'] + 1j*df_current_time_step['ego_course_direction_y'], deg=False) - np.pi # subtract pi because currently the ground velocity calculation is flipped
 
         # plot unit vector of angles in allocentric frame
