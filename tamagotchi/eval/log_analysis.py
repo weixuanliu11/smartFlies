@@ -419,7 +419,7 @@ def get_traj_df_tmp(episode_log,
     allocentric_head_direction_radian = [np.angle(record[0]['angle'][0] + 1j*record[0]['angle'][1], deg=False) for record in episode_log['infos']] 
     egocentric_course_direction_radian = np.array(allocentric_course_direction_radian) - np.array(allocentric_head_direction_radian) # leftward positive - standard CWW convention
     ego_course_direction_x, ego_course_direction_y = np.cos(egocentric_course_direction_radian), np.sin(egocentric_course_direction_radian)
-    egocentric_course_direction_theta = [rad_over_pi_shift2_01(r) for r in egocentric_course_direction_radian]
+    egocentric_course_direction_theta = [rad_over_pi_shift2_01(r / np.pi) for r in egocentric_course_direction_radian] # normalize by pi and then shift to 0-1
     traj_df['ego_course_direction_x'] = ego_course_direction_x
     traj_df['ego_course_direction_y'] = ego_course_direction_y
     traj_df['ego_course_direction_theta'] = egocentric_course_direction_theta
