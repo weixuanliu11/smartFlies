@@ -698,14 +698,15 @@ def express_vec_as_sum_of_basis(v, basis):
 def generate_white_noise(sigma, rnn_dim=64, mean=0):
     # generate white noise: np.ndarray 1 x rnn_dim
     return np.random.normal(mean, sigma, (1, rnn_dim)) # np.random.normal(0, std, (n_samples, n_features))
-def perturb_rnn_activity(rnn_activity, ortho_set, sigma, mode='subspace'):
-    # perturb along the wind encoding dimension
+
+
+def perturb_rnn_activity(rnn_activity, ortho_set, sigma, mode):
     # generate white noise
     noise = generate_white_noise(sigma) # 0.01 by default, per variance in the wind encoding subspace of 951
-    # express the noise as a linear combination of the basis vectors
-    coef = express_vec_as_sum_of_basis(noise, ortho_set)
     # perturb the rnn activity
     if mode == 'subspace':
+        # express the noise as a linear combination of the basis vectors
+        coef = express_vec_as_sum_of_basis(noise, ortho_set)
         perturb_by = coef[0] * ortho_set[0] # first row is the wind encoding subspace
     elif mode == 'all':
         perturb_by = noise # equivalent to perturbing along all dimensions: np.dot(coef, ortho_set)
