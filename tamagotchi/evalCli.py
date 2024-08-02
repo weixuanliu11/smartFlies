@@ -92,9 +92,18 @@ def evaluate_agent(actor_critic, env, args):
         masks = torch.zeros(1, 1, device=args.device)
         if args.perturb_along_subspace:
             sigma_noise = 0.01
-            orthogonal_basis = agent_analysis.import_orthogonal_basis(args.perturb_along_subspace) # 64x64, where the first row is the wind encoding subspace
-            recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma=sigma_noise, mode='subspace')
-            
+            if os.path.isfile(args.perturb_along_subspace):
+                print(f"Loading orthogonal basis from {args.perturb_along_subspace}, and perturbing hidden states with noise {sigma_noise}")
+                orthogonal_basis = agent_analysis.import_orthogonal_basis(args.perturb_along_subspace) # 64x64, where the first row is the wind encoding subspace
+                recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma_noise, 'subspace')
+            elif args.perturb_along_subspace == 'all':
+                print(f"Perturbing all hidden states with noise {sigma_noise}")
+                orthogonal_basis='dummy'
+                recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma_noise, 'all')
+            elif args.perturb_along_subspace == 'subspace':
+                raise ValueError("Need to provide a file that stores the orthogonal basis for the wind encoding subspace.")
+            else:
+                raise ValueError(f"Unsupported value for args.perturb_along_subspace {args.perturb_along_subspace}.")
         obs = env.reset()
 
         reward_sum = 0    
@@ -113,8 +122,13 @@ def evaluate_agent(actor_critic, env, args):
                     recurrent_hidden_states, 
                     masks, 
                     deterministic=True)
-                if args.perturb_along_subspace:
-                    recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma=sigma_noise, mode='subspace')
+
+                if os.path.isfile(args.perturb_along_subspace):
+                    recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma_noise, 'subspace')
+                elif args.perturb_along_subspace == 'all':
+                    recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma_noise, 'all')
+                else:
+                    raise ValueError(f"Unsupported value for args.perturb_along_subspace {args.perturb_along_subspace}.")
                     
             obs, reward, done, info = env.step(action)
             masks.fill_(0.0 if done else 1.0)
@@ -387,7 +401,7 @@ if __name__ == "__main__":
     parser.add_argument('--apparent_wind', type=bool, default=False)
     parser.add_argument('--visual_feedback', type=bool, default=False)
     parser.add_argument('--flip_ventral_optic_flow', type=bool, default=False) # for eval to see the behavioral impact of flipping course direction perception.
-    parser.add_argument('--perturb_along_subspace', type=str, default=None, help='a file that stores a orthogonal basis, where the first vector is the wind encoding subspace')
+    parser.add_argument('--perturb_along_subspace', type=str, default=False, help='a file that stores a orthogonal basis, where the first vector is the wind encoding subspace')
     parser.add_argument('--no_vec_norm_stats', action='store_true', default=False, help='an agent that is trained without storing vecNormalize stats, or did not use it during training')
     parser.add_argument('--out_dir', type=str, default='eval')
 
