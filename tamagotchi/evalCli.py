@@ -79,7 +79,14 @@ def evaluate_agent(actor_critic, env, args):
         args.test_episodes = grid.shape[0]  # TODO HACK test_episodes never used. Take this out or make functional.
         print(f"Using fixed evaluation sequence [time, angle, loc_y]... ({args.test_episodes} episodes) ")
 
-
+    if args.perturb_RNN_by:
+        if args.perturb_RNN_by:
+            sigma_noise = 0.01
+            orthogonal_basis='dummy'
+            if args.perturb_RNN_by == 'subspace' or args.perturb_RNN_by == 'nullspace':
+                # print(f"Loading orthogonal basis from {args.perturb_RNN_by_ortho_set}, and perturbing hidden states with noise {sigma_noise}")
+                orthogonal_basis = agent_analysis.import_orthogonal_basis(args.perturb_RNN_by_ortho_set) # 64x64, where the first row is the wind encoding subspace
+                
     for i_episode in range(args.test_episodes):
         if args.fixed_eval:
             venv.fixed_y = grid[i_episode, 0] # meters
@@ -90,20 +97,10 @@ def evaluate_agent(actor_critic, env, args):
         recurrent_hidden_states = torch.zeros(1, 
                     actor_critic.recurrent_hidden_state_size, device=args.device)
         masks = torch.zeros(1, 1, device=args.device)
-        if args.perturb_along_subspace:
-            sigma_noise = 0.01
-            if os.path.isfile(args.perturb_along_subspace):
-                print(f"Loading orthogonal basis from {args.perturb_along_subspace}, and perturbing hidden states with noise {sigma_noise}")
-                orthogonal_basis = agent_analysis.import_orthogonal_basis(args.perturb_along_subspace) # 64x64, where the first row is the wind encoding subspace
-                recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma_noise, 'subspace')
-            elif args.perturb_along_subspace == 'all':
-                print(f"Perturbing all hidden states with noise {sigma_noise}")
-                orthogonal_basis='dummy'
-                recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma_noise, 'all')
-            elif args.perturb_along_subspace == 'subspace':
-                raise ValueError("Need to provide a file that stores the orthogonal basis for the wind encoding subspace.")
-            else:
-                raise ValueError(f"Unsupported value for args.perturb_along_subspace {args.perturb_along_subspace}.")
+        if args.perturb_RNN_by:
+            recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma_noise, args.perturb_RNN_by)
+                
+
         obs = env.reset()
 
         reward_sum = 0    
@@ -122,13 +119,8 @@ def evaluate_agent(actor_critic, env, args):
                     recurrent_hidden_states, 
                     masks, 
                     deterministic=True)
-
-                if os.path.isfile(args.perturb_along_subspace):
-                    recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma_noise, 'subspace')
-                elif args.perturb_along_subspace == 'all':
-                    recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma_noise, 'all')
-                else:
-                    raise ValueError(f"Unsupported value for args.perturb_along_subspace {args.perturb_along_subspace}.")
+                if args.perturb_RNN_by:
+                    recurrent_hidden_states = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, orthogonal_basis, sigma_noise, args.perturb_RNN_by)
                     
             obs, reward, done, info = env.step(action)
             masks.fill_(0.0 if done else 1.0)
@@ -162,7 +154,7 @@ def evaluate_agent(actor_critic, env, args):
             rewards.append( _reward )
             infos.append( [_info] )
             if args.device != 'cpu':
-                if args.perturb_along_subspace:
+                if args.perturb_RNN_by:
                     activities.append( {
                         'rnn_hxs': activity['rnn_hxs'].to("cpu").numpy().squeeze(), # returned from a2c_ppo_acktr.model.MLPBase.forward; a copy of the hidden states
                         'rnn_hxs_perturbed': recurrent_hidden_states.to("cpu").numpy().squeeze(), # recurrent_hidden_states object has been perturbed 
@@ -401,12 +393,20 @@ if __name__ == "__main__":
     parser.add_argument('--apparent_wind', type=bool, default=False)
     parser.add_argument('--visual_feedback', type=bool, default=False)
     parser.add_argument('--flip_ventral_optic_flow', type=bool, default=False) # for eval to see the behavioral impact of flipping course direction perception.
-    parser.add_argument('--perturb_along_subspace', type=str, default=False, help='a file that stores a orthogonal basis, where the first vector is the wind encoding subspace')
+    parser.add_argument('--perturb_RNN_by_ortho_set', type=str, default=False, help='a file that stores an orthogonal basis, where the first vector is the wind encoding subspace')
+    parser.add_argument('--perturb_RNN_by', type=str, default=False, help='set to "subspace" to perturb hidden states along the wind encoding subspace')
+    
     parser.add_argument('--no_vec_norm_stats', action='store_true', default=False, help='an agent that is trained without storing vecNormalize stats, or did not use it during training')
     parser.add_argument('--out_dir', type=str, default='eval')
 
-
+    
     args = parser.parse_args()
+    # if perturb_RNN_by, then must provide a file that stores the orthogonal basis for the wind encoding subspace.
+    if args.perturb_RNN_by and not args.perturb_RNN_by_ortho_set:
+        raise ValueError("When perturbing RNN, need to provide a file that stores the orthogonal basis for the wind encoding subspace.")
+    elif args.perturb_RNN_by and not os.path.isfile(args.perturb_RNN_by_ortho_set):
+        raise ValueError(f"File {args.perturb_RNN_by_ortho_set} does not exist.")
+        
     print(args)
     args.det = True # override
 
