@@ -710,8 +710,12 @@ def perturb_rnn_activity(rnn_activity, ortho_set, sigma, mode):
         perturb_by = coef[0] * ortho_set[0] # first row is the wind encoding subspace
     elif mode == 'all':
         perturb_by = noise # equivalent to perturbing along all dimensions: np.dot(coef, ortho_set)
+    elif mode == 'nullspace':
+        # express the noise as a linear combination of the basis vectors
+        coef = express_vec_as_sum_of_basis(noise, ortho_set)
+        perturb_by = coef[1:] @ ortho_set[1:] # first row is the wind encoding subspace, so exclude it
     else:
-        raise ValueError("mode should be 'subspace' or 'all'")
+        raise ValueError("mode should be 'subspace', 'all', or 'nullspace'")
     perturb_by = torch.from_numpy(perturb_by)
     perturb_by = perturb_by.to(device=rnn_activity.device.type, dtype=torch.float32)
     return rnn_activity + perturb_by
