@@ -14,6 +14,7 @@ import contextlib
 import os
 import tqdm
 import torch
+import pickle
 
 ######################################################################################
 ### Helper functions ###
@@ -676,15 +677,31 @@ def animate_prediction_error_1episode(reg, latent, ep_activity, traj_df, outpref
 #######################################################################################
 
 def import_orthogonal_basis(fname):
-    # Example file: /src/data/wind_sensing/apparent_wind_visual_feedback/sw_dist_logstep_ALL_noisy_wind_0.001/eval/plume_951_23354e57874d619687478a539a360146/orthogonal_basis_with_wind_encoding_subspace_951.npy
-    # generated from /src/JH_boilerplate/agent_evaluatiion/wind_encoding_perturbation/perturb_along_dim.ipynb
-    # expected shape: (64 x64), where each row is a basis vector and the first row is the wind encoding subspace
-    ortho_set = np.load(fname)
-    # check for orthogonality
-    dot_product = np.dot(ortho_set, ortho_set.T)
-    assert(np.allclose(dot_product, np.eye(64,64), atol=1e-2)), "The basis vectors failed the orthogonality set - check the loaded file"
-    
-    return ortho_set
+    # check if file is a numpy file or a pickle file
+    if fname.endswith('.npy'):
+        # Example file: /src/data/wind_sensing/apparent_wind_visual_feedback/sw_dist_logstep_ALL_noisy_wind_0.001/eval/plume_951_23354e57874d619687478a539a360146/orthogonal_basis_with_wind_encoding_subspace_951.npy
+        # generated from /src/JH_boilerplate/agent_evaluatiion/wind_encoding_perturbation/perturb_along_dim.ipynb
+        # expected shape: (64 x64), where each row is a basis vector and the first row is the wind encoding subspace
+        ortho_set = np.load(fname)
+        # check for orthogonality
+        dot_product = np.dot(ortho_set, ortho_set.T)
+        assert(np.allclose(dot_product, np.eye(64,64), atol=1e-2)), "The basis vectors failed the orthogonality set - check the loaded file"
+        
+        return ortho_set
+    elif fname.endswith('.pkl'):
+        # Example file: /src/data/wind_sensing/apparent_wind_visual_feedback/sw_dist_logstep_ALL_noisy_wind_0.001/eval/plume_951_23354e57874d619687478a539a360146/ranked_orthogonal_basis_and_var_with_wind_encoding_subspace_951.pkl
+        # generated from /src/JH_boilerplate/agent_evaluatiion/wind_encoding_perturbation/noise_generation.ipynb
+        # expected shape: (64 x64), where each row is a basis vector and the first row is the wind encoding subspace
+        # expected shape: (64, ), where each value is the NN activity variance along the corresponding basis vector
+        with open(fname, 'rb') as f:
+            file = pickle.load(f)
+            ortho_set = file['PCs']
+            variances = file['PC_variances']
+        # check for orthogonality
+        dot_product = np.dot(ortho_set, ortho_set.T)
+        assert(np.allclose(dot_product, np.eye(64,64), atol=1e-2)), "The basis vectors failed the orthogonality set - check the loaded file"
+        
+        return ortho_set, variances
 
 
 def express_vec_as_sum_of_basis(v, basis):
@@ -695,9 +712,12 @@ def express_vec_as_sum_of_basis(v, basis):
     return np.diagonal(coef)
 
 
-def generate_white_noise(sigma, rnn_dim=64, mean=0):
+def generate_white_noise(sigma, rnn_dim=64, mean=0, form='normal'):
     # generate white noise: np.ndarray 1 x rnn_dim
-    return np.random.normal(mean, sigma, (1, rnn_dim)) # np.random.normal(0, std, (n_samples, n_features))
+    if form == 'normal':
+        return np.random.normal(mean, sigma, (1, rnn_dim)) # np.random.normal(0, std, (n_samples, n_features))
+    elif form == 'uniform':
+        return np.random.uniform(-sigma, sigma, (1, rnn_dim))
 
 
 def perturb_rnn_activity(rnn_activity, ortho_set, sigma, mode):
