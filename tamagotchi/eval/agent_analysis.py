@@ -687,7 +687,7 @@ def import_orthogonal_basis(fname):
         dot_product = np.dot(ortho_set, ortho_set.T)
         assert(np.allclose(dot_product, np.eye(64,64), atol=1e-2)), "The basis vectors failed the orthogonality set - check the loaded file"
         
-        return ortho_set
+        return (ortho_set)
     elif fname.endswith('.pkl'):
         # Example file: /src/data/wind_sensing/apparent_wind_visual_feedback/sw_dist_logstep_ALL_noisy_wind_0.001/eval/plume_951_23354e57874d619687478a539a360146/ranked_orthogonal_basis_and_var_with_wind_encoding_subspace_951.pkl
         # generated from /src/JH_boilerplate/agent_evaluatiion/wind_encoding_perturbation/noise_generation.ipynb
@@ -701,7 +701,7 @@ def import_orthogonal_basis(fname):
         dot_product = np.dot(ortho_set, ortho_set.T)
         assert(np.allclose(dot_product, np.eye(64,64), atol=1e-2)), "The basis vectors failed the orthogonality set - check the loaded file"
         
-        return ortho_set, variances
+        return (ortho_set, variances)
 
 
 def express_vec_as_sum_of_basis(v, basis):
@@ -720,7 +720,7 @@ def generate_white_noise(sigma, rnn_dim=64, mean=0, form='normal'):
         return np.random.uniform(-sigma, sigma, (1, rnn_dim))
 
 
-def perturb_rnn_activity(rnn_activity, ortho_set, sigma, mode):
+def perturb_rnn_activity(rnn_activity, ortho_set, sigma, perturb_direction, noise_sampling_method='normal'):
     # generate white noise
     noise = generate_white_noise(sigma) # 0.01 by default, per variance in the wind encoding subspace of 951
     # perturb the rnn activity
