@@ -81,15 +81,15 @@ def evaluate_agent(actor_critic, env, args):
 
     if args.perturb_RNN_by:
         if args.perturb_RNN_by:
-            sigma_noise = 0.01
             if args.perturb_RNN_by == 'subspace' or args.perturb_RNN_by == 'nullspace':
                 # print(f"Loading orthogonal basis from {args.perturb_RNN_by_ortho_set}, and perturbing hidden states with noise {sigma_noise}")
                 file_content = agent_analysis.import_orthogonal_basis(args.perturb_RNN_by_ortho_set) # 64x64, where the first row is the wind encoding subspace
                 if len(file_content) == 1:
                     orthogonal_basis = file_content[0]
+                    sigma_noise = 0.01 # variance in the wind encoding direction 
                 elif len(file_content) == 2:
                     orthogonal_basis = file_content[0]
-                    NN_activity_variance_in_each_ortho_direction = file_content[1]
+                    sigma_noise = file_content[1] # variance in each orthogonal basis direction - shape of (64,)
             elif args.perturb_RNN_by == 'all':
                 orthogonal_basis='dummy'
                 

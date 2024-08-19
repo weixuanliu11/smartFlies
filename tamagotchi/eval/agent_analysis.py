@@ -712,30 +712,29 @@ def express_vec_as_sum_of_basis(v, basis):
     return np.diagonal(coef)
 
 
-def generate_white_noise(sigma, rnn_dim=64, mean=0, form='normal'):
-    # generate white noise: np.ndarray 1 x rnn_dim
-    if form == 'normal':
-        return np.random.normal(mean, sigma, (1, rnn_dim)) # np.random.normal(0, std, (n_samples, n_features))
-    elif form == 'uniform':
-        return np.random.uniform(-sigma, sigma, (1, rnn_dim))
+def generate_white_noise(sigma, sample_by='normal'):
+    # Sample noise coefficients for scaling the basis vectors. Perturbation = sum_i coef_i * basis_i
+    # return shape (len(sigma),)
+    # Sample a noise coefficient 
+    if sample_by == 'normal':
+        return np.random.normal(0, sigma) # N(0, sigma_i)
+    elif sample_by == 'uniform':
+        return np.random.uniform(-sigma, sigma)
 
 
-def perturb_rnn_activity(rnn_activity, ortho_set, sigma, perturb_direction, noise_sampling_method='normal'):
-    # generate white noise
-    noise = generate_white_noise(sigma) # 0.01 by default, per variance in the wind encoding subspace of 951
+def perturb_rnn_activity(rnn_activity, ortho_set, sigma, perturb_direction, sample_noise_by='normal'):
     # perturb the rnn activity
-    if mode == 'subspace':
+    noise_coeff = generate_white_noise(sigma, sample_by=sample_noise_by)
+    if perturb_direction == 'subspace':
         # express the noise as a linear combination of the basis vectors
-        coef = express_vec_as_sum_of_basis(noise, ortho_set)
-        perturb_by = coef[0] * ortho_set[0] # first row is the wind encoding subspace
-    elif mode == 'all':
-        perturb_by = noise # equivalent to perturbing along all dimensions: np.dot(coef, ortho_set)
-    elif mode == 'nullspace':
+        perturb_by = noise_coeff[0] * ortho_set[0] # first row is the wind encoding subspace
+    elif perturb_direction == 'all':
+        perturb_by = noise_coeff * ortho_set
+    elif perturb_direction == 'nullspace':
         # express the noise as a linear combination of the basis vectors
-        coef = express_vec_as_sum_of_basis(noise, ortho_set)
-        perturb_by = coef[1:] @ ortho_set[1:] # first row is the wind encoding subspace, so exclude it
+        perturb_by = noise_coeff[1:] @ ortho_set[1:] # first row is the wind encoding subspace, so exclude it
     else:
-        raise ValueError("mode should be 'subspace', 'all', or 'nullspace'")
+        raise ValueError("perturb_direction should be 'subspace', 'all', or 'nullspace'")
     perturb_by = torch.from_numpy(perturb_by)
     perturb_by = perturb_by.to(device=rnn_activity.device.type, dtype=torch.float32)
     return rnn_activity + perturb_by
