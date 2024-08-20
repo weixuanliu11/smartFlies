@@ -421,13 +421,13 @@ def plot_course_direction_wrt_wind_and_plume(traj_df_stacked_subset, regime_labe
 
 def arg_parse():
     parser = argparse.ArgumentParser(description='Plot head direction and course direction distributions')
-    parser.add_argument('--model_fname', type=str, default='/src/data/wind_sensing/apparent_wind_visual_feedback/sw_dist_logstep_ALL_noisy_wind_0.001/weights/plume_951_23354e57874d619687478a539a360146.pt', help='Path to the model .pt file')
+    parser.add_argument('--model_fname', type=str, default='/src/data/wind_sensing/apparent_wind_visual_feedback/sw_dist_logstep_ALL_noisy_wind_0.001/weights/plume_951_23354e57874d619687478a539a360146.pt', help='Path to the model .pt file. For eval traj retrival and plot storage')
     parser.add_argument('--dataset', type=str, default='noisy3x5b5', help='Dataset to use')
     parser.add_argument('--number_of_eps', type=int, default=80, help='Number of episodes to use')
     parser.add_argument('--verbose', type=bool, default=False, help='Print verbose output')
     parser.add_argument('--save', type=bool, default=False, help='Save graphs or just a dry run')
     parser.add_argument('--eval_folder', type=str, default='eval', help='The directory name of the evaluation experiment, where th pkl files are stored in')
-    parser.add_argument('--out_dir', type=str, default='report_regime_dists', help='folder name of where plots should be saved to')
+    parser.add_argument('--out_dir', type=str, help='folder name of where plots should be saved to')
     parser.add_argument('--wind_change_regime_threshold', type=int, default=10, help='Threshold for wind change regime in seconds')
     parser.add_argument('--regimes', default=['anemotactic', 'tracking'], help='Wind regimes to plot')
 
@@ -532,8 +532,9 @@ if __name__ == '__main__':
         for odor_wind_regime in traj_df_stacked_subset_by_wind_regime['odor_wind_regime'].unique():
             traj_df_stacked_subset_by_wind_regime_subset_by_odor = traj_df_stacked_subset_by_wind_regime.query("odor_wind_regime == @odor_wind_regime")
             if args.save:
-                fname = f"{args.out_dir}/HD_dist_{args.model_seed}_{args.dataset}_{odor_wind_regime.replace(", ", "_")}.png"
+                fname_regime_name = odor_wind_regime.replace(', ', '_')
+                fname = f"{args.out_dir}/HD_dist_{args.model_seed}_{args.dataset}_{fname_regime_name}.png"
             plot_head_direction_wrt_wind_and_plume(traj_df_stacked_subset_by_wind_regime_subset_by_odor, odor_wind_regime, args.dataset, save_path=fname)
             if args.save:
-                fname = f"{args.out_dir}/CD_dist_{args.model_seed}_{args.dataset}_{odor_wind_regime.replace(", ", "_")}.png"
+                fname = f"{args.out_dir}/CD_dist_{args.model_seed}_{args.dataset}_{fname_regime_name}.png"
             plot_course_direction_wrt_wind_and_plume(traj_df_stacked_subset_by_wind_regime_subset_by_odor, odor_wind_regime, args.dataset, save_path=fname)
