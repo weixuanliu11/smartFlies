@@ -532,7 +532,7 @@ if __name__ == '__main__':
         for odor_wind_regime in traj_df_stacked_subset_by_wind_regime['odor_wind_regime'].unique():
             traj_df_stacked_subset_by_wind_regime_subset_by_odor = traj_df_stacked_subset_by_wind_regime.query("odor_wind_regime == @odor_wind_regime")
             if args.save:
-                fname_regime_name = odor_wind_regime.replace(', ', '_')
+                fname_regime_name = odor_wind_regime.replace(', ', '_').replace(' ', '_')
                 fname = f"{args.out_dir}/HD_dist_{args.model_seed}_{args.dataset}_{fname_regime_name}.png"
             plot_head_direction_wrt_wind_and_plume(traj_df_stacked_subset_by_wind_regime_subset_by_odor, odor_wind_regime, args.dataset, save_path=fname)
             if args.save:
