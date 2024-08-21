@@ -1205,7 +1205,7 @@ class PlumeEnvironment_v2(gym.Env):
       self.agent_location[1] + agent_move_y + wind_drift_y,
     ]
     self.air_velocity = np.array([agent_move_x, agent_move_y])/self.dt
-    self.ground_velocity = np.arrat(self.agent_location_last - self.agent_location)/self.dt
+    self.ground_velocity = np.array(self.agent_location_last - self.agent_location)/self.dt
     ### ----------------- End conditions / Is the trial over ----------------- ### 
     is_home = np.linalg.norm(self.agent_location) <= self.homed_radius 
     is_outoftime = self.episode_step >= self.episode_steps_max - 1           
