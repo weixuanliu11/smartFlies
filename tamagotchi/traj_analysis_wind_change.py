@@ -122,7 +122,7 @@ def get_wind_change_regimes(traj_df, wind_change_frame_threshold=5, frame_rate=0
         print("Annotation of wind regimes:")
         print(f"{traj_df['wind_regime'].value_counts()}")
         print(f"Threshold for wind change regime is {threshold} seconds \n")
-    return traj_df['wind_regime']
+    
 
 
 def plot_action_distributions_by_wind_odor_regime(traj_df_stacked, dataset, save_path=False, verbose=False):
@@ -492,9 +492,8 @@ def load_plotting_parameters():
                 'step':[0,1],
                 }
     ticklabels_dict = {
-    #     'agent_angle_ground':[0, r'$\frac{-\pi}{2}$', r'$\pm\pi$', r'$\frac{+\pi}{2}$', 0],
         'agent_angle_ground_theta':[0, r'$-90$', r'$\pm$180', r'$+90$', 0],
-        'ego_course_direction_theta':[0, r'$-90$', r'$\pm$180', r'$+90$', 0],
+        'ego_course_direction_theta':[r'-180', r'$-90$', r'$0$', r'$+90$', r'$+180$'],
         'turn':['R','L'],
                 }
     xlims_dict = {
@@ -504,37 +503,71 @@ def load_plotting_parameters():
         
     return analysis_columns, titles_dict, ticks_dict, ticklabels_dict, xlims_dict
 
+
+def correct_for_flipped_gv(traj_df_stacked):
+    # the gv is flipped in the eval model - correct for this
+        # gv is used to calculate ego course direction so need to correct for this
+        # in get_traj_df course direction is taken from gv 
+    allocentric_head_direction_radian = [np.angle(traj_df_stacked['agent_angle_x'].iloc[i] + 1j*traj_df_stacked['agent_angle_y'].iloc[i], deg=False) for i , v in enumerate(traj_df_stacked['agent_angle_x']) if v]
+    allocentric_course_direction_radian = [np.angle(traj_df_stacked['loc_x_dt'].iloc[i] + 1j*traj_df_stacked['loc_y_dt'].iloc[i], deg=False) for i , v in enumerate(traj_df_stacked['loc_x_dt']) if v]
+    ego_course_direction_theta = np.array(allocentric_course_direction_radian) - np.array(allocentric_head_direction_radian) 
+    ego_course_direction_x, ego_course_direction_y = np.cos(ego_course_direction_theta), np.sin(ego_course_direction_theta)
+    ego_course_direction_theta = log_analysis.rad_over_pi_shift2_01(log_analysis.vec2rad_norm_by_pi(ego_course_direction_x, ego_course_direction_y)) # normalize by pi and then shift to 0-1
+    traj_df_stacked['ego_course_direction_theta'] = ego_course_direction_theta
+
+
+def shift_pi_to_point5(traj_df_stacked, col):
+    ''' 
+    Important! Only use on [0,1] ~ [-pi, pi], where 0.5 is 0 degree to shift to [0, 1] ~ [-pi, pi], where 0.5 is +-pi
+    This way the distribution around +- pi will be centered around 0.5
+    Only use on allocentric head direction where the agent is often facing west
+    '''
+    traj_df_stacked['tidx'] = (traj_df_stacked['t_val']*100).astype(int)
+    # traj_df_stacked['agent_angle_ground_theta_unshifted'] = traj_df_stacked['agent_angle_ground_theta'] # agent_angle_ground: scaled alloc head direction ~ [0,1]; or ~[-180, 180] see log_analysis.get_traj_df()
+    # sanity check that the angle is in [0,1]
+    assert max(traj_df_stacked[col]) <= 1.0 # do not see how this can be greater than 1 but just in case... 
+    traj_df_stacked[col] = (traj_df_stacked[col]+0.5).apply(lambda x: x-1. if x>1 else x) 
+
+
 if __name__ == '__main__':
     args = arg_parse()
-    # plot the distritbutions of actions taken by the agent wrt wind and odor regimes
-    analysis_columns, titles_dict, ticks_dict, ticklabels_dict, xlims_dict = load_plotting_parameters()
     # get traj data and stack them
     traj_df_stacked = get_eval_dfs_and_stack_them(args.model_fname, args.dataset, args.number_of_eps, exp_dir=args.eval_folder, verbose=True) 
+    # for the eval condition, correct for the flipped gv
+    if 'eval' in args.eval_folder:
+        correct_for_flipped_gv(traj_df_stacked)
+    # shift the +-pi to be centered around 0.5 (keep out of get_eval_dfs_and_stack_them to emphasize this is done)
+    shift_pi_to_point5(traj_df_stacked, 'agent_angle_ground_theta')
+    
     # for each episode, calculate the time since the last wind change
     traj_df_stacked = traj_df_stacked.groupby(traj_df_stacked['ep_idx']).apply(calc_time_since_last_wind_change).reset_index(drop=True)
-    traj_df_stacked['wind_regime'] = get_wind_change_regimes(traj_df_stacked, wind_change_frame_threshold=args.wind_change_regime_threshold, frame_rate=0.04, verbose=True)
+    get_wind_change_regimes(traj_df_stacked, wind_change_frame_threshold=args.wind_change_regime_threshold, frame_rate=0.04, verbose=True)
+    
+    # plot the distritbutions of actions taken by the agent wrt wind and odor regimes
+    analysis_columns, titles_dict, ticks_dict, ticklabels_dict, xlims_dict = load_plotting_parameters()
     fname = False
     if args.save:
         fname = f"{args.out_dir}/action_dist_wind_odor_regimes_DUMMY_{args.model_seed}.png" # "DUMMY" will be replaced by the trial types
         plot_action_distributions_by_wind_odor_regime(traj_df_stacked, args.dataset, save_path=fname, verbose=True)
+    
     # plot head direction and course direction wrt wind and plume centerline
     # load the centerline data
     centerline_df = load_centerline_df(traj_df_stacked, dataset=args.dataset, verbose=False)
     # filter by wind regime and plot HD wrt wind and plume
     for regime in args.regimes:
         traj_df_stacked_subset_by_wind_regime = filter_traj_by_wind_regime_and_add_centerline_angle(traj_df_stacked, centerline_df, regime, dataset='noisy3x5b5', verbose=True)
-        # TODO generate this info when saving df - this takes a while. do not want to repeat everytime
         augment_agent_angle_centerline(traj_df_stacked_subset_by_wind_regime, verbose=True) # add this info to the traj_df
         augment_agent_angle_wind(traj_df_stacked_subset_by_wind_regime, verbose=True)       # add this info to the traj_df
         # same for CD
-        augment_course_angle_centerline(traj_df_stacked_subset_by_wind_regime, verbose=True) # add this info to the traj_df
-        augment_course_angle_wind(traj_df_stacked_subset_by_wind_regime, verbose=True) # add this info to the traj_df
+        # augment_course_angle_centerline(traj_df_stacked_subset_by_wind_regime, verbose=True) # add this info to the traj_df
+        # augment_course_angle_wind(traj_df_stacked_subset_by_wind_regime, verbose=True) # add this info to the traj_df
         for odor_wind_regime in traj_df_stacked_subset_by_wind_regime['odor_wind_regime'].unique():
             traj_df_stacked_subset_by_wind_regime_subset_by_odor = traj_df_stacked_subset_by_wind_regime.query("odor_wind_regime == @odor_wind_regime")
             if args.save:
                 fname_regime_name = odor_wind_regime.replace(', ', '_').replace(' ', '_')
                 fname = f"{args.out_dir}/HD_dist_{args.model_seed}_{args.dataset}_{fname_regime_name}.png"
             plot_head_direction_wrt_wind_and_plume(traj_df_stacked_subset_by_wind_regime_subset_by_odor, odor_wind_regime, args.dataset, save_path=fname)
-            if args.save:
-                fname = f"{args.out_dir}/CD_dist_{args.model_seed}_{args.dataset}_{fname_regime_name}.png"
-            plot_course_direction_wrt_wind_and_plume(traj_df_stacked_subset_by_wind_regime_subset_by_odor, odor_wind_regime, args.dataset, save_path=fname)
+            # TODO look into allo course direction plot. Sat's paper finds course direction aligns with plume centerline. I find ~same in head direction. Not sure what to look for in egocentric course direction, so skip for now
+            # if args.save:
+            #     fname = f"{args.out_dir}/CD_dist_{args.model_seed}_{args.dataset}_{fname_regime_name}.png"
+            # plot_course_direction_wrt_wind_and_plume(traj_df_stacked_subset_by_wind_regime_subset_by_odor, odor_wind_regime, args.dataset, save_path=fname)
