@@ -80,7 +80,8 @@ def get_selected_df(model_dir, use_datasets,
     n_episodes_other=240, 
     min_ep_steps=0, 
     oob_only=True,
-    balanced=True):
+    balanced=True, 
+    verbose=False):
     episodes_df = []
     for dataset in use_datasets:
         log_fname = f'{model_dir}/{dataset}.pkl'
@@ -125,7 +126,18 @@ def get_selected_df(model_dir, use_datasets,
         balanced_df = pd.concat(balanced_df)
         balanced_df.groupby(['dataset', 'outcome']).count()
         selected_df = balanced_df
+        
+    if verbose:
+        print("model_dir", model_dir)
+        logfiles = natsorted(glob.glob(model_dir + '*.pkl'))
+        model_seed = model_dir.rstrip('/').split('/')[-1].split('_')[1]
+        print("model_seed ---->", model_seed)
+        print(f"Found {len(logfiles)} .pkl evaluation logs in {model_dir}")
 
+    if verbose:
+        print(f"selected N eps {selected_df.shape}")
+        print(f"Episode breakdown: \n {selected_df.groupby(['dataset', 'outcome']).count()}")
+        
     return(selected_df)
 
 def get_pca_common(selected_df, n_comp = 12, is_recurrent=True):
