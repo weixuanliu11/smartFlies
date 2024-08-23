@@ -25,104 +25,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
-sns.set(style="white")
-
-
-def get_eval_dfs_and_stack_them(model_fname, use_datasets, number_of_eps, exp_dir='eval', verbose=False):
-  is_recurrent = True
-  # load eval episodes from pkl files
-  model_dir = model_fname.replace('.pt', '/').replace("weights", exp_dir) 
-  if not os.path.exists(model_dir):
-      print(f"Model directory {model_dir} does not exist")
-      sys.exit(0)
-  # read pkl file into PD dataframe - each row is an epoch
-  selected_df = log_analysis.get_selected_df(model_dir, 
-                                [use_datasets], 
-                                n_episodes_home=number_of_eps, 
-                                n_episodes_other=number_of_eps,
-                                balanced=False,
-                              #   oob_only=False,
-                                min_ep_steps=0)
-  if verbose:
-    print("model_dir", model_dir)
-    logfiles = natsorted(glob.glob(model_dir + '*.pkl'))
-    model_seed = model_dir.rstrip('/').split('/')[-1].split('_')[1]
-    print("model_seed ---->", model_seed)
-    print(f"Found {len(logfiles)} .pkl evaluation logs in {model_dir}")
-    print(f"selected N eps {selected_df.shape}")
-    print(f"Episode breakdown: \n {selected_df.groupby(['dataset', 'outcome']).count()}")
-
-  # get traj data and stack them
-  traj_dfs = []
-  squash_action = True
-  # for episode_log in tqdm.tqdm(selected_df['log']):
-  for idx,row in tqdm.tqdm(selected_df.iterrows()):
-      dataset = row['dataset']
-      episode_log = row['log']
-      # use get_traj_df_tmp to calculate head direction
-      traj_df = log_analysis.get_traj_df_tmp(episode_log, 
-                                        extended_metadata=True, 
-                                        squash_action=squash_action)
-      traj_df['idx'] = np.arange(traj_df.shape[0], dtype=int)
-      traj_df['ep_idx'] = row['idx']
-      traj_df['dataset'] = dataset
-      traj_df['outcome'] = row['outcome']
-      traj_df['loc_x_dt'] = traj_df['loc_x'].diff() 
-      traj_df['loc_y_dt'] = traj_df['loc_y'].diff() 
-      traj_dfs.append(traj_df)
-
-  traj_df_stacked = pd.concat(traj_dfs, ignore_index=True)
-  if verbose:
-    print(f"Stacked traj dfs shape: {traj_df_stacked.shape}")
-  return traj_df_stacked
-
-
-def calc_time_since_last_wind_change(eps_df):
-    """
-    Calculates the time since the last change in wind direction.
-
-    Parameters:
-    - eps_df (pandas.DataFrame): The input DataFrame of eval trajectories for a single episode, containing extended metadata.s
-
-    Returns:
-    - pandas.DataFrame: The input DataFrame with an additional column 'time_since_last_wind_change'
-                        representing the time since the last change in wind direction.
-
-    Raises:
-    - AssertionError: If the time interval between consecutive 't_val' values is not constant.
-
-    """
-    # sanity check - delta on t_val should be the same 
-    t_val_dt = eps_df['t_val'].diff().dropna().unique()
-    t_val_dt = set(np.round(t_val_dt, 2))
-    assert len(t_val_dt) == 1, f"t_val_dt is not constant: {t_val_dt}"
-    t_val_dt = t_val_dt.pop()
-    # first row is always nan - fill with 0
-    eps_df['wind_angle_ground_theta_dt1'].iloc[0] = 0
-    # calculate time since last change in wind direction 
-    time_since_last_wind_change = []
-    time_count = 0
-    for idx, row in eps_df.iterrows():
-        time_count += t_val_dt
-        if row['wind_angle_ground_theta_dt1']: # delta theta is not 0 - wind just changed
-            time_count = 0    
-        time_since_last_wind_change.append(time_count)
-    
-    eps_df = eps_df.assign(time_since_last_wind_change = time_since_last_wind_change)
-    return eps_df
-
-
-# mark when the wind regime changes
-def get_wind_change_regimes(traj_df, wind_change_frame_threshold=5, frame_rate=0.04, verbose=False):
-    threshold = wind_change_frame_threshold * frame_rate
-    traj_df['wind_regime'] = 'tracking'
-    # wind just changed within the last N frames - anemotactic behavior should follow 
-    traj_df['wind_regime'].loc[ traj_df['time_since_last_wind_change'] <= threshold ] = 'anemotactic'
-    if verbose:
-        print("Annotation of wind regimes:")
-        print(f"{traj_df['wind_regime'].value_counts()}")
-        print(f"Threshold for wind change regime is {threshold} seconds \n")
-    
+sns.set(style="white")    
 
 
 def plot_action_distributions_by_wind_odor_regime(traj_df_stacked, dataset, save_path=False, verbose=False):
@@ -532,7 +435,7 @@ def shift_pi_to_point5(traj_df_stacked, col):
 if __name__ == '__main__':
     args = arg_parse()
     # get traj data and stack them
-    traj_df_stacked = get_eval_dfs_and_stack_them(args.model_fname, args.dataset, args.number_of_eps, exp_dir=args.eval_folder, verbose=True) 
+    traj_df_stacked = log_analysis.get_eval_dfs_and_stack_them(args.model_fname, args.dataset, args.number_of_eps, exp_dir=args.eval_folder, verbose=True) 
     # for the eval condition, correct for the flipped gv
     if 'eval' in args.eval_folder:
         correct_for_flipped_gv(traj_df_stacked)
@@ -540,8 +443,8 @@ if __name__ == '__main__':
     shift_pi_to_point5(traj_df_stacked, 'agent_angle_ground_theta')
     
     # for each episode, calculate the time since the last wind change
-    traj_df_stacked = traj_df_stacked.groupby(traj_df_stacked['ep_idx']).apply(calc_time_since_last_wind_change).reset_index(drop=True)
-    get_wind_change_regimes(traj_df_stacked, wind_change_frame_threshold=args.wind_change_regime_threshold, frame_rate=0.04, verbose=True)
+    traj_df_stacked = traj_df_stacked.groupby(traj_df_stacked['ep_idx']).apply(log_analysis.calc_time_since_last_wind_change).reset_index(drop=True)
+    log_analysis.get_wind_change_regimes(traj_df_stacked, wind_change_frame_threshold=args.wind_change_regime_threshold, frame_rate=0.04, verbose=True)
     
     # plot the distritbutions of actions taken by the agent wrt wind and odor regimes
     analysis_columns, titles_dict, ticks_dict, ticklabels_dict, xlims_dict = load_plotting_parameters()
