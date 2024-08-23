@@ -191,52 +191,96 @@ def get_wind_change_regimes(traj_df, wind_change_frame_threshold=5, frame_rate=0
         
 
 def get_eval_dfs_and_stack_them(model_fname, use_datasets, number_of_eps, exp_dir='eval', verbose=False):
-  is_recurrent = True
-  # load eval episodes from pkl files
-  model_dir = model_fname.replace('.pt', '/').replace("weights", exp_dir) 
-  if not os.path.exists(model_dir):
-      print(f"Model directory {model_dir} does not exist")
-      sys.exit(0)
-  # read pkl file into PD dataframe - each row is an epoch
-  selected_df = get_selected_df(model_dir, 
-                                [use_datasets], 
-                                n_episodes_home=number_of_eps, 
-                                n_episodes_other=number_of_eps,
-                                balanced=False,
-                              #   oob_only=False,
-                                min_ep_steps=0)
-  if verbose:
-    print("model_dir", model_dir)
-    logfiles = natsorted(glob.glob(model_dir + '*.pkl'))
-    model_seed = model_dir.rstrip('/').split('/')[-1].split('_')[1]
-    print("model_seed ---->", model_seed)
-    print(f"Found {len(logfiles)} .pkl evaluation logs in {model_dir}")
-    print(f"selected N eps {selected_df.shape}")
-    print(f"Episode breakdown: \n {selected_df.groupby(['dataset', 'outcome']).count()}")
+    # used when visualizing trajectories and actions taken
+    is_recurrent = True
+    # load eval episodes from pkl files
+    model_dir = model_fname.replace('.pt', '/').replace("weights", exp_dir) 
+    if not os.path.exists(model_dir):
+        print(f"Model directory {model_dir} does not exist")
+        sys.exit(0)
+    # read pkl file into PD dataframe - each row is an epoch
+    selected_df = get_selected_df(model_dir, 
+                                    [use_datasets], 
+                                    n_episodes_home=number_of_eps, 
+                                    n_episodes_other=number_of_eps,
+                                    balanced=False,
+                                #   oob_only=False,
+                                    min_ep_steps=0)
+    if verbose:
+        print("model_dir", model_dir)
+        logfiles = natsorted(glob.glob(model_dir + '*.pkl'))
+        model_seed = model_dir.rstrip('/').split('/')[-1].split('_')[1]
+        print("model_seed ---->", model_seed)
+        print(f"Found {len(logfiles)} .pkl evaluation logs in {model_dir}")
+        print(f"selected N eps {selected_df.shape}")
+        print(f"Episode breakdown: \n {selected_df.groupby(['dataset', 'outcome']).count()}")
 
-  # get traj data and stack them
-  traj_dfs = []
-  squash_action = True
-  # for episode_log in tqdm.tqdm(selected_df['log']):
-  for idx,row in tqdm.tqdm(selected_df.iterrows()):
-      dataset = row['dataset']
-      episode_log = row['log']
-      # use get_traj_df_tmp to calculate head direction
-      traj_df = get_traj_df_tmp(episode_log, 
-                                        extended_metadata=True, 
-                                        squash_action=squash_action)
-      traj_df['idx'] = np.arange(traj_df.shape[0], dtype=int)
-      traj_df['ep_idx'] = row['idx']
-      traj_df['dataset'] = dataset
-      traj_df['outcome'] = row['outcome']
-      traj_df['loc_x_dt'] = traj_df['loc_x'].diff() 
-      traj_df['loc_y_dt'] = traj_df['loc_y'].diff() 
-      traj_dfs.append(traj_df)
+    # get traj data and stack them
+    traj_dfs = []
+    squash_action = True
+    # for episode_log in tqdm.tqdm(selected_df['log']):
+    for idx,row in tqdm.tqdm(selected_df.iterrows()):
+        dataset = row['dataset']
+        episode_log = row['log']
+        # use get_traj_df_tmp to calculate head direction
+        traj_df = get_traj_df_tmp(episode_log, 
+                                            extended_metadata=True, 
+                                            squash_action=squash_action)
+        traj_df['idx'] = np.arange(traj_df.shape[0], dtype=int)
+        traj_df['ep_idx'] = row['idx']
+        traj_df['dataset'] = dataset
+        traj_df['outcome'] = row['outcome']
+        traj_df['loc_x_dt'] = traj_df['loc_x'].diff() 
+        traj_df['loc_y_dt'] = traj_df['loc_y'].diff() 
+        traj_dfs.append(traj_df)
 
-  traj_df_stacked = pd.concat(traj_dfs, ignore_index=True)
-  if verbose:
-    print(f"Stacked traj dfs shape: {traj_df_stacked.shape}")
-  return traj_df_stacked
+    traj_df_stacked = pd.concat(traj_dfs, ignore_index=True)
+    if verbose:
+        print(f"Stacked traj dfs shape: {traj_df_stacked.shape}")
+    return traj_df_stacked
+
+
+def get_traj_and_activity_and_stack_them(eval_log_pkl_df: pd.DataFrame, obtain_neural_activity: bool = True, obtain_traj_df: bool = True) -> pd.DataFrame:
+    """
+    Load and stack trajectory and neural activity data from evaluation logs. 
+
+    Args:
+        eval_log_pkl_df (pd.DataFrame): DataFrame containing evaluation logs.
+        obtain_neural_activity: Flag to obtain neural activity data. Default is True.
+        obtain_traj_df: Flag to obtain trajectory DataFrame. Default is True.
+
+    Returns:
+        pd.DataFrame: Stacked trajectory DataFrame.
+        np.ndarray: Stacked neural activity data.
+        'DUMMY' if df was not to be obtained.
+    """
+    
+    # load and stack data if not provided
+    if obtain_neural_activity or obtain_traj_df:    
+        is_recurrent = True
+        squash_action = True
+        h_episodes = []
+        traj_dfs = []
+        for idx, row  in tqdm.tqdm(eval_log_pkl_df.iterrows()):
+            episode_log = row['log']
+            if obtain_neural_activity:
+                ep_neural_activity = get_activity(episode_log, is_recurrent, do_plot=False)
+                h_episodes.append(ep_neural_activity)
+            if get_traj_df:
+                traj_df = get_traj_df_tmp(episode_log, 
+                                                extended_metadata=False, 
+                                                squash_action=squash_action)
+                traj_df['tidx'] = np.arange(traj_df.shape[0], dtype=int)
+                for colname in ['dataset', 'idx', 'outcome']:
+                    traj_df[colname] = row[colname] 
+                traj_dfs.append(traj_df)
+        stacked_neural_activity = stacked_traj_df = 'DUMMY'
+        if obtain_neural_activity:
+            stacked_neural_activity = np.vstack(h_episodes)
+        if obtain_traj_df:
+            stacked_traj_df = pd.concat(traj_dfs)
+
+    return stacked_traj_df, stacked_neural_activity
 
 
 def calc_time_since_last_wind_change(eps_df):
