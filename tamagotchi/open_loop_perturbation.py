@@ -7,13 +7,17 @@ import os
 import sys
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152 # this line is from #https://stackoverflow.com/questions/37893755/tensorflow-set-cuda-visible-devices-within-jupyter
-
+import datetime
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import eval.agent_analysis as agent_analysis
 import eval.log_analysis as log_analysis
 
+
+def fprint(*args, **kwargs):
+    print(*args, **kwargs)
+    sys.stdout.flush()
 
 def log_perturb_analysis(log_dict, **kwargs):
     for key, value in kwargs.items():
@@ -38,7 +42,11 @@ def save_log_to_pkl(episode_logs, out_dir, f_prefix):
 def open_perturb_loop(traj_df_stacked, stacked_neural_activity, actor_critic, orthogonal_basis, sigma_noise, args):
     traj_df_stacked.reset_index(drop=True, inplace=True)
     episode_logs = [] # list of dfs
-    for eps in traj_df_stacked.ep_idx.unique():
+    all_eps = traj_df_stacked['ep_idx'].unique()
+    all_eps.sort()
+    subset_eps = all_eps[args.from_eps:args.to_eps] # get from_eps to to_eps
+    for eps in subset_eps:
+        fprint(f"[LOG] starting episode {eps} at {datetime.datetime.now()}")
         episode_log = {'ls_tidx': [],
                     'ls_dist': [],
                     'ls_dist_perturbed': [],
@@ -59,53 +67,68 @@ def open_perturb_loop(traj_df_stacked, stacked_neural_activity, actor_critic, or
         tidx_range = now_traj.tidx.max()
         
         with torch.no_grad():
-            for timestep in range(tidx_range): # compare up to t-1
-                # load eps data at timestep
-                now_traj_row = now_traj.iloc[timestep] # get the df row at this timestep
-                now_activity_row = now_activity[timestep]
-                obs = get_obs_from_traj_row(now_traj_row, device=args.device)
-                recurrent_hidden_states = get_activity_from_activity_row(now_activity_row, device=args.device)
-                
-                # get the unperturbed action at t
-                value, action, _, recurrent_hidden_states_next, activity = actor_critic.act(
-                    obs,
-                    recurrent_hidden_states, 
-                    masks, 
-                    deterministic=True) # un-perturbed action
-                
-                # perturb the agent & get the perturbed action at t 
-                recurrent_hidden_states_perturbed, perturb_by = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, 
-                                                                                                    orthogonal_basis, sigma_noise, 
-                                                                                                    args.perturb_RNN_by, 
-                                                                                                    sample_noise_by='normal', 
-                                                                                                    return_perturb_by=True)
-                value_perturbed, action_perturbed, _, recurrent_hidden_states_perturbed_next, activity_perturbed = actor_critic.act(
-                    obs,
-                    recurrent_hidden_states_perturbed, 
-                    masks, 
-                    deterministic=True)
-                
-                # get a divergence measure
-                dist = actor_critic.dist(activity['hidden_actor'])
-                dist_perturbed = actor_critic.dist(activity_perturbed['hidden_actor'])
-                KL_divergence = torch.distributions.kl.kl_divergence(torch.distributions.Normal(dist.mean, dist.stddev),
-                                                                    torch.distributions.Normal(dist_perturbed.mean, dist_perturbed.stddev))
-                log_perturb_analysis(episode_log, 
-                                    ls_tidx=timestep, 
-                                    ls_dist=[dist.mean.cpu().numpy().squeeze(), dist.stddev.cpu().numpy().squeeze()], # mean.shape = [1,2]; first is speed & second is angular velocity
-                                    ls_dist_perturbed=[dist_perturbed.mean.cpu().numpy().squeeze(), dist_perturbed.stddev.cpu().numpy().squeeze()],
-                                    ls_KL_divergence=KL_divergence.cpu().numpy().squeeze(),
-                                    ls_h_perturbed=recurrent_hidden_states_perturbed.cpu().numpy().squeeze(),
-                                    ls_perturb_by=perturb_by.cpu().numpy().squeeze(),
-                                    ls_activity=activity,
-                                    ls_activity_perturbed=activity_perturbed)
-                
-            episode_logs.append({'ep_idx' : eps, 
-                                'perturb_by': args.perturb_RNN_by,
-                                'episode_log':episode_log})
+            for rep in range(args.perturb_rep):
+                args.seed += 1
+                torch.manual_seed(args.seed)
+                np.random.seed(args.seed)
+                for timestep in range(tidx_range): # compare up to t-1
+                    # load eps data at timestep
+                    now_traj_row = now_traj.iloc[timestep] # get the df row at this timestep
+                    now_activity_row = now_activity[timestep]
+                    obs = get_obs_from_traj_row(now_traj_row, device=args.device)
+                    recurrent_hidden_states = get_activity_from_activity_row(now_activity_row, device=args.device)
+                    
+                    # get the unperturbed action at t
+                    value, action, _, recurrent_hidden_states_next, activity = actor_critic.act(
+                        obs,
+                        recurrent_hidden_states, 
+                        masks, 
+                        deterministic=True) # un-perturbed action
+                    
+                    # perturb the agent & get the perturbed action at t 
+                    recurrent_hidden_states_perturbed, perturb_by = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, 
+                                                                                                        orthogonal_basis, sigma_noise, 
+                                                                                                        args.perturb_RNN_by, 
+                                                                                                        sample_noise_by='normal', 
+                                                                                                        return_perturb_by=True)
+                    value_perturbed, action_perturbed, _, recurrent_hidden_states_perturbed_next, activity_perturbed = actor_critic.act(
+                        obs,
+                        recurrent_hidden_states_perturbed, 
+                        masks, 
+                        deterministic=True)
+                    
+                    # get a divergence measure
+                    dist = actor_critic.dist(activity['hidden_actor'])
+                    dist_perturbed = actor_critic.dist(activity_perturbed['hidden_actor'])
+                    KL_divergence = torch.distributions.kl.kl_divergence(torch.distributions.Normal(dist.mean, dist.stddev),
+                                                                        torch.distributions.Normal(dist_perturbed.mean, dist_perturbed.stddev))
+                    log_perturb_analysis(episode_log, 
+                                        ls_tidx=timestep, 
+                                        ls_dist=[dist.mean.cpu().numpy().squeeze(), dist.stddev.cpu().numpy().squeeze()], # mean.shape = [1,2]; first is speed & second is angular velocity
+                                        ls_dist_perturbed=[dist_perturbed.mean.cpu().numpy().squeeze(), dist_perturbed.stddev.cpu().numpy().squeeze()],
+                                        ls_KL_divergence=KL_divergence.cpu().numpy().squeeze(),
+                                        ls_h_perturbed=recurrent_hidden_states_perturbed.cpu().numpy().squeeze(),
+                                        ls_perturb_by=perturb_by.cpu().numpy().squeeze(),
+                                        ls_activity=activity,
+                                        ls_activity_perturbed=activity_perturbed)
+                    
+                    # every 20 timesteps, do a test to make sure OL step result still agreed with closed loop record
+                    if timestep % 20 == 0:
+                        recurrent_hidden_states_next_record = get_activity_from_activity_row(now_activity[timestep + 1], device=args.device)
+                        action_next = get_action_from_traj_row(now_traj.iloc[timestep + 1], device=args.device)
+                        if not np.allclose(recurrent_hidden_states_next.cpu().detach().numpy(), recurrent_hidden_states_next_record.cpu().detach().numpy(), atol=1e-4):
+                            fprint(f"[BEEP] eps {eps} rep {rep}: recurrent_hidden_states not equal at timestep {timestep}, and the biggest difference is {np.max(np.abs(recurrent_hidden_states_next.cpu().detach().numpy() - recurrent_hidden_states_next_record.cpu().detach().numpy()))}")
+                            fprint(f"[BEEP] eps {eps} rep {rep}: obs {obs}, masks {masks}")
+                    
+                episode_logs.append({'ep_idx' : eps, 
+                                    'perturb_by': args.perturb_RNN_by,
+                                    'rep': rep,
+                                    'seed': args.seed,
+                                    'episode_log':episode_log})
             gc.collect()
         ### end of episode loop ###
     return episode_logs
+
 def get_obs_from_traj_row(now_row, device='cpu'):
     obs = tuple([now_row['wind_x_obs'], now_row['wind_y_obs'], 
        now_row['odor_raw'], # odor obs as is (not rectified, etc)
@@ -161,7 +184,8 @@ class Args(argparse.Namespace):
     model_fname = None  # Assuming no default is given
     diffusionx = 1.0
     out_dir = None
-    number_of_eps = 80 # number of episodes to pull for each OUTCOME (OOB, HOME) from the evaluation trajectory
+    from_eps = 0 
+    to_eps = 19
 
 
 if __name__ == '__main__':
@@ -214,8 +238,8 @@ if __name__ == '__main__':
     args.model_fname = '/src/data/wind_sensing/apparent_wind_visual_feedback/sw_dist_logstep_ALL_noisy_wind_0.001/weights/plume_951_23354e57874d619687478a539a360146.pt'
     args.eval_folder = 'eval'
     args.eval_folder = args.model_fname.replace('weights', args.eval_folder).replace('.pt', '/')
-    print(f"Trajectory directory: {args.eval_folder}")
-    print(f"Output directory: {args.abs_out_dir}")
+    fprint(f"Trajectory directory: {args.eval_folder}")
+    fprint(f"Output directory: {args.abs_out_dir}")
     # make sure the directory exists
     os.makedirs('/'.join([exp_dir, args.out_dir]), exist_ok=True)
     os.makedirs(args.abs_out_dir, exist_ok=True)
@@ -225,12 +249,12 @@ if __name__ == '__main__':
     except ValueError:
         actor_critic, ob_rms = torch.load(args.model_fname, map_location=torch.device(args.device))
         
-    args.number_of_eps = 240
+    
     selected_df = log_analysis.get_selected_df(args.eval_folder, [args.dataset],
-                                            n_episodes_home=args.number_of_eps,
-                                            n_episodes_other=args.number_of_eps, 
+                                            n_episodes_home=240,
+                                            n_episodes_other=240,  
                                             balanced=False,
-                                            oob_only=False,
+                                            oob_only=True,
                                             verbose=True)
 
     traj_df_stacked, stacked_neural_activity = log_analysis.get_traj_and_activity_and_stack_them(selected_df, 
@@ -243,6 +267,7 @@ if __name__ == '__main__':
     # check if all lines up
     assert (len(stacked_neural_activity) == len(traj_df_stacked))
     # TODO important arg
+    args.perturb_rep = 100
     args.perturb_RNN_by = 'subspace'
     args.perturb_RNN_by_ortho_set = '/src/data/wind_sensing/apparent_wind_visual_feedback/sw_dist_logstep_ALL_noisy_wind_0.001/eval/plume_951_23354e57874d619687478a539a360146/ranked_orthogonal_basis_and_var_with_wind_encoding_subspace_951.pkl'
     if args.perturb_RNN_by == 'subspace' or args.perturb_RNN_by == 'nullspace':
@@ -253,10 +278,10 @@ if __name__ == '__main__':
         elif len(file_content) == 2:
             orthogonal_basis = file_content[0]
             sigma_noise = file_content[1] # variance in each orthogonal basis direction - shape of (64,)
-        print(f"Loading orthogonal basis from {args.perturb_RNN_by_ortho_set}, and perturbing hidden states with noise {sigma_noise}")
+        fprint(f"Loading orthogonal basis from {args.perturb_RNN_by_ortho_set}, and perturbing hidden states with noise {sigma_noise}")
     elif args.perturb_RNN_by == 'all':
         orthogonal_basis='dummy'
-        
     episode_logs = open_perturb_loop(traj_df_stacked, stacked_neural_activity, actor_critic, orthogonal_basis, sigma_noise, args)
     f_prefix = f"open_loop_perturb_{args.perturb_RNN_by}"
+    fprint(f"Saving perturbation analysis to {args.abs_out_dir}/{f_prefix}_perturb_analysis.pkl")
     save_log_to_pkl(episode_logs, args.abs_out_dir, f_prefix)
