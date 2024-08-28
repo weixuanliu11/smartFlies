@@ -722,7 +722,10 @@ def generate_white_noise(sigma, sample_by='normal'):
         return np.random.uniform(-sigma, sigma)
 
 
-def perturb_rnn_activity(rnn_activity, ortho_set, sigma, perturb_direction, sample_noise_by='normal'):
+def perturb_rnn_activity(rnn_activity, ortho_set, sigma, perturb_direction, sample_noise_by='normal', return_perturb_by=False):
+    '''
+    sigma (float or matrix): standard deviation of the noise
+    '''
     # perturb the rnn activity
     noise_coeff = generate_white_noise(sigma, sample_by=sample_noise_by)
     if perturb_direction == 'subspace':
@@ -737,4 +740,6 @@ def perturb_rnn_activity(rnn_activity, ortho_set, sigma, perturb_direction, samp
         raise ValueError("perturb_direction should be 'subspace', 'all', or 'nullspace'")
     perturb_by = torch.from_numpy(perturb_by)
     perturb_by = perturb_by.to(device=rnn_activity.device.type, dtype=torch.float32)
+    if return_perturb_by:
+        return rnn_activity + perturb_by, perturb_by
     return rnn_activity + perturb_by
