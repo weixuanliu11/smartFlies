@@ -252,7 +252,7 @@ def get_eval_dfs_and_stack_them(model_fname, use_datasets, number_of_eps, exp_di
     return traj_df_stacked
 
 
-def get_traj_and_activity_and_stack_them(eval_log_pkl_df: pd.DataFrame, obtain_neural_activity: bool = True, obtain_traj_df: bool = True) -> pd.DataFrame:
+def get_traj_and_activity_and_stack_them(eval_log_pkl_df: pd.DataFrame, obtain_neural_activity: bool = True, obtain_traj_df: bool = True, get_traj_tmp: bool = True) -> pd.DataFrame:
     """
     Load and stack trajectory and neural activity data from evaluation logs. 
 
@@ -260,7 +260,9 @@ def get_traj_and_activity_and_stack_them(eval_log_pkl_df: pd.DataFrame, obtain_n
         eval_log_pkl_df (pd.DataFrame): DataFrame containing evaluation logs.
         obtain_neural_activity: Flag to obtain neural activity data. Default is True.
         obtain_traj_df: Flag to obtain trajectory DataFrame. Default is True.
-
+        get_traj_tmp: Flag to use get_traj_df_tmp to calculate head direction and course direction. Default is True.
+            Note: tmp calculates from info which is unnormalized. Else get from obs which can either be raw or normalized. If vecNormalize is saved, then obs is raw, which can be normalized later.
+                TODO: make sure that obs is always normalized - keep a copy of the raw version in info. This way open loop is easier with the normalized obs
     Returns:
         pd.DataFrame: Stacked trajectory DataFrame.
         np.ndarray: Stacked neural activity data.
@@ -278,13 +280,20 @@ def get_traj_and_activity_and_stack_them(eval_log_pkl_df: pd.DataFrame, obtain_n
             if obtain_neural_activity:
                 ep_neural_activity = get_activity(episode_log, is_recurrent, do_plot=False)
                 h_episodes.append(ep_neural_activity)
-            if get_traj_df:
-                traj_df = get_traj_df_tmp(episode_log, 
+            if obtain_traj_df:
+                if get_traj_tmp:
+                    traj_df = get_traj_df_tmp(episode_log, 
                                                 extended_metadata=False, 
                                                 squash_action=squash_action)
+                else:
+                    traj_df = get_traj_df(episode_log, 
+                                            extended_metadata=False, 
+                                            squash_action=squash_action)
                 traj_df['tidx'] = np.arange(traj_df.shape[0], dtype=int)
                 for colname in ['dataset', 'idx', 'outcome']:
                     traj_df[colname] = row[colname] 
+                    if colname == 'idx':
+                        traj_df['ep_idx'] = row[colname]
                 traj_dfs.append(traj_df)
         stacked_neural_activity = stacked_traj_df = 'DUMMY'
         if obtain_neural_activity:
@@ -412,8 +421,8 @@ def get_traj_df(episode_log,
     traj_df['step'] = act['step']
     traj_df['turn'] = act['turn']
 
-    traj_df['odor_obs'] = obs['odor']
-    traj_df['odor_obs'] = [0. if x <= config.env['odor_threshold'] else x for x in traj_df['odor_obs']]
+    traj_df['odor_raw'] = obs['odor'] # added for open loop perturbation analysis - do not rectify
+    traj_df['odor_obs'] = [0. if x <= config.env['odor_threshold'] else x for x in traj_df['odor_raw']]
 
     traj_df['stray_distance'] = [record[0]['stray_distance'] for record in episode_log['infos']]
 
@@ -591,8 +600,8 @@ def get_traj_df_tmp(episode_log,
     traj_df['step'] = act['step']
     traj_df['turn'] = act['turn']
 
-    traj_df['odor_obs'] = obs['odor']
-    traj_df['odor_obs'] = [0. if x <= config.env['odor_threshold'] else x for x in traj_df['odor_obs']]
+    traj_df['odor_raw'] = obs['odor'] # added for open loop perturbation analysis - do not rectify
+    traj_df['odor_obs'] = [0. if x <= config.env['odor_threshold'] else x for x in traj_df['odor_raw']]
 
     traj_df['stray_distance'] = [record[0]['stray_distance'] for record in episode_log['infos']]
 
