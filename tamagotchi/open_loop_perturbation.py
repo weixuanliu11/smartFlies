@@ -266,9 +266,9 @@ if __name__ == '__main__':
     assert (len(stacked_neural_activity) == len(traj_df_stacked))
     # TODO important arg
     args.perturb_rep = 100
-    args.perturb_RNN_by = 'subspace'
+    args.perturb_RNN_by = 'subspace_WN_in_nullspace'
     args.perturb_RNN_by_ortho_set = '/src/data/wind_sensing/apparent_wind_visual_feedback/sw_dist_logstep_ALL_noisy_wind_0.001/eval/plume_951_23354e57874d619687478a539a360146/ranked_orthogonal_basis_and_var_with_wind_encoding_subspace_951.pkl'
-    if args.perturb_RNN_by == 'subspace' or args.perturb_RNN_by == 'nullspace':
+    if args.perturb_RNN_by == 'subspace' or args.perturb_RNN_by == 'nullspace' or args.perturb_RNN_by == 'subspace_WN_in_nullspace':
         file_content = agent_analysis.import_orthogonal_basis(args.perturb_RNN_by_ortho_set) # 64x64, where the first row is the wind encoding subspace
         if len(file_content) == 1:
             orthogonal_basis = file_content[0]

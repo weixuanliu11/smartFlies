@@ -727,17 +727,24 @@ def perturb_rnn_activity(rnn_activity, ortho_set, sigma, perturb_direction, samp
     sigma (float or matrix): standard deviation of the noise
     '''
     # perturb the rnn activity
-    noise_coeff = generate_white_noise(sigma, sample_by=sample_noise_by)
+    noise_constant = generate_white_noise(sigma, sample_by=sample_noise_by)
     if perturb_direction == 'subspace':
         # express the noise as a linear combination of the basis vectors
-        perturb_by = noise_coeff[0] * ortho_set[0] # first row is the wind encoding subspace
+        perturb_by = noise_constant[0] * ortho_set[0] # first row is the wind encoding subspace
     elif perturb_direction == 'all':
-        perturb_by = noise_coeff * ortho_set
+        perturb_by = noise_constant * ortho_set
     elif perturb_direction == 'nullspace':
         # express the noise as a linear combination of the basis vectors
-        perturb_by = noise_coeff[1:] @ ortho_set[1:] # first row is the wind encoding subspace, so exclude it
+        perturb_by = noise_constant[1:] @ ortho_set[1:] # first row is the wind encoding subspace, so exclude it
+    elif perturb_direction == 'subspace_WN_in_nullspace':
+        # sample null direction by their relative variance and perturb in that direction by the noise_constant drawn from the wind variance
+        null_dir_sample = noise_constant[1:] @ ortho_set[1:] # first row is the wind encoding subspace, so exclude it
+        # get the sample as an unit vector
+        u_null_dir_sample = null_dir_sample / np.linalg.norm(null_dir_sample) 
+        # perturb in the direction of the nullspace with the WN drawn from wind variance. This ensures 1. perturb by the same strength as wind subspace, 2. the nullspace direction reflects their variabiliy
+        perturb_by = noise_constant[0] * u_null_dir_sample
     else:
-        raise ValueError("perturb_direction should be 'subspace', 'all', or 'nullspace'")
+        raise ValueError("perturb_direction should be 'subspace', 'all', 'nullspace', or 'subspace_WN_in_nullspace'")
     perturb_by = torch.from_numpy(perturb_by)
     perturb_by = perturb_by.to(device=rnn_activity.device.type, dtype=torch.float32)
     if return_perturb_by:
