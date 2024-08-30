@@ -130,10 +130,6 @@ def open_perturb_loop(traj_df_stacked, stacked_neural_activity, actor_critic, or
                                     'seed': args.seed,
                                     'episode_log':episode_log})
             gc.collect()
-        ### end of episode loop ###
-        # f_prefix = f"OL_perturb_{args.perturb_RNN_by}_{args.from_eps}_{args.to_eps}_{args.perturb_rep}rep"
-        # fprint(f"Saving perturbation analysis to {args.abs_out_dir}/{f_prefix}.pkl")
-        # save_log_to_pkl(episode_logs, args.abs_out_dir, f_prefix)
     return episode_logs
 
 def get_obs_from_traj_row(now_row, device='cpu'):
@@ -161,13 +157,6 @@ def save_log_to_pkl(episode_logs, out_dir, f_prefix):
 
 class Args(argparse.Namespace):
     seed = 137
-    algo = 'ppo'
-    dataset = 'noisy3x5b5'
-    test_episodes = 100
-    viz_episodes = 10
-    no_viz = True
-    fixed_eval = True
-    test_sparsity = False
     device = 'cpu'
     # device = 'cuda:0'
     flip_ventral_optic_flow = False
@@ -175,7 +164,6 @@ class Args(argparse.Namespace):
     perturb_RNN_by = False
     no_vec_norm_stats = True
     model_fname = None  # Assuming no default is given
-    diffusionx = 1.0
     out_dir = None
     ###
     from_eps = 20
@@ -185,43 +173,10 @@ class Args(argparse.Namespace):
 if __name__ == '__main__':
     # exactly the same as evalCli.py argument loading, with additions from traj_analysis.py
     args=Args()
-    args.det = True # override
     args.apparent_wind = True
     args.visual_feedback = True
     np.random.seed(args.seed)
-    args.env_name = 'plume'
-    args.env_dt = 0.04
-    args.turnx = 1.0
-    args.movex = 1.0
-    args.birthx = 1.0
-    args.loc_algo = 'quantile'
-    args.time_algo = 'uniform'
-    args.diff_max = 0.8
-    args.diff_min = 0.8
-    args.auto_movex = False
-    args.auto_reward = False
-    args.wind_rel = True
-    args.action_feedback = False
-    args.walking = False
-    args.radiusx = 1.0
-    args.r_shaping = ['step'] # redundant
-    args.rewardx = 1.0
-    args.squash_action = True
-    args.diffusion_min = args.diffusionx
-    args.diffusion_max = args.diffusionx
-    args.flipping = False
-    args.odor_scaling = False
-    args.qvar = 0.0
-    args.stray_max = 2.0
-    args.birthx_max = 1.0
-    args.masking = None
-    args.stride = 1
-    args.obs_noise = 0.0
-    args.act_noise = 0.0
-    args.dynamic = False
-    args.stacking = 0
-    args.recurrent_policy = True # used in setting up network in main. Outside of that, used once in make_env (always true in my case)
-    
+  
     args.model_fname = '/src/data/wind_sensing/apparent_wind_visual_feedback/sw_dist_logstep_ALL_noisy_wind_0.001/weights/plume_951_23354e57874d619687478a539a360146.pt'
     args.out_dir = 'open_loop_perturbation'
     args.f_prefix = os.path.basename(args.model_fname).replace(".pt", "") # eg: plume_seed_hash
