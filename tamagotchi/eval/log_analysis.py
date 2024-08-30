@@ -202,7 +202,7 @@ def get_wind_change_regimes(traj_df, wind_change_frame_threshold=5, frame_rate=0
         print(f"Threshold for wind change regime is {threshold} seconds \n")
         
 
-def get_eval_dfs_and_stack_them(model_fname, use_datasets, number_of_eps, exp_dir='eval', verbose=False):
+def get_eval_dfs_and_stack_them(model_fname, use_datasets, number_of_eps, exp_dir='eval', verbose=False, oob_only=True):
     # used when visualizing trajectories and actions taken
     is_recurrent = True
     # load eval episodes from pkl files
@@ -216,7 +216,7 @@ def get_eval_dfs_and_stack_them(model_fname, use_datasets, number_of_eps, exp_di
                                     n_episodes_home=number_of_eps, 
                                     n_episodes_other=number_of_eps,
                                     balanced=False,
-                                #   oob_only=False,
+                                    oob_only=oob_only,
                                     min_ep_steps=0)
     if verbose:
         print("model_dir", model_dir)
