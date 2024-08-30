@@ -18,7 +18,7 @@ import eval.log_analysis as log_analysis
 def fprint(*args, **kwargs):
     print(*args, **kwargs)
     sys.stdout.flush()
-
+    
 def log_perturb_analysis(log_dict, **kwargs):
     for key, value in kwargs.items():
         if key == 'ls_activity' or key == 'ls_activity_perturbed':
@@ -31,7 +31,7 @@ def log_perturb_analysis(log_dict, **kwargs):
                     'value': value['value'].cpu().numpy().squeeze()} )
         else:
             log_dict[key].append(value)
-
+            
 
 def save_log_to_pkl(episode_logs, out_dir, f_prefix):
     # save the episode_logs to a pkl file
@@ -44,17 +44,10 @@ def open_perturb_loop(traj_df_stacked, stacked_neural_activity, actor_critic, or
     episode_logs = [] # list of dfs
     all_eps = traj_df_stacked['ep_idx'].unique()
     all_eps.sort()
-    subset_eps = all_eps[args.from_eps:args.to_eps] # get from_eps to to_eps
+    subset_eps = all_eps[args.from_eps:args.to_eps+1] # get from_eps to to_eps
     for eps in subset_eps:
-        fprint(f"[LOG] starting episode {eps} at {datetime.datetime.now()}")
-        episode_log = {'ls_tidx': [],
-                    'ls_dist': [],
-                    'ls_dist_perturbed': [],
-                    'ls_KL_divergence': [],
-                    'ls_h_perturbed': [],
-                    'ls_perturb_by': [],
-                    'ls_activity': [],
-                    'ls_activity_perturbed': []}
+        if args.verbose: fprint(f"[LOG] starting episode {eps} at {datetime.datetime.now()}")
+
         # for each episode - get the trajectory and neural activity data 
         idx = traj_df_stacked[traj_df_stacked['ep_idx'] == eps].index
         # get the trajectory at these idx
@@ -68,10 +61,20 @@ def open_perturb_loop(traj_df_stacked, stacked_neural_activity, actor_critic, or
         
         with torch.no_grad():
             for rep in range(args.perturb_rep):
+                episode_log = {'ls_tidx': [],
+                    'ls_dist': [],
+                    'ls_dist_perturbed': [],
+                    'ls_KL_divergence': [],
+                    'ls_h_perturbed': [],
+                    'ls_perturb_by': [],
+                    'ls_activity': [],
+                    'ls_activity_perturbed': []}
+                if args.verbose>1: print(f"perturb rep {rep}")
                 args.seed += 1
                 torch.manual_seed(args.seed)
                 np.random.seed(args.seed)
                 for timestep in range(tidx_range): # compare up to t-1
+                    if args.verbose>1: print(f"timestep {timestep}/{tidx_range}")
                     # load eps data at timestep
                     now_traj_row = now_traj.iloc[timestep] # get the df row at this timestep
                     now_activity_row = now_activity[timestep]
@@ -119,7 +122,8 @@ def open_perturb_loop(traj_df_stacked, stacked_neural_activity, actor_critic, or
                         if not np.allclose(recurrent_hidden_states_next.cpu().detach().numpy(), recurrent_hidden_states_next_record.cpu().detach().numpy(), atol=1e-4):
                             fprint(f"[BEEP] eps {eps} rep {rep}: recurrent_hidden_states not equal at timestep {timestep}, and the biggest difference is {np.max(np.abs(recurrent_hidden_states_next.cpu().detach().numpy() - recurrent_hidden_states_next_record.cpu().detach().numpy()))}")
                             fprint(f"[BEEP] eps {eps} rep {rep}: obs {obs}, masks {masks}")
-                    
+                    if args.verbose>1: print(f"timestep end {timestep}/{tidx_range}")
+                if args.verbose>1: print(f"all ts done for perturb rep {rep}")
                 episode_logs.append({'ep_idx' : eps, 
                                     'perturb_by': args.perturb_RNN_by,
                                     'rep': rep,
@@ -127,6 +131,9 @@ def open_perturb_loop(traj_df_stacked, stacked_neural_activity, actor_critic, or
                                     'episode_log':episode_log})
             gc.collect()
         ### end of episode loop ###
+        # f_prefix = f"OL_perturb_{args.perturb_RNN_by}_{args.from_eps}_{args.to_eps}_{args.perturb_rep}rep"
+        # fprint(f"Saving perturbation analysis to {args.abs_out_dir}/{f_prefix}.pkl")
+        # save_log_to_pkl(episode_logs, args.abs_out_dir, f_prefix)
     return episode_logs
 
 def get_obs_from_traj_row(now_row, device='cpu'):
@@ -147,24 +154,10 @@ def get_action_from_traj_row(now_row, device='cpu'):
     action = torch.tensor(action).float().to(device)
     return action
 
-def log_perturb_analysis(log_dict, **kwargs):
-    for key, value in kwargs.items():
-        if key == 'ls_activity' or key == 'ls_activity_perturbed':
-            log_dict[key].append({
-                    'rnn_hxs': value['rnn_hxs'].cpu().numpy().squeeze(),
-                    'hx1_actor': value['hx1_actor'].cpu().numpy().squeeze(),
-                    'hx1_critic': value['hx1_critic'].cpu().numpy().squeeze(), 
-                    'hidden_actor': value['hidden_actor'].cpu().numpy().squeeze(), 
-                    'hidden_critic': value['hidden_critic'].cpu().numpy().squeeze(), 
-                    'value': value['value'].cpu().numpy().squeeze()} )
-        else:
-            log_dict[key].append(value)
-
 def save_log_to_pkl(episode_logs, out_dir, f_prefix):
     # save the episode_logs to a pkl file
-    with open(f"{out_dir}/{f_prefix}_perturb_analysis.pkl", 'wb') as f:
-        pickle.dump({episode_logs}, f)
-
+    with open(f"{out_dir}/{f_prefix}.pkl", 'wb') as f:
+        pickle.dump(episode_logs, f)
 
 class Args(argparse.Namespace):
     seed = 137
@@ -175,8 +168,8 @@ class Args(argparse.Namespace):
     no_viz = True
     fixed_eval = True
     test_sparsity = False
-    # device = 'cpu'
-    device = 'cuda:0'
+    device = 'cpu'
+    # device = 'cuda:0'
     flip_ventral_optic_flow = False
     perturb_RNN_by_ortho_set = False
     perturb_RNN_by = False
@@ -184,8 +177,9 @@ class Args(argparse.Namespace):
     model_fname = None  # Assuming no default is given
     diffusionx = 1.0
     out_dir = None
-    from_eps = 0 
-    to_eps = 19
+    ###
+    from_eps = 20
+    to_eps = 39
 
 
 if __name__ == '__main__':
@@ -238,8 +232,12 @@ if __name__ == '__main__':
     args.model_fname = '/src/data/wind_sensing/apparent_wind_visual_feedback/sw_dist_logstep_ALL_noisy_wind_0.001/weights/plume_951_23354e57874d619687478a539a360146.pt'
     args.eval_folder = 'eval'
     args.eval_folder = args.model_fname.replace('weights', args.eval_folder).replace('.pt', '/')
+    args.verbose = 0
     fprint(f"Trajectory directory: {args.eval_folder}")
     fprint(f"Output directory: {args.abs_out_dir}")
+    
+    args.from_eps = int(sys.argv[1])
+    args.to_eps = int(sys.argv[2])
     # make sure the directory exists
     os.makedirs('/'.join([exp_dir, args.out_dir]), exist_ok=True)
     os.makedirs(args.abs_out_dir, exist_ok=True)
@@ -254,13 +252,13 @@ if __name__ == '__main__':
                                             n_episodes_home=240,
                                             n_episodes_other=240,  
                                             balanced=False,
-                                            oob_only=True,
+                                            oob_only=False,
                                             verbose=True)
 
     traj_df_stacked, stacked_neural_activity = log_analysis.get_traj_and_activity_and_stack_them(selected_df, 
                                                                                                 obtain_neural_activity = True, 
                                                                                                 obtain_traj_df = True, 
-                                                                                                get_traj_tmp = False) # get_traj_tmp False to get normalized obersevations
+                                                                                                get_traj_tmp = False) # get_traj_tmp False to get normalized obersevations - feed to agent for action
     
     # check if all counts are 1
     assert (traj_df_stacked.groupby(['ep_idx','tidx']).value_counts() == 1).all()
@@ -282,6 +280,6 @@ if __name__ == '__main__':
     elif args.perturb_RNN_by == 'all':
         orthogonal_basis='dummy'
     episode_logs = open_perturb_loop(traj_df_stacked, stacked_neural_activity, actor_critic, orthogonal_basis, sigma_noise, args)
-    f_prefix = f"open_loop_perturb_{args.perturb_RNN_by}"
-    fprint(f"Saving perturbation analysis to {args.abs_out_dir}/{f_prefix}_perturb_analysis.pkl")
+    f_prefix = f"OL_perturb_{args.perturb_RNN_by}_{args.from_eps}_{args.to_eps}_{args.perturb_rep}rep"
+    fprint(f"Saving perturbation analysis to {args.abs_out_dir}/{f_prefix}.pkl")
     save_log_to_pkl(episode_logs, args.abs_out_dir, f_prefix)
