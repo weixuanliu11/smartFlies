@@ -720,6 +720,8 @@ def generate_white_noise(sigma, sample_by='normal'):
         return np.random.normal(0, sigma) # N(0, sigma_i)
     elif sample_by == 'uniform':
         return np.random.uniform(-sigma, sigma)
+    else:
+        raise ValueError("[ERROR] generate_white_noise: sample_by should be 'normal' or 'uniform'")
 
 
 def perturb_rnn_activity(rnn_activity, ortho_set, sigma, perturb_direction, sample_noise_by='normal', return_perturb_by=False):

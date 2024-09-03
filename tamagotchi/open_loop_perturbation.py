@@ -92,7 +92,7 @@ def open_perturb_loop(traj_df_stacked, stacked_neural_activity, actor_critic, or
                     recurrent_hidden_states_perturbed, perturb_by = agent_analysis.perturb_rnn_activity(recurrent_hidden_states, 
                                                                                                         orthogonal_basis, sigma_noise, 
                                                                                                         args.perturb_RNN_by, 
-                                                                                                        sample_noise_by='normal', 
+                                                                                                        sample_noise_by=args.sample_noise_by, 
                                                                                                         return_perturb_by=True)
                     value_perturbed, action_perturbed, _, recurrent_hidden_states_perturbed_next, activity_perturbed = actor_critic.act(
                         obs,
@@ -105,6 +105,7 @@ def open_perturb_loop(traj_df_stacked, stacked_neural_activity, actor_critic, or
                     dist_perturbed = actor_critic.dist(activity_perturbed['hidden_actor'])
                     KL_divergence = torch.distributions.kl.kl_divergence(torch.distributions.Normal(dist.mean, dist.stddev),
                                                                         torch.distributions.Normal(dist_perturbed.mean, dist_perturbed.stddev))
+                    # NOTE: dist.mean==dist.mode, dist.mode -> action -> squash action i.e. (np.tanh(action) + 1)/2; see env.py
                     log_perturb_analysis(episode_log, 
                                         ls_tidx=timestep, 
                                         ls_dist=[dist.mean.cpu().numpy().squeeze(), dist.stddev.cpu().numpy().squeeze()], # mean.shape = [1,2]; first is speed & second is angular velocity
@@ -186,6 +187,7 @@ if __name__ == '__main__':
 
     args.model_fname = '/src/data/wind_sensing/apparent_wind_visual_feedback/sw_dist_logstep_ALL_noisy_wind_0.001/weights/plume_951_23354e57874d619687478a539a360146.pt'
     args.eval_folder = 'eval'
+    args.dataset = 'noisy3x5b5'
     args.eval_folder = args.model_fname.replace('weights', args.eval_folder).replace('.pt', '/')
     args.verbose = 0
     fprint(f"Trajectory directory: {args.eval_folder}")
@@ -193,6 +195,11 @@ if __name__ == '__main__':
     
     args.from_eps = int(sys.argv[1])
     args.to_eps = int(sys.argv[2])
+    if len(sys.argv) > 3:
+        args.sample_noise_by = sys.argv[3]
+        args.out_dir = f"{args.out_dir}_{args.sample_noise_by}"
+        print(f"Sample noise by {args.sample_noise_by}, and output to {args.out_dir}")
+    fprint(f"Starting from {args.from_eps} to {args.to_eps}")
     # make sure the directory exists
     os.makedirs('/'.join([exp_dir, args.out_dir]), exist_ok=True)
     os.makedirs(args.abs_out_dir, exist_ok=True)
