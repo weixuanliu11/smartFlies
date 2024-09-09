@@ -768,7 +768,8 @@ class PlumeEnvironment_v2(gym.Env):
     seed=137,
     verbose=0,
     apparent_wind=False,
-    apparent_wind_allo=False,):
+    apparent_wind_allo=False, # deprecated!
+    ):
     super(PlumeEnvironment_v2, self).__init__()
 
     np.random.seed(seed)    
@@ -874,8 +875,7 @@ class PlumeEnvironment_v2(gym.Env):
       }
 
     # Wind Sensing 
-    self.apparent_wind = apparent_wind # egocentric app wind is always np.pi, 180 degrees
-    self.apparent_wind_allo = apparent_wind_allo # wether to feed allocentric apparent wind to agent 
+    self.apparent_wind = apparent_wind # egocentric app wind = -air velocity (intended direction of movement)
 
     # Define action and observation spaces
     # Actions:
@@ -941,10 +941,7 @@ class PlumeEnvironment_v2(gym.Env):
         wind_absolute = self.ambient_wind - self.air_velocity
     # Use apparent wind (negative of air velocity) for training
     if self.apparent_wind:
-        if self.apparent_wind_allo:
-            wind_absolute = - self.air_velocity # allocentric apparent wind = negative of air velocity (allocentric)
-        else:
-            wind_absolute = [ np.cos(np.pi), np.sin(np.pi) ]  # egocentric apparent wind - always antiparallel to self 
+        wind_absolute = - self.air_velocity # allocentric apparent wind = negative of air velocity (allocentric)
     if self.verbose > 1:
         print('t_val', self.t_val)
         print('sensed wind (allocentric, before rotating angle by agent direction) ', wind_absolute) 
