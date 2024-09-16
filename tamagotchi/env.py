@@ -310,7 +310,7 @@ class PlumeEnvironment(gym.Env):
     try:
         minY = min(Y) 
     except Exception as ex:
-        print(f"Exception: {ex}, t:{self.t_val:.2f}, tidx:{self.tidx}({self.tidx_min_episode}...{self.tidx_max_episode}), ep_step:{self.episode_step}, {Z}")  
+        print(f"[PE_v1 get_stray_distance] Exception: {ex}, t:{self.t_val:.2f}, tidx:{self.tidx}({self.tidx_min_episode}...{self.tidx_max_episode}), ep_step:{self.episode_step}, {Z}")  
         minY = np.array([0])      
     return minY[0] # return float not float-array
 
@@ -505,7 +505,7 @@ class PlumeEnvironment(gym.Env):
         self.t_val = self.t_vals[self.episode_step + self.step_offset]
     except Exception as ex:
         # Debug case where the env tries to access t_val outside puff_data!
-        print(ex, self.episode_step, self.step_offset, self.t_val_min, self.t_vals[-5:], self.tidxs[-5:])
+        print("PE_v1 step", ex, self.episode_step, self.step_offset, self.t_val_min, self.t_vals[-5:], self.tidxs[-5:])
         sys.exit(-1)
     
     self.stray_distance_last = self.stray_distance
@@ -989,7 +989,7 @@ class PlumeEnvironment_v2(gym.Env):
     try:
         minY = min(Y) 
     except Exception as ex:
-        print(f"Exception: {ex}, t:{self.t_val:.2f}, tidx:{self.tidx}({self.tidx_min_episode}...{self.tidx_max_episode}), ep_step:{self.episode_step}, {Z}")  
+        print(f"[PEv2 get_stray_distance] Exception: {ex}, t:{self.t_val:.2f}, tidx:{self.tidx}({self.tidx_min_episode}...{self.tidx_max_episode}), ep_step:{self.episode_step}, {Z}")  
         minY = np.array([0])      
     return minY[0] # return float not float-array
 
@@ -1159,7 +1159,7 @@ class PlumeEnvironment_v2(gym.Env):
         self.t_val = self.t_vals[self.episode_step + self.step_offset]
     except Exception as ex:
         # Debug case where the env tries to access t_val outside puff_data!
-        print(ex, self.episode_step, self.step_offset, self.t_val_min, self.t_vals[-5:], self.tidxs[-5:])
+        print("[PEv2 step]",ex, self.episode_step, self.step_offset, self.t_val_min, self.t_vals[-5:], self.tidxs[-5:])
         sys.exit(-1)
     
     self.stray_distance_last = self.stray_distance
@@ -1409,7 +1409,7 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
             self.t_val = self.t_vals[self.episode_step + self.step_offset]
         except Exception as ex:
             # Debug case where the env tries to access t_val outside puff_data!
-            print(ex, self.episode_step, self.step_offset, self.t_val_min, self.t_vals[-5:], self.tidxs[-5:])
+            print("[PEv3 step]", ex, self.episode_step, self.step_offset, self.t_val_min, self.t_vals[-5:], self.tidxs[-5:])
             sys.exit(-1)
         
         self.stray_distance_last = self.stray_distance
@@ -1833,6 +1833,7 @@ def _worker(
             else:
                 raise NotImplementedError(f"`{cmd}` is not implemented in the worker")
         except EOFError:
+            print("Worker got EOFError", flush=True, file=sys.stderr)
             break
 
 
