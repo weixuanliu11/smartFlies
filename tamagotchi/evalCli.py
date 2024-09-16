@@ -396,6 +396,7 @@ if __name__ == "__main__":
     
     # env related
     parser.add_argument('--diffusionx',  type=float, default=1.0)
+    parser.add_argument('--obs_noise',  type=float, default=0.0)
     parser.add_argument('--apparent_wind', type=bool, default=False)
     parser.add_argument('--visual_feedback', type=bool, default=False)
     parser.add_argument('--flip_ventral_optic_flow', type=bool, default=False) # for eval to see the behavioral impact of flipping course direction perception.
@@ -446,7 +447,6 @@ if __name__ == "__main__":
     args.birthx_max = 1.0
     args.masking = None
     args.stride = 1
-    args.obs_noise = 0.0
     args.act_noise = 0.0
 
     args.dynamic = False
