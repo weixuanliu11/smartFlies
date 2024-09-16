@@ -272,5 +272,15 @@ def main(args=None):
     training_log, eval_log = training_loop(agent, envs, args, device, actor_critic, 
         training_log=training_log, eval_log=eval_log, eval_env=None, rollouts=rollouts)  
 
+    # close the envs
+    try:
+        import gc
+        gc.collect()
+        envs.close()
+        del training_log
+        del eval_log
+    except Exception as e:
+        print(f"Cleaning objs after training failed.. see exception message: {e}", flush=True)
+        
 if __name__ == "__main__":
     main()
