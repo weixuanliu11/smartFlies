@@ -129,7 +129,7 @@ def get_selected_df(model_dir, use_datasets,
         
     if verbose:
         print("model_dir", model_dir)
-        logfiles = natsorted(glob.glob(model_dir + '*.pkl'))
+        logfiles = natsorted(glob.glob("/".join([model_dir, '*.pkl'])))
         model_seed = model_dir.rstrip('/').split('/')[-1].split('_')[1]
         print("model_seed ---->", model_seed)
         print(f"Found {len(logfiles)} .pkl evaluation logs in {model_dir}")
