@@ -47,6 +47,9 @@ def main(args):
         files = glob.glob(f"{args.base_dir}/{args.subdir_prefix}*/**/*_summary.csv", recursive=True)
         # files = [f for f in files if f.split('/')[1].startswith(args.subdir_suffix)]
         print(f"Reading directory {args.base_dir}/{args.subdir_prefix}*/**, {len(files)} files found")
+    elif args.subdir:
+        files = glob.glob(f"{args.base_dir}/{args.subdir}/**/*_summary.csv", recursive=True)
+        print(f"Reading directory {args.base_dir}/{args.subdir}/**/, {len(files)} files found")
     else:
         files = glob.glob(f"{args.base_dir}/**/*_summary.csv", recursive=True)
         print(f"Reading directory {args.base_dir}, {len(files)} files found")
@@ -67,6 +70,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--base_dir', default=os.getcwd(), type=str, help='Base directory of the experiment')
     parser.add_argument('--subdir_prefix', default='', type=str, help='Find subdirs that startwith the suffix')
+    parser.add_argument('--subdir', default='', type=str, help='Find the subdir')
     parser.add_argument('--out_prefix', default='', type=str, help='Output file prefix')
     
     args = parser.parse_args()
