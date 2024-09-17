@@ -57,10 +57,11 @@ def main(args):
     current_date = datetime.date.today()
 
     if args.out_prefix:
-        summary_dfs.to_csv(f'{args.base_dir}/{args.out_prefix}.tsv', sep='\t', index=False)
+        full_out_path = f'{args.base_dir}/{args.out_prefix}.tsv'
     else:
-        summary_dfs.to_csv(f'{args.base_dir}/performance_all_{current_date}.tsv', sep='\t', index=False)
-    print(f"Saved to {args.base_dir}/performance_all_{current_date}.tsv")
+        full_out_path = f'{args.base_dir}/performance_all_{current_date}.tsv'
+    summary_dfs.to_csv(full_out_path, sep='\t', index=False)
+    print(f"Saved to {full_out_path}")
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
