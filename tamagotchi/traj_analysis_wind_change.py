@@ -333,13 +333,13 @@ def arg_parse():
     parser.add_argument('--save', type=bool, default=False, help='Save graphs or just a dry run')
     parser.add_argument('--eval_folder', type=str, default='eval', help='The directory name of the evaluation experiment, where th pkl files are stored in')
     parser.add_argument('--out_dir', type=str, default='report_action_dist', help='folder name of where plots should be saved to; typically RUN_NAME/eval/report_action_dist')
-    parser.add_argument('--wind_change_regime_threshold', type=int, default=10, help='Threshold for wind change regime in seconds')
+    parser.add_argument('--wind_change_regime_threshold', type=int, default=10, help='Threshold for wind change regime in number of frames (fr = 0.04)')
     parser.add_argument('--regimes', default=['anemotactic', 'tracking'], help='Wind regimes to plot')
 
     args = parser.parse_args()
     args.model_seed = args.model_fname.rstrip('/').split('/')[-1].split('_')[1]
     args.model_dir = args.model_fname.replace('.pt', '/').replace("weights", args.eval_folder) # output everything to perturb_along_all
-    args.out_dir = "/".join([os.path.dirname(os.path.dirname(args.model_dir)), {args.out_dir}]) # typically RUN_NAME/eval/report_action_dist
+    args.out_dir = "/".join([os.path.dirname(os.path.dirname(args.model_dir)), args.out_dir, ""]) # typically RUN_NAME/eval/report_action_dist
     # set up output directory and check if model directory exists
     if not os.path.exists(args.model_dir):
         raise ValueError(f"[FAILED] Model directory {args.model_dir} does not exist")
