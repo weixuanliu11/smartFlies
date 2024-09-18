@@ -1,5 +1,7 @@
 #%%
 # the line above allows debug in interactive mode - can show matplotlib plot when debugging
+# Usage python3 tamagotchi/traj_analysis_wind_change.py --model_fname 'EXP/weights/plume_SEED.pt' --number_of_eps 40 --save True --verbose True &
+
 from __future__ import division
 import os
 import glob
@@ -337,11 +339,10 @@ def arg_parse():
     args = parser.parse_args()
     args.model_seed = args.model_fname.rstrip('/').split('/')[-1].split('_')[1]
     args.model_dir = args.model_fname.replace('.pt', '/').replace("weights", args.eval_folder) # output everything to perturb_along_all
-    args.out_dir = f"{args.model_dir}/{args.out_dir}" # typically RUN_NAME/eval/report_action_dist
+    args.out_dir = "/".join([os.path.dirname(os.path.dirname(args.model_dir)), {args.out_dir}]) # typically RUN_NAME/eval/report_action_dist
     # set up output directory and check if model directory exists
     if not os.path.exists(args.model_dir):
-        print(f"Model directory {args.model_dir} does not exist")
-        sys.exit(0)
+        raise ValueError(f"[FAILED] Model directory {args.model_dir} does not exist")
     print("model_dir", args.model_dir)
     print("out_dir", args.out_dir)
     os.makedirs(args.out_dir, exist_ok=True)
