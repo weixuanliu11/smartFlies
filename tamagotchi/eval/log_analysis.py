@@ -202,11 +202,14 @@ def get_wind_change_regimes(traj_df, wind_change_frame_threshold=5, frame_rate=0
         print(f"Threshold for wind change regime is {threshold} seconds \n")
         
 
-def get_eval_dfs_and_stack_them(model_fname, use_datasets, number_of_eps, exp_dir='eval', verbose=False, oob_only=True):
+def get_eval_dfs_and_stack_them(model_fname, use_datasets, number_of_eps, exp_dir='eval', full_model_dir=None, verbose=False, oob_only=True):
     # used when visualizing trajectories and actions taken
     is_recurrent = True
     # load eval episodes from pkl files
     model_dir = model_fname.replace('.pt', '/').replace("weights", exp_dir) 
+    if full_model_dir is not None:
+        model_dir = full_model_dir
+        
     if not os.path.exists(model_dir):
         print(f"Model directory {model_dir} does not exist")
         sys.exit(0)
@@ -564,8 +567,8 @@ def get_traj_df_tmp(episode_log,
         obs.columns = ['wind_x', 'wind_y', 'odor', 'agent_angle_x', 'agent_angle_y', 'ego_course_direction_x', 'ego_course_direction_y']
     
     # write wind observation into df
-    obs['wind_theta_obs'] = obs.apply(lambda row: vec2rad_norm_by_pi(row['wind_x'], row['wind_y']), axis=1)
-    traj_df['wind_theta_obs'] = rad_over_pi_shift2_01(obs['wind_theta_obs'])
+    traj_df['wind_theta_obs'] = obs.apply(lambda row: vec2rad_norm_by_pi(row['wind_x'], row['wind_y']), axis=1)
+    traj_df['wind_theta_obs'] = rad_over_pi_shift2_01(traj_df['wind_theta_obs'])
     traj_df['wind_x_obs'] = obs['wind_x']
     traj_df['wind_y_obs'] = obs['wind_y']
     # calc agent angle observation from info 
@@ -574,23 +577,24 @@ def get_traj_df_tmp(episode_log,
     traj_df['agent_angle_ground_theta'] = [ rad_over_pi_shift2_01( 
         vec2rad_norm_by_pi(record[0]['angle'][0], record[0]['angle'][1]) ) \
         for record in episode_log['infos']]
-    # calculate course direction from info
-    allo_ground_velocity  = [record[0]['ground_velocity'] for record in episode_log['infos']]
-    # same calc as vec2rad_norm_by_pi, except do not normalize by pi
-    allocentric_course_direction_radian = [np.angle(gv[0] + 1j*gv[1], deg=False) for gv in allo_ground_velocity]
-    allocentric_head_direction_radian = [np.angle(record[0]['angle'][0] + 1j*record[0]['angle'][1], deg=False) for record in episode_log['infos']] 
-    egocentric_course_direction_radian = np.array(allocentric_course_direction_radian) - np.array(allocentric_head_direction_radian) # leftward positive - standard CWW convention
-    ego_course_direction_x, ego_course_direction_y = np.cos(egocentric_course_direction_radian), np.sin(egocentric_course_direction_radian)
-    egocentric_course_direction_theta = rad_over_pi_shift2_01(vec2rad_norm_by_pi(ego_course_direction_x, ego_course_direction_y)) # normalize by pi and then shift to 0-1
-    traj_df['ego_course_direction_x'] = ego_course_direction_x
-    traj_df['ego_course_direction_y'] = ego_course_direction_y
-    traj_df['ego_course_direction_theta'] = egocentric_course_direction_theta
-    # get true wind info from info
-    traj_df['wind_angle_ground_theta'] = [ rad_over_pi_shift2_01( 
-        vec2rad_norm_by_pi(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
-    traj_df['wind_angle_ground_x'] = [ record[0]['ambient_wind'][0] for record in episode_log['infos']]
-    traj_df['wind_angle_ground_y'] = [ record[0]['ambient_wind'][1] for record in episode_log['infos']]
-    traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0]['ambient_wind']) for record in episode_log['infos']]
+    if obs.shape[1] == 7: # only consider these info if obs has visual feedback - earlier trials logs were different
+        # calculate course direction from info
+        allo_ground_velocity  = [record[0]['ground_velocity'] for record in episode_log['infos']]
+        # same calc as vec2rad_norm_by_pi, except do not normalize by pi
+        allocentric_course_direction_radian = [np.angle(gv[0] + 1j*gv[1], deg=False) for gv in allo_ground_velocity]
+        allocentric_head_direction_radian = [np.angle(record[0]['angle'][0] + 1j*record[0]['angle'][1], deg=False) for record in episode_log['infos']] 
+        egocentric_course_direction_radian = np.array(allocentric_course_direction_radian) - np.array(allocentric_head_direction_radian) # leftward positive - standard CWW convention
+        ego_course_direction_x, ego_course_direction_y = np.cos(egocentric_course_direction_radian), np.sin(egocentric_course_direction_radian)
+        egocentric_course_direction_theta = rad_over_pi_shift2_01(vec2rad_norm_by_pi(ego_course_direction_x, ego_course_direction_y)) # normalize by pi and then shift to 0-1
+        traj_df['ego_course_direction_x'] = ego_course_direction_x
+        traj_df['ego_course_direction_y'] = ego_course_direction_y
+        traj_df['ego_course_direction_theta'] = egocentric_course_direction_theta
+        # get true wind info from info
+        traj_df['wind_angle_ground_theta'] = [ rad_over_pi_shift2_01( 
+            vec2rad_norm_by_pi(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
+        traj_df['wind_angle_ground_x'] = [ record[0]['ambient_wind'][0] for record in episode_log['infos']]
+        traj_df['wind_angle_ground_y'] = [ record[0]['ambient_wind'][1] for record in episode_log['infos']]
+        traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0]['ambient_wind']) for record in episode_log['infos']]
 
     act = episode_log['actions'] 
     act = pd.DataFrame(act)
@@ -687,10 +691,23 @@ def get_traj_df_tmp(episode_log,
             'stray_distance',
             'r_step', 
             'agent_angle_ground_theta', # head direction - solar polarization
-            'ego_course_direction_theta', # course direction - vental optic flow
-            'wind_angle_ground_theta',
             'wind_speed_ground',
+            'wind_angle_ground_theta',
+            'ego_course_direction_theta', # course direction - vental optic flow
             ]
+        if obs.shape[1] == 3:
+            colnames_diff = [
+                'loc_x', 
+                'loc_y', 
+                'wind_theta_obs', # wind input to the model... depends on the experiment
+                'odor_obs', 
+                'odor_01',
+                'odor_clip', 
+                'odor_lastenc', 
+                'radius', 
+                'stray_distance',
+                'r_step', 
+                'agent_angle_ground_theta']
         for col in colnames_diff:
             traj_df[f'{col}_dt1'] = traj_df[col].diff()
             # traj_df[f'{col}_dt2'] = traj_df[f'{col}_dt1'].diff()
