@@ -327,6 +327,7 @@ def plot_course_direction_wrt_wind_and_plume(traj_df_stacked_subset, regime_labe
 def arg_parse():
     parser = argparse.ArgumentParser(description='Plot head direction and course direction distributions')
     parser.add_argument('--model_fname', type=str, default='/src/data/wind_sensing/apparent_wind_visual_feedback/sw_dist_logstep_ALL_noisy_wind_0.001/weights/plume_951_23354e57874d619687478a539a360146.pt', help='Path to the model .pt file. For eval traj retrival and plot storage')
+    parser.add_argument('--model_dir', type=str, default=False, help='Full path to the pkl eval trajectory folder')
     parser.add_argument('--dataset', type=str, default='noisy3x5b5', help='Dataset to use')
     parser.add_argument('--number_of_eps', type=int, default=80, help='Number of episodes to use')
     parser.add_argument('--verbose', type=bool, default=False, help='Print verbose output')
@@ -337,12 +338,16 @@ def arg_parse():
     parser.add_argument('--regimes', default=['anemotactic', 'tracking'], help='Wind regimes to plot')
 
     args = parser.parse_args()
-    args.model_seed = args.model_fname.rstrip('/').split('/')[-1].split('_')[1]
-    args.model_dir = args.model_fname.replace('.pt', '/').replace("weights", args.eval_folder) # output everything to perturb_along_all
+    
+    if not args.model_dir:
+        args.model_seed = args.model_fname.rstrip('/').split('/')[-1].split('_')[1]
+        args.model_dir = args.model_fname.replace('.pt', '/').replace("weights", args.eval_folder)
+    else:
+        args.model_seed = args.model_dir.rstrip('/').split('/')[-1].split('_')[1]
     args.out_dir = "/".join([os.path.dirname(os.path.dirname(args.model_dir)), args.out_dir, ""]) # typically RUN_NAME/eval/report_action_dist
     # set up output directory and check if model directory exists
     if not os.path.exists(args.model_dir):
-        raise ValueError(f"[FAILED] Model directory {args.model_dir} does not exist")
+        raise ValueError(f"[FAILED] Model eval directory {args.model_dir} does not exist")
     print("model_dir", args.model_dir)
     print("out_dir", args.out_dir)
     os.makedirs(args.out_dir, exist_ok=True)
@@ -409,7 +414,7 @@ def load_plotting_parameters():
 
 
 def correct_for_flipped_gv(traj_df_stacked):
-    # the gv is flipped in the eval model - correct for this
+    # the gv is flipped in the eval model - correct for this by calculating the allocentric head direction and course direction
         # gv is used to calculate ego course direction so need to correct for this
         # in get_traj_df course direction is taken from gv 
     allocentric_head_direction_radian = [np.angle(traj_df_stacked['agent_angle_x'].iloc[i] + 1j*traj_df_stacked['agent_angle_y'].iloc[i], deg=False) for i , v in enumerate(traj_df_stacked['agent_angle_x']) if v]
@@ -436,7 +441,7 @@ def shift_pi_to_point5(traj_df_stacked, col):
 if __name__ == '__main__':
     args = arg_parse()
     # get traj data and stack them
-    traj_df_stacked = log_analysis.get_eval_dfs_and_stack_them(args.model_fname, args.dataset, args.number_of_eps, exp_dir=args.eval_folder, verbose=True) 
+    traj_df_stacked = log_analysis.get_eval_dfs_and_stack_them(args.model_fname, args.dataset, args.number_of_eps, exp_dir=args.eval_folder, full_model_dir = args.model_dir, verbose=True) 
     # for the eval condition, correct for the flipped gv
     if 'eval' in args.eval_folder:
         correct_for_flipped_gv(traj_df_stacked)
