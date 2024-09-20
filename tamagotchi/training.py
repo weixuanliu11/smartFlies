@@ -188,125 +188,109 @@ def training_loop(agent, envs, args, device, actor_critic,
     obs = envs.reset()
     rollouts.obs[0].copy_(obs) # https://discuss.pytorch.org/t/which-copy-is-better/56393
     rollouts.to(device)
-    start = time.time()
-    with torch.profiler.profile(
-        schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
-        on_trace_ready=torch.profiler.tensorboard_trace_handler('/src/log/'),
-        record_shapes=True,
-        profile_memory=True,
-        with_stack=True
-        ) as prof:
-        # at each bout of update
-        for j in range(num_updates):
-            # decrease learning rate linearly
-            if args.use_linear_lr_decay:
-                utils.update_linear_schedule(
-                    agent.optimizer, j, num_updates, args.lr)
-            
-            # update envs according to the curriculum schedule
-            if args.birthx_linear_tc_steps:
-                updated = update_by_schedule(envs, schedule, j)
-                if updated and not args.dryrun: # save model if an update to env occurred during this trial
-                    lesson_fpath = os.path.join(args.save_dir, 'chkpt', args.model_fname.replace(".pt", f'_before_{updated}{schedule[updated][j]}_update{j}.pt'))
-                    torch.save([
-                        actor_critic,
-                        getattr(get_vec_normalize(envs), 'ob_rms', None),
-                        agent.optimizer.state_dict(),
-                    ], lesson_fpath)
-                    # also save the VecNormalize state 
-                    vecNormalize_state_fname = ''
-                    if args.if_vec_norm:
-                        vecNormalize_state_fname = lesson_fpath.replace(".pt", "_vecNormalize.pkl")
-                        envs.venv.save(vecNormalize_state_fname)
-                    print('Saved', lesson_fpath, vecNormalize_state_fname)
-
-            ##############################################################################################################
-            # at each step of training 
-            ##############################################################################################################
-            prof.start()
-            for step in range(args.num_steps):
-                if step >10:
-                    prof.stop()
-                    breakpoint()
-                prof.step()
-                with torch.no_grad():
-                    value, action, action_log_prob, recurrent_hidden_states, activities = actor_critic.act(
-                        rollouts.obs[step], 
-                        rollouts.recurrent_hidden_states[step],
-                        rollouts.masks[step])
-                prof.step()
-                obs, reward, done, infos = envs.step(action)
-                prof.step()
-                for i, d in enumerate(done): # if done, log the episode info. Care about what kind of env is encountered
-                    if d:
-                        # c +=1 
-                        try:
-                            # Note: only ouput these to infos when done
-                            episode_rewards.append(infos[i]['episode']['r'])
-                            episode_plume_densities.append(infos[i]['plume_density']) # plume_density and num_puffs are expected to be similar across different agents. Tracking to confirm. 
-                            episode_puffs.append(infos[i]['num_puffs'])
-                            episode_wind_directions.append(envs.ds2wind(infos[i]['dataset'])) # density and dataset are logged to see eps. statistics implemented by the curriculum
-                        except KeyError:
-                            raise KeyError("Logging info not found... check why it's not here when done")
-                # If done then clean the history of observations in the recurrent_hidden_states. Done in the MLPBase forward method
-                masks = torch.FloatTensor(
-                    [[0.0] if done_ else [1.0] for done_ in done])
-                # TODO unsure what this is [may be about if done and self.env._max_episode_steps == self.env._elapsed_steps:]
-                bad_masks = torch.FloatTensor(
-                    [[0.0] if 'bad_transition' in info.keys() else [1.0]
-                    for info in infos])
-                # if step < 3:
-                #     start_insert_rollouts = time.time()
-                rollouts.insert(obs, recurrent_hidden_states, action,
-                                action_log_prob, value, reward, masks, bad_masks) # ~0.0006s
-            ##############################################################################################################
-            # UPDATE AGENT 
-            ##############################################################################################################
-            with torch.no_grad():
-                next_value = actor_critic.get_value(
-                    rollouts.obs[-1], rollouts.recurrent_hidden_states[-1],
-                    rollouts.masks[-1]).detach()
-            rollouts.compute_returns(next_value, args.use_gae, args.gamma,
-                                    args.gae_lambda, args.use_proper_time_limits)
-            value_loss, action_loss, dist_entropy = agent.update(rollouts)
-            # writer.add_scalar("Loss/value", value_loss, j)
-            # writer.add_scalar("Loss/action", action_loss, j)
-            # writer.add_scalar("Loss/entropy", dist_entropy, j)
-            # https://stackoverflow.com/questions/38464559/how-to-locally-view-tensorboard-of-remote-server?newreg=09d6ea6fea6e42efbf45890ebca822b1
-            rollouts.after_update()
-            total_num_steps = (j + 1) * args.num_processes * args.num_steps
-            ##############################################################################################################
-            # save for every interval-th episode or for the last epoch
-            ##############################################################################################################
-            if (j % args.save_interval == 0
-                    or j == num_updates - 1) and args.save_dir != "" and not args.dryrun:
-
+    # at each bout of update
+    for j in range(num_updates):
+        # decrease learning rate linearly
+        if args.use_linear_lr_decay:
+            utils.update_linear_schedule(
+                agent.optimizer, j, num_updates, args.lr)
+        
+        # update envs according to the curriculum schedule
+        if args.birthx_linear_tc_steps:
+            updated = update_by_schedule(envs, schedule, j)
+            if updated and not args.dryrun: # save model if an update to env occurred during this trial
+                lesson_fpath = os.path.join(args.save_dir, 'chkpt', args.model_fname.replace(".pt", f'_before_{updated}{schedule[updated][j]}_update{j}.pt'))
                 torch.save([
                     actor_critic,
                     getattr(get_vec_normalize(envs), 'ob_rms', None),
                     agent.optimizer.state_dict(),
-                ], args.model_fpath)
-                print('Saved', args.model_fpath)
-                
-                # save the VecNormalize state for evaluation
+                ], lesson_fpath)
+                # also save the VecNormalize state 
+                vecNormalize_state_fname = ''
                 if args.if_vec_norm:
-                    vecNormalize_state_fname = args.model_fpath.replace(".pt", "_vecNormalize.pkl")
+                    vecNormalize_state_fname = lesson_fpath.replace(".pt", "_vecNormalize.pkl")
                     envs.venv.save(vecNormalize_state_fname)
+                print('Saved', lesson_fpath, vecNormalize_state_fname)
 
-                current_mean = np.median(episode_rewards)
-                if current_mean >= best_mean:
-                    best_mean = current_mean
-                    fname = f'{args.model_fpath}.best'
-                    torch.save([
-                        actor_critic,
-                        getattr(get_vec_normalize(envs), 'ob_rms', None)
-                    ], fname)
-                    print('Saved', fname)
+        ##############################################################################################################
+        # at each step of training 
+        ##############################################################################################################
+        for step in range(args.num_steps):
+            with torch.no_grad():
+                value, action, action_log_prob, recurrent_hidden_states, activities = actor_critic.act(
+                    rollouts.obs[step], 
+                    rollouts.recurrent_hidden_states[step],
+                    rollouts.masks[step])
+            obs, reward, done, infos = envs.step(action)
+            for i, d in enumerate(done): # if done, log the episode info. Care about what kind of env is encountered
+                if d:
+                    try:
+                        # Note: only ouput these to infos when done
+                        episode_rewards.append(infos[i]['episode']['r'])
+                        episode_plume_densities.append(infos[i]['plume_density']) # plume_density and num_puffs are expected to be similar across different agents. Tracking to confirm. 
+                        episode_puffs.append(infos[i]['num_puffs'])
+                        episode_wind_directions.append(envs.ds2wind(infos[i]['dataset'])) # density and dataset are logged to see eps. statistics implemented by the curriculum
+                    except KeyError:
+                        raise KeyError("Logging info not found... check why it's not here when done")
+            # If done then clean the history of observations in the recurrent_hidden_states. Done in the MLPBase forward method
+            masks = torch.FloatTensor(
+                [[0.0] if done_ else [1.0] for done_ in done])
+            # TODO unsure what this is [may be about if done and self.env._max_episode_steps == self.env._elapsed_steps:]
+            bad_masks = torch.FloatTensor(
+                [[0.0] if 'bad_transition' in info.keys() else [1.0]
+                for info in infos])
+            # if step < 3:
+            #     start_insert_rollouts = time.time()
+            rollouts.insert(obs, recurrent_hidden_states, action,
+                            action_log_prob, value, reward, masks, bad_masks) # ~0.0006s
+        ##############################################################################################################
+        # UPDATE AGENT 
+        ##############################################################################################################
+        with torch.no_grad():
+            next_value = actor_critic.get_value(
+                rollouts.obs[-1], rollouts.recurrent_hidden_states[-1],
+                rollouts.masks[-1]).detach()
+        rollouts.compute_returns(next_value, args.use_gae, args.gamma,
+                                args.gae_lambda, args.use_proper_time_limits)
+        value_loss, action_loss, dist_entropy = agent.update(rollouts)
+        # writer.add_scalar("Loss/value", value_loss, j)
+        # writer.add_scalar("Loss/action", action_loss, j)
+        # writer.add_scalar("Loss/entropy", dist_entropy, j)
+        # https://stackoverflow.com/questions/38464559/how-to-locally-view-tensorboard-of-remote-server?newreg=09d6ea6fea6e42efbf45890ebca822b1
+        rollouts.after_update()
+        total_num_steps = (j + 1) * args.num_processes * args.num_steps
+        ##############################################################################################################
+        # save for every interval-th episode or for the last epoch
+        ##############################################################################################################
+        if (j % args.save_interval == 0
+                or j == num_updates - 1) and args.save_dir != "" and not args.dryrun:
 
-            if j % args.log_interval == 0 and len(episode_rewards) > 1 and not args.dryrun:
-                training_log = log_episode(training_log, j, total_num_steps, start, episode_rewards, episode_puffs, episode_plume_densities, episode_wind_directions, num_updates)
-                # Save training curve
-                pd.DataFrame(training_log).to_csv(args.training_log)
+            torch.save([
+                actor_critic,
+                getattr(get_vec_normalize(envs), 'ob_rms', None),
+                agent.optimizer.state_dict(),
+            ], args.model_fpath)
+            print('Saved', args.model_fpath)
+            
+            # save the VecNormalize state for evaluation
+            if args.if_vec_norm:
+                vecNormalize_state_fname = args.model_fpath.replace(".pt", "_vecNormalize.pkl")
+                envs.venv.save(vecNormalize_state_fname)
+
+            current_mean = np.median(episode_rewards)
+            if current_mean >= best_mean:
+                best_mean = current_mean
+                fname = f'{args.model_fpath}.best'
+                torch.save([
+                    actor_critic,
+                    getattr(get_vec_normalize(envs), 'ob_rms', None)
+                ], fname)
+                print('Saved', fname)
+
+        if j % args.log_interval == 0 and len(episode_rewards) > 1 and not args.dryrun:
+            training_log = log_episode(training_log, j, total_num_steps, start, episode_rewards, episode_puffs, episode_plume_densities, episode_wind_directions, num_updates)
+            # Save training curve
+            pd.DataFrame(training_log).to_csv(args.training_log)
 
     return training_log, eval_log
 
