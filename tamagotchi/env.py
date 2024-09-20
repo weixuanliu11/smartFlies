@@ -1632,9 +1632,9 @@ def make_vec_envs(env_name,
                     envs.train()
             else:
                 if gamma is None:
-                    envs = VecNormalize(envs, ret=False)
+                    envs = VecNormalize(envs, ret=False, norm_obs=raw_kwargs['if_vec_norm'])
                 else:
-                    envs = VecNormalize(envs, gamma=gamma) 
+                    envs = VecNormalize(envs, gamma=gamma, norm_obs=raw_kwargs['if_vec_norm'])
         else:
             if gamma is None:
                 envs = VecNormalize(envs, ret=False)
