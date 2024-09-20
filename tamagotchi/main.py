@@ -127,6 +127,8 @@ def get_args():
     parser.add_argument('--model_fname',  type=str, default='')
     parser.add_argument('--obs_noise', type=float, default=0.0)
     parser.add_argument('--act_noise', type=float, default=0.0)
+    parser.add_argument('--if_vec_norm', type=bool, default=True) # whether to normalize the input
+    parser.add_argument('--if_train_actor_std', type=bool, default=False) # whether to train the std of the stochastic policy
     args = parser.parse_args()
     assert len(args.dataset) == len(args.qvar) 
     assert len(args.dataset) == len(args.diff_max) 
@@ -213,7 +215,8 @@ def main(args=None):
         'diff_max': args.diff_max,
         'diff_min': args.diff_min,
         'reset_offset_tmax': [30, 3, 30], # 3 for switch condition, according to evalCli 
-        't_val_min': [60, 58, 60] # start time of plume data. 58 for switch condition, at around when the switching happens accoding to evalCli
+        't_val_min': [60, 58, 60], # start time of plume data. 58 for switch condition, at around when the switching happens accoding to evalCli
+        'if_vec_norm': args.if_vec_norm
     }
     
     # creates the envs and deploys the first 'num_processes' envs 

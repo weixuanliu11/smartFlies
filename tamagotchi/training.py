@@ -214,8 +214,10 @@ def training_loop(agent, envs, args, device, actor_critic,
                     agent.optimizer.state_dict(),
                 ], lesson_fpath)
                 # also save the VecNormalize state 
-                vecNormalize_state_fname = lesson_fpath.replace(".pt", "_vecNormalize.pkl")
-                envs.venv.save(vecNormalize_state_fname)
+                vecNormalize_state_fname = ''
+                if args.if_vec_norm:
+                    vecNormalize_state_fname = lesson_fpath.replace(".pt", "_vecNormalize.pkl")
+                    envs.venv.save(vecNormalize_state_fname)
                 print('Saved', lesson_fpath, vecNormalize_state_fname)
         # end = time.time()
         # print(f"Update upschedule and save check point{j} took {end-start} seconds")
@@ -323,8 +325,9 @@ def training_loop(agent, envs, args, device, actor_critic,
             print('Saved', args.model_fpath)
             
             # save the VecNormalize state for evaluation
-            vecNormalize_state_fname = args.model_fpath.replace(".pt", "_vecNormalize.pkl")
-            envs.venv.save(vecNormalize_state_fname)
+            if args.if_vec_norm:
+                vecNormalize_state_fname = args.model_fpath.replace(".pt", "_vecNormalize.pkl")
+                envs.venv.save(vecNormalize_state_fname)
 
             current_mean = np.median(episode_rewards)
             if current_mean >= best_mean:

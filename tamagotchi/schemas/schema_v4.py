@@ -89,7 +89,7 @@ class TrainingConfig(dj.Manual):
     apparent_wind_allo: bool
     visual_feedback: bool
     if_vec_norm: int
-    if_train_actor_noise: bool
+    if_train_actor_std: bool
     """
     
     def get_new_seed(self):
