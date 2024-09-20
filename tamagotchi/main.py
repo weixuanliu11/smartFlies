@@ -127,7 +127,7 @@ def get_args():
     parser.add_argument('--model_fname',  type=str, default='')
     parser.add_argument('--obs_noise', type=float, default=0.0)
     parser.add_argument('--act_noise', type=float, default=0.0)
-    parser.add_argument('--if_vec_norm', type=bool, default=True) # whether to normalize the input
+    parser.add_argument('--if_vec_norm', type=int, default=1) # whether to normalize the input
     parser.add_argument('--if_train_actor_std', type=bool, default=False) # whether to train the std of the stochastic policy
     args = parser.parse_args()
     assert len(args.dataset) == len(args.qvar) 
@@ -215,8 +215,7 @@ def main(args=None):
         'diff_max': args.diff_max,
         'diff_min': args.diff_min,
         'reset_offset_tmax': [30, 3, 30], # 3 for switch condition, according to evalCli 
-        't_val_min': [60, 58, 60], # start time of plume data. 58 for switch condition, at around when the switching happens accoding to evalCli
-        'if_vec_norm': args.if_vec_norm
+        't_val_min': [60, 58, 60] # start time of plume data. 58 for switch condition, at around when the switching happens accoding to evalCli
     }
     
     # creates the envs and deploys the first 'num_processes' envs 
@@ -230,6 +229,9 @@ def main(args=None):
         True,  # allow_early_resets? This is to support resetting an env twice in a row. Twice in a row happens because one auto reset after done and another after swapping.
         args = args,
         **curriculum_vars) # set these envs vars according to the curriculum
+    
+    if not args.if_vec_norm:
+        envs.venv.norm_obs = False
 
     actor_critic = Policy(
         envs.observation_space.shape, 
