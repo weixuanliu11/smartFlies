@@ -30,6 +30,9 @@ class Policy(nn.Module):
             num_outputs = action_space.shape[0]
             self.dist = DiagGaussian(self.base.output_size, num_outputs)
             if args is not None: 
+                if args.if_train_actor_std:
+                    print("Using DiagGaussian with trainable std!")
+                    self.dist = DiagGaussian(self.base.output_size, num_outputs, trainable_std_dev=args.if_train_actor_std)
                 if args.betadist:
                     print("Using BetaCustom distribution!")
                     self.dist = BetaCustom(self.base.output_size, num_outputs)
@@ -63,7 +66,6 @@ class Policy(nn.Module):
             action = dist.sample()
 
         action_log_probs = dist.log_probs(action)
-        dist_entropy = dist.entropy().mean()
 
         return value, action, action_log_probs, rnn_hxs, activities
 

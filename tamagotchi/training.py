@@ -188,6 +188,7 @@ def training_loop(agent, envs, args, device, actor_critic,
     obs = envs.reset()
     rollouts.obs[0].copy_(obs) # https://discuss.pytorch.org/t/which-copy-is-better/56393
     rollouts.to(device)
+    start = time.time()
     # at each bout of update
     for j in range(num_updates):
         # decrease learning rate linearly
