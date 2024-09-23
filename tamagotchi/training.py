@@ -152,7 +152,7 @@ def log_episode(training_log, j, total_num_steps, start, episode_rewards, episod
         }
     training_log.append(log_entry)
     
-    for k, v in log_entry:
+    for k, v in log_entry.items():
         mlflow.log_metric(k, v, step=j)
         
     return training_log
