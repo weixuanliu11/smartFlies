@@ -21,6 +21,7 @@ from tamagotchi.a2c_ppo_acktr.ppo import PPO
 from tamagotchi.a2c_ppo_acktr.model import Policy
 from tamagotchi.a2c_ppo_acktr.storage import RolloutStorage
 from training import training_loop
+import mlflow
 
 def get_args():
     parser = argparse.ArgumentParser(description='PPO for Plume')
@@ -269,13 +270,25 @@ def main(args=None):
     # keeping these for backwards compatibility
     training_log = None
     eval_log = None
-
     # run training loop
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
                         actor_critic.recurrent_hidden_state_size)
-    training_log, eval_log = training_loop(agent, envs, args, device, actor_critic, 
-        training_log=training_log, eval_log=eval_log, eval_env=None, rollouts=rollouts)  
+    
+    # Set our tracking server uri for logging
+    mlflow.set_tracking_uri(uri="http://dev0.uwcnc.net:5000/")
+    mlflow.set_system_metrics_sampling_interval(3600)
+    # Create a new MLflow Experiment
+    experiment_name = os.path.basename((os.path.dirname(args.save_dir))) 
+    run_name = args.outsuffix
+    mlflow.set_experiment(experiment_name)
+    # Start an MLflow run
+    with mlflow.start_run(run_name=run_name, log_system_metrics=True):
+        # Log the hyperparameters dict to mlflow
+        mlflow.log_params(vars(args)) 
+
+        training_log, eval_log = training_loop(agent, envs, args, device, actor_critic, 
+            training_log=training_log, eval_log=eval_log, eval_env=None, rollouts=rollouts)
 
     # close the envs
     try:

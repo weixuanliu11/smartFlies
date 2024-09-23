@@ -9,6 +9,7 @@ from data_util import RolloutStorage
 # from tamagotchi.eval import eval_lite
 import data_util as utils
 from env import get_vec_normalize
+import mlflow
 
 # from torch.utils.tensorboard import SummaryWriter
 
@@ -131,7 +132,7 @@ def log_episode(training_log, j, total_num_steps, start, episode_rewards, episod
                 np.mean(episode_wind_directions),
                 np.std(episode_wind_directions),)) 
 
-    training_log.append({
+    log_entry = {
             'update': j,
             'total_updates': num_updates,
             'T': total_num_steps,
@@ -148,7 +149,12 @@ def log_episode(training_log, j, total_num_steps, start, episode_rewards, episod
             'plume_density_std': np.std(episode_plume_densities),
             'wind_direction_mean': np.mean(episode_wind_directions),
             'wind_direction_std': np.std(episode_wind_directions),
-        })
+        }
+    training_log.append(log_entry)
+    
+    for k, v in log_entry:
+        mlflow.log_metric(k, v, step=j)
+        
     return training_log
 
 def training_loop(agent, envs, args, device, actor_critic, 
