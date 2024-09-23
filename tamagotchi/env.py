@@ -950,8 +950,6 @@ class PlumeEnvironment_v2(gym.Env):
     agent_angle_radians = np.angle( self.agent_angle[0] + 1j*self.agent_angle[1], deg=False )
     wind_angle_radians = np.angle( wind_absolute[0] + 1j*wind_absolute[1], deg=False )
     # Add observation noise
-    wind_angle_radians = wind_angle_radians*(1.0+np.random.uniform(-self.obs_noise, +self.obs_noise))
-   
     wind_relative_angle_radians = wind_angle_radians - agent_angle_radians 
     wind_observation = [ np.cos(wind_relative_angle_radians), np.sin(wind_relative_angle_radians) ]    
     # Un-normalize wind observation by multiplying by magnitude
@@ -968,7 +966,6 @@ class PlumeEnvironment_v2(gym.Env):
         print('odor_observation', odor_observation)
     if self.odor_scaling:
         odor_observation *= self.odorx # Random scaling to improve generalization 
-    odor_observation *= 1.0 + np.random.uniform(-self.obs_noise, +self.obs_noise) # Add observation noise
     odor_observation = 0.0 if odor_observation < config.env['odor_threshold'] else odor_observation
     odor_observation = np.clip(odor_observation, 0.0, 1.0) # clip
 
@@ -1361,7 +1358,9 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
         else:
             self.observation_space = spaces.Box(low=-1, high=+1,
                                     shape=(3,), dtype=np.float32) # [(apparent/ambient) wind x, y, odor]
-        
+        # convert obs_noise to radians
+        if self.obs_noise:
+            self.obs_noise = np.deg2rad(self.obs_noise)
 
     def sense_environment(self):
         '''
@@ -1379,10 +1378,11 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
             egocentric_course_direction_radian = allocentric_course_direction_radian - allocentric_head_direction_radian # leftward positive - standard CWW convention
             if self.flip_ventral_optic_flow:
                 egocentric_course_direction_radian = allocentric_head_direction_radian - allocentric_course_direction_radian # rightward positive - for eval to see the behavioral impact of flipping course direction perception.
-            # add observation noise
-            allocentric_head_direction_radian = allocentric_head_direction_radian*(1.0+np.random.uniform(-self.obs_noise, +self.obs_noise))
-            egocentric_course_direction_radian = egocentric_course_direction_radian*(1.0+np.random.uniform(-self.obs_noise, +self.obs_noise))
-            
+            if self.obs_noise:
+                allocentric_head_direction_radian += np.random.normal(0, self.obs_noise)
+                egocentric_course_direction_radian += np.random.normal(0, self.obs_noise)
+                apparent_wind_radian = np.angle(observation[0] + 1j*observation[1], deg=False) + np.random.normal(0, self.obs_noise)
+                observation[:2] = [np.cos(apparent_wind_radian), np.sin(apparent_wind_radian)]
             observation = np.append(observation, [np.cos(allocentric_head_direction_radian), np.sin(allocentric_head_direction_radian), np.cos(egocentric_course_direction_radian), np.sin(egocentric_course_direction_radian)])
         if self.verbose > 1:
             print('observation', observation)
