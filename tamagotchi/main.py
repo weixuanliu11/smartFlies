@@ -126,7 +126,7 @@ def get_args():
     parser.add_argument('--test_episodes',  type=int, default=50)
     parser.add_argument('--viz_episodes',  type=int, default=10)
     parser.add_argument('--model_fname',  type=str, default='')
-    parser.add_argument('--obs_noise', type=float, default=0.0)
+    parser.add_argument('--obs_noise', type=float, default=0.0, help='observation noise - all angualr values are perturbed by N(0, obs_noise) degrees')
     parser.add_argument('--act_noise', type=float, default=0.0)
     parser.add_argument('--if_vec_norm', type=int, default=1) # whether to normalize the input
     parser.add_argument('--if_train_actor_std', type=bool, default=False) # whether to train the std of the stochastic policy
