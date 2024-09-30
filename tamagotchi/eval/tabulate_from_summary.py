@@ -11,6 +11,7 @@ import pandas as pd
 import argparse
 import glob
 import datetime
+import mlflow
 
 def parse_summary_files(fnames, BASE_DIR):
     counts_df = []
@@ -45,7 +46,6 @@ def parse_summary_files(fnames, BASE_DIR):
 def main(args):
     if args.subdir_prefix:
         files = glob.glob(f"{args.base_dir}/{args.subdir_prefix}*/**/*_summary.csv", recursive=True)
-        # files = [f for f in files if f.split('/')[1].startswith(args.subdir_suffix)]
         print(f"Reading directory {args.base_dir}/{args.subdir_prefix}*/**, {len(files)} files found")
     elif args.subdir:
         files = glob.glob(f"{args.base_dir}/{args.subdir}/**/*_summary.csv", recursive=True)
@@ -65,6 +65,7 @@ def main(args):
         full_out_path = f'{args.base_dir}/performance_all_{current_date}.tsv'
     summary_dfs.to_csv(full_out_path, sep='\t', index=False)
     print(f"Saved to {full_out_path}")
+    return summary_dfs
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
@@ -74,4 +75,29 @@ if __name__ == "__main__":
     parser.add_argument('--out_prefix', default='', type=str, help='Output file prefix')
     
     args = parser.parse_args()
-    main(args)
+    mlflow.set_tracking_uri(uri="http://dev0.uwcnc.net:5000/")
+    mlflow.set_system_metrics_sampling_interval(60)
+    # Create a new MLflow Experiment
+    experiment_name = os.path.basename(args.base_dir) 
+    experiment = mlflow.get_experiment_by_name(experiment_name)
+    experiment_id = experiment.experiment_id
+    # Create an MLflow client
+    client = mlflow.tracking.MlflowClient()
+    # Get the list of runs for the experiment, sorted by start time
+    runs = client.search_runs(experiment_ids=[experiment_id], order_by=["start_time DESC"])
+
+    run_name = 'eval'
+    mlflow.set_experiment(experiment_name)
+    # Start an MLflow run
+    with mlflow.start_run(run_name=run_name):
+        summary_dfs = main(args)
+        summary_dfs['condition'] = df['condition'].astype('category')
+        summary_dfs['seed'] = df['seed'].astype('category')
+
+        summary_dfs['experiment'] = [ps.split('/')[1] for ps in summary_dfs['model_dir']]
+
+    print(set(df.experiment))
+    print(len(set(df.seed)))
+    # log summary df as a table artifact in mlflow
+    mlflow.log_artifact(summary_dfs, artifact_path='summary_table')
+    
