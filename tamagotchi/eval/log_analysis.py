@@ -98,6 +98,8 @@ def get_selected_df(model_dir, use_datasets,
                                })
 
     episodes_df = pd.DataFrame(episodes_df).sort_values(by='ep_length', ascending=False)
+    if verbose:
+        print(f"Found {episodes_df.groupby(['dataset', 'outcome']).count()} in {log_fname}, after filter by min {min_ep_steps} steps")
     episodes_df = episodes_df.query("ep_length >= @min_ep_steps")
     if oob_only:
         selected_df = pd.concat([ 
@@ -111,7 +113,8 @@ def get_selected_df(model_dir, use_datasets,
             episodes_df.query('outcome != "HOME"').groupby('dataset').head(n_episodes_other),
             pd.DataFrame({})
         ]).reset_index(drop=True)
-
+    if verbose:
+        print(f"Found {episodes_df.groupby(['dataset', 'outcome']).count()} in {log_fname}, after selecting specific number of episodes")
 
     if balanced:
         counts_df = selected_df.groupby(['dataset', 'outcome']).count()
@@ -126,6 +129,8 @@ def get_selected_df(model_dir, use_datasets,
         balanced_df = pd.concat(balanced_df)
         balanced_df.groupby(['dataset', 'outcome']).count()
         selected_df = balanced_df
+        if verbose:
+            print(f"Found {episodes_df.groupby(['dataset', 'outcome']).count()} in {log_fname}, after balancing")
         
     if verbose:
         print("model_dir", model_dir)
@@ -133,10 +138,8 @@ def get_selected_df(model_dir, use_datasets,
         model_seed = model_dir.rstrip('/').split('/')[-1].split('_')[1]
         print("model_seed ---->", model_seed)
         print(f"Found {len(logfiles)} .pkl evaluation logs in {model_dir}")
-
-    if verbose:
         print(f"selected N eps {selected_df.shape}")
-        print(f"Episode breakdown: \n {selected_df.groupby(['dataset', 'outcome']).count()}")
+        print(f"Final episode breakdown: \n {selected_df.groupby(['dataset', 'outcome']).count()}")
         
     return(selected_df)
 
@@ -202,7 +205,7 @@ def get_wind_change_regimes(traj_df, wind_change_frame_threshold=5, frame_rate=0
         print(f"Threshold for wind change regime is {threshold} seconds \n")
         
 
-def get_eval_dfs_and_stack_them(model_fname, use_datasets, number_of_eps, exp_dir='eval', full_model_dir=None, verbose=False, oob_only=True):
+def get_eval_dfs_and_stack_them(model_fname, use_datasets, number_of_eps, exp_dir='eval', full_model_dir=None, verbose=False, oob_only=True, balanced=False):
     # used when visualizing trajectories and actions taken
     is_recurrent = True
     # load eval episodes from pkl files
@@ -218,9 +221,10 @@ def get_eval_dfs_and_stack_them(model_fname, use_datasets, number_of_eps, exp_di
                                     [use_datasets], 
                                     n_episodes_home=number_of_eps, 
                                     n_episodes_other=number_of_eps,
-                                    balanced=False,
+                                    balanced=balanced,
                                     oob_only=oob_only,
-                                    min_ep_steps=0)
+                                    min_ep_steps=0, 
+                                    verbose=verbose)
     if verbose:
         print("model_dir", model_dir)
         logfiles = natsorted(glob.glob(model_dir + '*.pkl'))
