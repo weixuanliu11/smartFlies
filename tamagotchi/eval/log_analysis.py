@@ -508,6 +508,8 @@ def get_traj_df(episode_log,
 
         # Differences
         colnames_diff = [
+            'step',
+            'turn',
             'loc_x', 
             'loc_y', 
             'wind_theta_obs', # wind input to the model... depends on the experiment
@@ -693,6 +695,8 @@ def get_traj_df_tmp(episode_log,
 
         # Differences
         colnames_diff = [
+            'step',
+            'turn',
             'loc_x', 
             'loc_y', 
             'wind_theta_obs', # wind input to the model... depends on the experiment
