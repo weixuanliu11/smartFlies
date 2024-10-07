@@ -412,13 +412,17 @@ def get_traj_df(episode_log,
     traj_df['ego_course_direction_x'] = obs['ego_course_direction_x']
     traj_df['ego_course_direction_y'] = obs['ego_course_direction_y']
     traj_df['ego_course_direction_theta'] = ego_course_direction_theta
-    
-    # get true wind info from info
+    # get true wind direction from info
+    if obs.shape[1] == 7: 
+        true_wind_direction_key = 'ambient_wind'
+    else: # for relative wind agents - still consider true wind direction 
+        # get true wind info for action dist. around wind changes 
+        true_wind_direction_key = 'wind_ground'
     traj_df['wind_angle_ground_theta'] = [ rad_over_pi_shift2_01( 
-        vec2rad_norm_by_pi(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
-    traj_df['wind_angle_ground_x'] = [ record[0]['ambient_wind'][0] for record in episode_log['infos']]
-    traj_df['wind_angle_ground_y'] = [ record[0]['ambient_wind'][1] for record in episode_log['infos']]
-    traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0]['ambient_wind']) for record in episode_log['infos']]
+        vec2rad_norm_by_pi(record[0][true_wind_direction_key][0], record[0][true_wind_direction_key][1]) ) for record in episode_log['infos']]
+    traj_df['wind_angle_ground_x'] = [ record[0][true_wind_direction_key][0] for record in episode_log['infos']]
+    traj_df['wind_angle_ground_y'] = [ record[0][true_wind_direction_key][1] for record in episode_log['infos']]
+    traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0][true_wind_direction_key]) for record in episode_log['infos']]
 
     act = episode_log['actions'] 
     act = pd.DataFrame(act)
@@ -593,12 +597,17 @@ def get_traj_df_tmp(episode_log,
         traj_df['ego_course_direction_x'] = ego_course_direction_x
         traj_df['ego_course_direction_y'] = ego_course_direction_y
         traj_df['ego_course_direction_theta'] = egocentric_course_direction_theta
-        # get true wind info from info
-        traj_df['wind_angle_ground_theta'] = [ rad_over_pi_shift2_01( 
-            vec2rad_norm_by_pi(record[0]['ambient_wind'][0], record[0]['ambient_wind'][1]) ) for record in episode_log['infos']]
-        traj_df['wind_angle_ground_x'] = [ record[0]['ambient_wind'][0] for record in episode_log['infos']]
-        traj_df['wind_angle_ground_y'] = [ record[0]['ambient_wind'][1] for record in episode_log['infos']]
-        traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0]['ambient_wind']) for record in episode_log['infos']]
+    # get true wind direction from info
+    if obs.shape[1] == 7: 
+        true_wind_direction_key = 'ambient_wind'
+    else: # for relative wind agents - still consider true wind direction 
+        # get true wind info for action dist. around wind changes 
+        true_wind_direction_key = 'wind_ground'
+    traj_df['wind_angle_ground_theta'] = [ rad_over_pi_shift2_01( 
+        vec2rad_norm_by_pi(record[0][true_wind_direction_key][0], record[0][true_wind_direction_key][1]) ) for record in episode_log['infos']]
+    traj_df['wind_angle_ground_x'] = [ record[0][true_wind_direction_key][0] for record in episode_log['infos']]
+    traj_df['wind_angle_ground_y'] = [ record[0][true_wind_direction_key][1] for record in episode_log['infos']]
+    traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0][true_wind_direction_key]) for record in episode_log['infos']]
 
     act = episode_log['actions'] 
     act = pd.DataFrame(act)
