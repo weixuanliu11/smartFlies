@@ -519,10 +519,10 @@ def get_traj_df(episode_log,
             'stray_distance',
             'r_step', 
             'agent_angle_ground_theta', # head direction - solar polarization
-            'ego_course_direction_theta', # course direction - vental optic flow
-            'wind_angle_ground_theta',
             'wind_speed_ground',
-            ]
+            'wind_angle_ground_theta']
+        if obs.shape[1] == 7:
+            colnames_diff.append('ego_course_direction_theta')
         for col in colnames_diff:
             traj_df[f'{col}_dt1'] = traj_df[col].diff()
             # traj_df[f'{col}_dt2'] = traj_df[f'{col}_dt1'].diff()
@@ -705,22 +705,9 @@ def get_traj_df_tmp(episode_log,
             'r_step', 
             'agent_angle_ground_theta', # head direction - solar polarization
             'wind_speed_ground',
-            'wind_angle_ground_theta',
-            'ego_course_direction_theta', # course direction - vental optic flow
-            ]
-        if obs.shape[1] == 3:
-            colnames_diff = [
-                'loc_x', 
-                'loc_y', 
-                'wind_theta_obs', # wind input to the model... depends on the experiment
-                'odor_obs', 
-                'odor_01',
-                'odor_clip', 
-                'odor_lastenc', 
-                'radius', 
-                'stray_distance',
-                'r_step', 
-                'agent_angle_ground_theta']
+            'wind_angle_ground_theta']
+        if obs.shape[1] == 7:
+            colnames_diff.append('ego_course_direction_theta')
         for col in colnames_diff:
             traj_df[f'{col}_dt1'] = traj_df[col].diff()
             # traj_df[f'{col}_dt2'] = traj_df[f'{col}_dt1'].diff()
