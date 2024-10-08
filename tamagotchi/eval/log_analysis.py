@@ -683,10 +683,10 @@ def get_traj_df_tmp(episode_log,
             # traj_df[colname + '_norm'] = rescale_col(traj_df[colname]) 
         
         # Add a range of MA wind direction - wind doesn't change often enough for this to be interesting
-        # for j in np.arange(2, n_history, step=2):
-        #     j = int(j)
-        #     colname = f'wind_angle_ground_theta_ma_{j}'
-        #     traj_df[colname] = traj_df['wind_angle_ground_theta'].rolling(j).mean()
+        for j in np.arange(2, n_history, step=2):
+            j = int(j)
+            colname = f'wind_angle_ground_theta_ma_{j}'
+            traj_df[colname] = traj_df['wind_angle_ground_theta'].rolling(j).mean()
 
         traj_df['odor_lastenc_norm'] = rescale_col(traj_df['odor_lastenc']) 
 
