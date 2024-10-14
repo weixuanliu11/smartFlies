@@ -169,7 +169,8 @@ def visualize_single_episode(data_puffs, data_wind, traj_df,
     if zoom > 0:
         plt.xlabel('Arena length [m]')
         plt.ylabel('Arena width [m]')
-
+    if title_text is not None:
+        ax.set_title(title_text)
     if legend:
         handles, labels = plt.gca().get_legend_handles_labels()
         patch1 = mpatches.Patch(color=config.traj_colormap['off'], label='Off plume')   
