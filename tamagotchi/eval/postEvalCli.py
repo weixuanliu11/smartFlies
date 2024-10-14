@@ -87,6 +87,7 @@ def post_eval(args):
         print(f"Visualizing episodes {args.viz_only_these_episodes}...")
         subset_df = selected_df[selected_df['idx'].isin(args.viz_only_these_episodes)]
         print(f"Found these episodes {set(subset_df.idx)}...")
+        print(f"Out of these episodes {set(selected_df.idx)}...")
     else:
         subset_df = selected_df.groupby(['dataset', 'outcome']).head(args.viz_episodes)
     for episode_idx, row in subset_df.iterrows(): # each row is a trial/episode
