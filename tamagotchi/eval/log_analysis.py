@@ -433,6 +433,7 @@ def get_traj_df(episode_log,
     traj_df['turn'] = act['turn']
 
     traj_df['odor_raw'] = obs['odor'] # added for open loop perturbation analysis - do not rectify
+    traj_df['odor_eps_log'] = episode_log['odor'] # added for visualization - after sensing
     traj_df['odor_obs'] = [0. if x <= config.env['odor_threshold'] else x for x in traj_df['odor_raw']]
 
     traj_df['stray_distance'] = [record[0]['stray_distance'] for record in episode_log['infos']]
@@ -620,6 +621,7 @@ def get_traj_df_tmp(episode_log,
     traj_df['turn'] = act['turn']
 
     traj_df['odor_raw'] = obs['odor'] # added for open loop perturbation analysis - do not rectify
+    traj_df['odor_eps_log'] = episode_log['odor'] # added for visualization - after sensing
     traj_df['odor_obs'] = [0. if x <= config.env['odor_threshold'] else x for x in traj_df['odor_raw']]
 
     traj_df['stray_distance'] = [record[0]['stray_distance'] for record in episode_log['infos']]
