@@ -120,7 +120,7 @@ def visualize_single_episode(data_puffs, data_wind, traj_df,
     # Scatter plot for odor/regime etc.
     # Default: colors indicate odor present/absent
     if colorby is None:
-        colors = [config.traj_colormap['off'] if x <= config.env['odor_threshold'] else config.traj_colormap['on'] for x in traj_df['odor_obs']]
+        colors = [config.traj_colormap['off'] if x <= config.env['odor_threshold'] else config.traj_colormap['on'] for x in traj_df['odor_eps_log']]
         cm = plt.cm.get_cmap('winter') # not sure if makes a difference
         plt.scatter(traj_df.iloc[:,0], traj_df.iloc[:,1], 
             c=colors, s=scatter_size, cmap=cm, vmin=vmin, vmax=vmax, alpha=1.0)
