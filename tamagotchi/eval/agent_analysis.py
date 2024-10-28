@@ -3,6 +3,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import sklearn
 import numpy as np
 import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import tamagotchi.data_util as data_util
@@ -87,24 +88,39 @@ def evaluate_agent(agent,
 def visualize_single_episode(data_puffs, data_wind, traj_df, 
     episode_idx, zoom=1, t_val=None, title_text=None, output_fname=None, 
     show=True, colorby=None, vmin=0, vmax=1, plotsize=None, xlims=None, ylims=None, legend=True,
-    invert_colors=False):
+    invert_colors=False, kwargs={}):
     scatter_size = 15
-    plotsize = (8,8) if plotsize is None else plotsize
 
+    plotsize = (8,8) if plotsize is None else plotsize
+    if 'subplot_spec' in kwargs.keys():
+        fig = kwargs['figure'] 
+        gs00 = matplotlib.gridspec.GridSpecFromSubplotSpec(
+                        nrows=kwargs['nrows'] if 'nrows' in kwargs.keys() else 1,
+                        ncols=kwargs['ncols'] if 'ncols' in kwargs.keys() else 1,
+                        subplot_spec=kwargs['subplot_spec'],
+                        )
+        ax = fig.add_subplot(gs00[:, :])
+        ax = fig.add_subplot(kwargs['subplot_spec'])
+    else:
+        ax = None # do not pass into plot_puffs_and_wind_vectors if not subplot_spec. plot_puffs_and_wind_vectors will create its own figure
+        fig = None
+    
+    aspect_ratio = kwargs['aspect_ratio'] if 'aspect_ratio' in kwargs.keys() else False
+        
     try:      
-        fig, ax = data_util.plot_puffs_and_wind_vectors(data_puffs, data_wind, t_val, 
-                                           fname='', plotsize=plotsize, show=show, invert_colors=invert_colors)
+        fig, ax = data_util.plot_puffs_and_wind_vectors(data_puffs, data_wind, t_val, ax = ax, fig=fig,
+                                           fname='', plotsize=plotsize, aspect_ratio=aspect_ratio, show=show, invert_colors=invert_colors)
     except Exception as e:
-        print(episode_idx, e)
+        print(f"[Error] visualize_single_episode: {episode_idx} {e}")
         return None, None
 
     # Crosshair at source
     if invert_colors:
-        plt.plot([0, 0],[-0.3,+0.3],'w-', linestyle = ":", lw=2) # presentation black background, white lines
-        plt.plot([-0.3,+0.3],[0, 0],'w-', linestyle = ":", lw=2)
+        ax.plot([0, 0],[-0.3,+0.3],'w-', linestyle = ":", lw=2) # presentation black background, white lines
+        ax.plot([-0.3,+0.3],[0, 0],'w-', linestyle = ":", lw=2)
     else:
-        plt.plot([0, 0],[-0.3,+0.3],'k-', linestyle = ":", lw=2) # manuscript white background, black lines
-        plt.plot([-0.3,+0.3],[0, 0],'k-', linestyle = ":", lw=2)
+        ax.plot([0, 0],[-0.3,+0.3],'k-', linestyle = ":", lw=2) # manuscript white background, black lines
+        ax.plot([-0.3,+0.3],[0, 0],'k-', linestyle = ":", lw=2)
 
     # Handle custom colorby
     if colorby is not None and type(colorby) is not str:
@@ -113,7 +129,7 @@ def visualize_single_episode(data_puffs, data_wind, traj_df,
 
     # Line for trajectory
     linecolor='black'
-    plt.plot(traj_df.iloc[:,0], traj_df.iloc[:,1], c=linecolor, lw=0.5) # Red line!
+    ax.plot(traj_df.iloc[:,0], traj_df.iloc[:,1], c=linecolor, lw=0.5) # Red line!
     ax.scatter(traj_df.iloc[0,0], traj_df.iloc[0,1], c='black', 
         edgecolor='black', marker='o', s=100) # Start
 
@@ -122,63 +138,65 @@ def visualize_single_episode(data_puffs, data_wind, traj_df,
     if colorby is None:
         colors = [config.traj_colormap['off'] if x <= config.env['odor_threshold'] else config.traj_colormap['on'] for x in traj_df['odor_eps_log']]
         cm = plt.cm.get_cmap('winter') # not sure if makes a difference
-        plt.scatter(traj_df.iloc[:,0], traj_df.iloc[:,1], 
+        ax.scatter(traj_df.iloc[:,0], traj_df.iloc[:,1], 
             c=colors, s=scatter_size, cmap=cm, vmin=vmin, vmax=vmax, alpha=1.0)
     if colorby is not None and colorby == 'complete': 
         # Colors indicate % trajectory complete
         colors = traj_df.index/len(traj_df)
         cm = plt.cm.get_cmap('winter')
-        plt.scatter(traj_df.iloc[:,0], traj_df.iloc[:,1], 
+        ax.scatter(traj_df.iloc[:,0], traj_df.iloc[:,1], 
             c=colors, s=scatter_size, cmap=cm, vmin=vmin, vmax=vmax, alpha=1.0)
     if colorby is not None and colorby == 'regime': 
         colors = [ config.regime_colormap[x] for x in traj_df['regime'].to_list() ]
         cm = None
-        plt.scatter(traj_df.iloc[:,0], traj_df.iloc[:,1], 
+        ax.scatter(traj_df.iloc[:,0], traj_df.iloc[:,1], 
             c=colors, s=scatter_size, cmap=cm, vmin=vmin, vmax=vmax, alpha=1.0)
     if colorby is not None and colorby == 'custom': 
         cm = plt.cm.get_cmap('winter')
-        plt.scatter(traj_df.iloc[:,0], traj_df.iloc[:,1], 
+        ax.scatter(traj_df.iloc[:,0], traj_df.iloc[:,1], 
             c=colors, s=scatter_size, cmap=cm, vmin=vmin, vmax=vmax, alpha=1.0)
 
     if zoom == 1: # Constant wind
-        plt.xlim(-0.5, 10.5)
-        plt.ylim(-1.5, +1.5)
+        ax.set_xlim(-0.5, 10.5)
+        ax.set_ylim(-1.5, +1.5)
     if zoom == 2: # Switch or Noisy
-        plt.xlim(-1, 10.5)
-        # plt.ylim(-5, 5)
-        plt.ylim(-1.5, 5)
+        ax.set_xlim(-1, 10.5)
+        # ax.set_ylim(-5, 5)
+        ax.set_ylim(-1.5, 5)
     if zoom == 3: # Walking
-        plt.xlim(-0.15, 0.5)
-        plt.ylim(-0.2, 0.2)
+        ax.set_xlim(-0.15, 0.5)
+        ax.set_ylim(-0.2, 0.2)
     if zoom == 4: # constant + larger arena
-        plt.xlim(-0.5, 10.5)
-        plt.ylim(-3, +3)
+        ax.set_xlim(-0.5, 10.5)
+        ax.set_ylim(-3, +3)
     if zoom == -1: # Adaptive -- fine for stills, jerky when used for animations
-        plt.xlim(-0.5, 10.1)
+        ax.set_xlim(-0.5, 10.1)
         y_max = max(data_puffs[data_puffs.time == t_val].y.max(), traj_df.iloc[:,1].max()) + 0.5
         y_min = min(data_puffs[data_puffs.time == t_val].y.min(), traj_df.iloc[:,1].min()) - 0.5
         # print('y_max', data_puffs[data_puffs.time == t_val].y.max(), traj_df.loc[:,1].max())
         # print('y_min', data_puffs[data_puffs.time == t_val].y.min(), traj_df.loc[:,1].min())
-        plt.ylim(y_min, y_max)
+        ax.set_ylim(y_min, y_max)
     if xlims is not None:
-        plt.xlim(xlims[0], xlims[1])
+        ax.set_xlim(xlims[0], xlims[1])
     if ylims is not None:
         print(ylims)
-        plt.ylim(ylims[0], ylims[1])
+        ax.set_ylim(ylims[0], ylims[1])
 
     if zoom > 0:
-        plt.xlabel('Arena length [m]')
-        plt.ylabel('Arena width [m]')
+        ax.set_xlabel('Arena length [m]')
+        ax.set_ylabel('Arena width [m]')
     if title_text is not None:
         ax.set_title(title_text)
     if legend:
-        handles, labels = plt.gca().get_legend_handles_labels()
+        handles, labels = ax.get_legend_handles_labels()
         patch1 = mpatches.Patch(color=config.traj_colormap['off'], label='Off plume')   
         patch2 = mpatches.Patch(color=config.traj_colormap['on'], label='On plume')   
         handles.extend([patch1, patch2])
         # plt.legend(handles=handles, loc='upper left')
         # plt.legend(handles=handles, loc='lower right')
-        leg = plt.legend(handles=handles, loc='upper right')
+        leg = ax.legend(handles=handles, loc='upper right')
+        if 'fontsize' in kwargs.keys():
+            ax.legend(fontsize=kwargs['fontsize'])
         # https://stackoverflow.com/questions/12848808/set-legend-symbol-opacity-with-matplotlib
         for lh in leg.legendHandles: 
             lh.set_alpha(1)
@@ -195,7 +213,10 @@ def visualize_single_episode(data_puffs, data_wind, traj_df,
         ax.tick_params(axis='y', colors='white')
         fig.set_facecolor('black')
     if output_fname is not None:
-        plt.savefig(output_fname, bbox_inches='tight')
+        if output_fname.endswith('.pdf'):
+            plt.savefig(output_fname, bbox_inches='tight', format='pdf', dpi=300)
+        else:
+            plt.savefig(output_fname, bbox_inches='tight')
     return fig, ax
 
 
@@ -281,7 +302,8 @@ def visualize_episodes(episode_logs,
                        vmin=0, vmax=1,
                        plotsize=None,
                        legend=True,
-                       invert_colors=False
+                       invert_colors=False,
+                       image_type='png',
                        ):
 
     # Trim/preprocess loaded dataset!
@@ -328,7 +350,9 @@ def visualize_episodes(episode_logs,
 
         if outprefix is not None:
             output_fname = f"{outprefix}/{fprefix}_{episode_idx_title:03}.png"
-            print(output_fname)
+            if image_type == 'pdf':
+                output_fname = output_fname.replace('png', 'pdf')
+            print(f"visualize_episodes: saving to {output_fname}")
         else:
             output_fname = None
 
