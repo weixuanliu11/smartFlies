@@ -120,27 +120,30 @@ def post_eval(args):
                                               title_text=False, # not supported anyway
                                               legend=False,
                                               invert_colors=args.invert_colors,
+                                              image_type=args.image_type,
                                              )    
-            if args.viz_sensory_angles:
-                agent_analysis.animate_visual_feedback_angles_1episode(traj_df, OUTPREFIX, fprefix, row['idx'])
-            if args.viz_neural_activity:
-                log_analysis.animate_activity_1episode(ep_activity, 
-                        traj_df, 
-                        row['idx'], 
-                        fprefix=fprefix,
-                        outprefix=OUTPREFIX,
-                        pca_dims=3,
-                        pca_common=pca_common,
-                        invert_colors=args.invert_colors,
-                        title=False)
+            if args.animate:
+                if args.viz_sensory_angles:
+                    agent_analysis.animate_visual_feedback_angles_1episode(traj_df, OUTPREFIX, fprefix, row['idx'])
+                if args.viz_neural_activity:
+                    log_analysis.animate_activity_1episode(ep_activity, 
+                            traj_df, 
+                            row['idx'], 
+                            fprefix=fprefix,
+                            outprefix=OUTPREFIX,
+                            pca_dims=3,
+                            pca_common=pca_common,
+                            invert_colors=args.invert_colors,
+                            title=False)
             if args.viz_eigen_values:
                 # eig animations/plots
                 eig_df = archu.get_eig_df_episode(net, row['log'])
                 fname_suffix = f"{fprefix}_ep{row['idx']}"
-                archu.animate_Jh_episode(eig_df, 
-                    fname_suffix=fname_suffix, 
-                    outprefix=OUTPREFIX)
-                eig_vals, eig_vecs = np.linalg.eig(J0)
+                if args.animate:
+                    archu.animate_Jh_episode(eig_df, 
+                        fname_suffix=fname_suffix, 
+                        outprefix=OUTPREFIX)
+                    eig_vals, eig_vecs = np.linalg.eig(J0)
                 archu.plot_eigvec_projections(eig_vals, 
                     eig_vecs, 
                     ep_activity, 
@@ -247,6 +250,8 @@ if __name__ == "__main__":
     parser.add_argument('--birthxs', type=float, nargs='+', default=[None])
     parser.add_argument('--diffusionx',  type=float, default=1.0)
     parser.add_argument('--out_reldir', type=str, default='2_videos')
+    parser.add_argument('--image_type', type=str, default='png')
+    parser.add_argument('--animate', type=bool, default=True)
     parser.add_argument('--invert_colors', type=bool, default=False, help="Make plots with inverted colors - BW")
     parser.add_argument('--viz_wind_reg', type=bool, default=False, help='Visualize wind regression. Fit a line from neural activity to wind direction, and animate the prediction error')
     parser.add_argument('--viz_sensory_angles', type=bool, default=False, help='Visualize sensory angles - only head direction and drift direction at the moment')
