@@ -128,13 +128,14 @@ def plot_wind_vectors(data_puffs, data_wind, t_val, ax, invert_colors=False):
         facecolors='none', 
         edgecolors=color,
         linestyle='--')
+    return ax
 
-def plot_puffs(data, t_val, ax=None, show=True):
+def plot_puffs(data, t_val, ax=None, fig=None, show=True):
     # TODO check color to concentration mapping
     if ax is None:
         fig = plt.figure()
         ax = fig.add_subplot(111)
-    else:
+    elif fig is None:
         fig = ax.figure
         
     # xmin = -2 #data.x.min()
@@ -144,7 +145,7 @@ def plot_puffs(data, t_val, ax=None, show=True):
     # set limits
     # ax.set_xlim(xmin, xmax)
     # ax.set_ylim(ymin, ymax)
-    ax.set_aspect('equal')
+    # ax.set_aspect('equal') # move into plot_puffs_and_wind_vectors - keep here for record keeping
 
     # data_at_t = data[data.time==t_val] # Float equals is dangerous!
     data_at_t = data[np.isclose(data.time, t_val, atol=1e-3)] # Smallest dt=0.01, so this is more than enough!
@@ -193,14 +194,20 @@ def plot_puffs(data, t_val, ax=None, show=True):
 
     if show:
         plt.show()
+    return ax
 
-def plot_puffs_and_wind_vectors(data_puffs, data_wind, t_val, ax=None, fname='', plotsize=(10,10), show=True, invert_colors=False):
-    if ax is None:
+def plot_puffs_and_wind_vectors(data_puffs, data_wind, t_val, ax=None, fig=None, fname='', plotsize=(10,10), aspect_ratio=False, show=True, invert_colors=False):
+    if fig is None:
         fig = plt.figure(figsize=plotsize)
+    if ax is None:
         ax = fig.add_subplot(111)
-    plot_wind_vectors(data_puffs, data_wind, t_val, ax, invert_colors=invert_colors)
-    plot_puffs(data_puffs, t_val, ax, show=False)
-    
+    ax = plot_wind_vectors(data_puffs, data_wind, t_val, ax, invert_colors=invert_colors)
+    ax = plot_puffs(data_puffs, t_val, ax=ax, fig=fig, show=False)
+    ax.patch.set_facecolor('none') 
+    if aspect_ratio:
+        ax.set_aspect(aspect_ratio)
+    else:
+        ax.set_aspect('equal')
     if len(fname) > 0:
         # fname = savedir + '/' + 'puff_animation_' + str(idx).zfill(int(np.log10(data['puffs'].shape[1]))+1) + '.jpg'
         fig.savefig(fname, format='jpg', bbox_inches='tight')
