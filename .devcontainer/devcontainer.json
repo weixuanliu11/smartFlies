@@ -2,8 +2,9 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-dockerfile
 {
 	"name": "Existing Dockerfile",
+	// "dockerComposeFile": "../docker-compose_test.yml",
 	"dockerComposeFile": "../docker-compose.yml",
-    "service": "tamagotchi_dev_container",
+    "service": "tamagotchi_dev_container_test",
 	"workspaceFolder": "/src",
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
@@ -20,7 +21,16 @@
 		// Configure properties specific to VS Code.
 		"vscode": {
 		  // Add the IDs of extensions you want installed when the container is created.
-		  "extensions": ["ms-python.python", "ms-toolsai.jupyter", "GitHub.copilot"]
+		  "extensions": [
+			"ms-python.python",
+			"ms-toolsai.jupyter",
+			"GitHub.copilot",
+			"ms-toolsai.vscode-jupyter-powertoys",
+			"eamodio.gitlens",
+			"vscode-icons-team.vscode-icons",
+			"ms-python.black-formatter",
+			"donjayamanne.python-extension-pack"
+		]
 		}
 	}
 	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
