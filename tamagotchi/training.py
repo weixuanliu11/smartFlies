@@ -11,8 +11,6 @@ import data_util as utils
 from env import get_vec_normalize
 import mlflow
 
-# from torch.utils.tensorboard import SummaryWriter
-
 
 def update_by_schedule(envs, schedule_dict, curr_step):
     # TODO: implement a density function over the probs of selecting a new TC value
@@ -242,12 +240,10 @@ def training_loop(agent, envs, args, device, actor_critic,
             # If done then clean the history of observations in the recurrent_hidden_states. Done in the MLPBase forward method
             masks = torch.FloatTensor(
                 [[0.0] if done_ else [1.0] for done_ in done])
-            # TODO unsure what this is [may be about if done and self.env._max_episode_steps == self.env._elapsed_steps:]
+            # TODO unsure what this is - only relevant when using TimeLimit wrapper
             bad_masks = torch.FloatTensor(
                 [[0.0] if 'bad_transition' in info.keys() else [1.0]
                 for info in infos])
-            # if step < 3:
-            #     start_insert_rollouts = time.time()
             rollouts.insert(obs, recurrent_hidden_states, action,
                             action_log_prob, value, reward, masks, bad_masks) # ~0.0006s
         ##############################################################################################################
@@ -260,10 +256,6 @@ def training_loop(agent, envs, args, device, actor_critic,
         rollouts.compute_returns(next_value, args.use_gae, args.gamma,
                                 args.gae_lambda, args.use_proper_time_limits)
         value_loss, action_loss, dist_entropy = agent.update(rollouts)
-        # writer.add_scalar("Loss/value", value_loss, j)
-        # writer.add_scalar("Loss/action", action_loss, j)
-        # writer.add_scalar("Loss/entropy", dist_entropy, j)
-        # https://stackoverflow.com/questions/38464559/how-to-locally-view-tensorboard-of-remote-server?newreg=09d6ea6fea6e42efbf45890ebca822b1
         rollouts.after_update()
         total_num_steps = (j + 1) * args.num_processes * args.num_steps
         ##############################################################################################################
