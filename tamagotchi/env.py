@@ -1008,7 +1008,14 @@ class PlumeEnvironment_v2(gym.Env):
         """ 
         Distance curriculum
         Start the agent at a location with random location with mean and var
-        decided by distribution/percentile of puffs 
+        decided by distribution/percentile of puffs
+        
+        Samples a upper quantile to make a [upper-0.1, upper] quantile range
+        Sample puff Xs from this range
+        For puffs in this range, find the meadian and the lowest 5% quantile of Ys
+        Mean Y at the median, and VarY as the spread of Y from 5% to 50% quantile, capped at 1 
+        'diff_max': [0.8, 0.8, 0.8],
+        'diff_min': [0.7, 0.65, 0.4],
         """
         q_curriculum = np.random.uniform(self.diff_min, self.diff_max)
 
@@ -1018,7 +1025,7 @@ class PlumeEnvironment_v2(gym.Env):
         # print("initial X mean, var, q: ", X_mean, X_var, q_curriculum)
         Y_pcts = Z.query("(x >= (@X_mean - @X_var)) and (x <= (@X_mean + @X_var))")['y'].quantile([0.05,0.5]).to_numpy()
         Y_pcts
-        Y_mean, Y_var = Y_pcts[1], min(1, Y_pcts[1] - Y_pcts[0]) # TODO: What was min for?
+        Y_mean, Y_var = Y_pcts[1], min(1, Y_pcts[1] - Y_pcts[0]) # Min here cap variance at 1 
         # print(Y_mean, Y_var)
         varx = self.qvar 
         loc_xy = np.array([X_mean + varx*X_var*np.random.randn(), 
