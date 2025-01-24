@@ -612,7 +612,7 @@ def get_traj_df_tmp(episode_log,
     traj_df['wind_angle_ground_x'] = [ record[0][true_wind_direction_key][0] for record in episode_log['infos']]
     traj_df['wind_angle_ground_y'] = [ record[0][true_wind_direction_key][1] for record in episode_log['infos']]
     traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0][true_wind_direction_key]) for record in episode_log['infos']]
-
+    traj_df['air_velocity'] = [ record[0]['air_velcity'] for record in episode_log['infos']]
     act = episode_log['actions'] 
     act = pd.DataFrame(act)
     if squash_action:
