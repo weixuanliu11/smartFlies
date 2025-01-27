@@ -259,7 +259,11 @@ def get_eval_dfs_and_stack_them(model_fname, use_datasets, number_of_eps, exp_di
     return traj_df_stacked
 
 
-def get_traj_and_activity_and_stack_them(eval_log_pkl_df: pd.DataFrame, obtain_neural_activity: bool = True, obtain_traj_df: bool = True, get_traj_tmp: bool = True) -> pd.DataFrame:
+def get_traj_and_activity_and_stack_them(eval_log_pkl_df: pd.DataFrame, 
+                                         obtain_neural_activity: bool = True, 
+                                         obtain_traj_df: bool = True, 
+                                         get_traj_tmp: bool = True,
+                                         extended_metadata: bool = False) -> pd.DataFrame:
     """
     Load and stack trajectory and neural activity data from evaluation logs. 
 
@@ -290,11 +294,11 @@ def get_traj_and_activity_and_stack_them(eval_log_pkl_df: pd.DataFrame, obtain_n
             if obtain_traj_df:
                 if get_traj_tmp:
                     traj_df = get_traj_df_tmp(episode_log, 
-                                                extended_metadata=False, 
+                                                extended_metadata=extended_metadata, 
                                                 squash_action=squash_action)
                 else:
                     traj_df = get_traj_df(episode_log, 
-                                            extended_metadata=False, 
+                                            extended_metadata=extended_metadata, 
                                             squash_action=squash_action)
                 traj_df['tidx'] = np.arange(traj_df.shape[0], dtype=int)
                 for colname in ['dataset', 'idx', 'outcome']:
