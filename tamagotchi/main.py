@@ -276,7 +276,7 @@ def main(args=None):
                         actor_critic.recurrent_hidden_state_size)
     
     # Set our tracking server uri for logging
-    mlflow.set_tracking_uri(uri="http://dev0.uwcnc.net:5000/")
+    mlflow.set_tracking_uri(uri="https://dev0.uwcnc.net/mlflow/")
     mlflow.set_system_metrics_sampling_interval(3600)
     # Create a new MLflow Experiment
     experiment_name = os.path.basename((os.path.dirname(args.save_dir))) 
