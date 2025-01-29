@@ -33,9 +33,9 @@ sns.set(style="white")
 def plot_action_distributions_by_wind_odor_regime(traj_df_stacked, dataset, save_path=False, verbose=False):
     def add_wind_odor_regime(traj_df_stacked):
         traj_df_stacked['odor_wind_regime'] = 'NA'
-        traj_df_stacked['odor_wind_regime'][(traj_df_stacked['wind_regime']=='anemotactic') & (traj_df_stacked['regime']=='TRACK')] = 'anemotactic, on plume'
-        traj_df_stacked['odor_wind_regime'][(traj_df_stacked['wind_regime']=='anemotactic') & (traj_df_stacked['regime']!='TRACK')] = 'anemotactic, off plume'
-        traj_df_stacked['odor_wind_regime'][(traj_df_stacked['wind_regime']=='tracking') & (traj_df_stacked['regime']=='TRACK')] = 'tracking, on plumes'
+        traj_df_stacked['odor_wind_regime'][(traj_df_stacked['wind_regime']=='anemometric') & (traj_df_stacked['regime']=='TRACK')] = 'anemometric, on plume'
+        traj_df_stacked['odor_wind_regime'][(traj_df_stacked['wind_regime']=='anemometric') & (traj_df_stacked['regime']!='TRACK')] = 'anemometric, off plume'
+        traj_df_stacked['odor_wind_regime'][(traj_df_stacked['wind_regime']=='tracking') & (traj_df_stacked['regime']=='TRACK')] = 'tracking, on plume'
         traj_df_stacked['odor_wind_regime'][(traj_df_stacked['wind_regime']=='tracking') & (traj_df_stacked['regime']!='TRACK')] = 'tracking, off plume'
         # order rows by wind odor regime name
         wind_regimes = traj_df_stacked['odor_wind_regime'].unique().tolist()
@@ -335,7 +335,7 @@ def arg_parse():
     parser.add_argument('--eval_folder', type=str, default='eval', help='The directory name of the evaluation experiment, where th pkl files are stored in')
     parser.add_argument('--out_dir', type=str, default='report_action_dist', help='folder name of where plots should be saved to; typically RUN_NAME/eval/report_action_dist')
     parser.add_argument('--wind_change_regime_threshold', type=int, default=10, help='Threshold for wind change regime in number of frames (fr = 0.04)')
-    parser.add_argument('--regimes', default=['anemotactic', 'tracking'], help='Wind regimes to plot')
+    parser.add_argument('--regimes', default=['anemometric', 'tracking'], help='Wind regimes to plot')
 
     args = parser.parse_args()
     
