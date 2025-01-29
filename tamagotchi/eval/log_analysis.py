@@ -197,8 +197,8 @@ def get_regimes(traj_df, outcome, RECOVER_MIN=12, RECOVER_MAX=25, seed=None):
 def get_wind_change_regimes(traj_df, wind_change_frame_threshold=5, frame_rate=0.04, verbose=False):
     threshold = wind_change_frame_threshold * frame_rate
     traj_df['wind_regime'] = 'tracking'
-    # wind just changed within the last N frames - anemotactic behavior should follow 
-    traj_df['wind_regime'].loc[ traj_df['time_since_last_wind_change'] <= threshold ] = 'anemotactic'
+    # wind just changed within the last N frames - anemometric behavior should follow 
+    traj_df['wind_regime'].loc[ traj_df['time_since_last_wind_change'] <= threshold ] = 'anemometric'
     if verbose:
         print("Annotation of wind regimes:")
         print(f"{traj_df['wind_regime'].value_counts()}")
