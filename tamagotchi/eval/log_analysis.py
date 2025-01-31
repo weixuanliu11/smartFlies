@@ -514,7 +514,7 @@ def get_traj_df(episode_log,
         # Differences
         colnames_diff = [
             'step',
-            'turn',
+            # 'turn', # turn 0.5 means no turning 
             'loc_x', 
             'loc_y', 
             'wind_theta_obs', # wind input to the model... depends on the experiment
@@ -525,9 +525,10 @@ def get_traj_df(episode_log,
             'radius', 
             'stray_distance',
             'r_step', 
-            'agent_angle_ground_theta', # head direction - solar polarization
+            # 'agent_angle_ground_theta', # discontinuous - not useful for diff
             'wind_speed_ground',
-            'wind_angle_ground_theta']
+            'wind_angle_ground_theta' # discontinuous, but ok since limited to first/fourth quadrant
+            ] 
         if obs.shape[1] == 7:
             colnames_diff.append('ego_course_direction_theta')
         for col in colnames_diff:
@@ -709,7 +710,7 @@ def get_traj_df_tmp(episode_log,
         # Differences
         colnames_diff = [
             'step',
-            'turn',
+            # 'turn', # turn 0.5 means no turning 
             'loc_x', 
             'loc_y', 
             'wind_theta_obs', # wind input to the model... depends on the experiment
@@ -720,9 +721,10 @@ def get_traj_df_tmp(episode_log,
             'radius', 
             'stray_distance',
             'r_step', 
-            'agent_angle_ground_theta', # head direction - solar polarization
+            # 'agent_angle_ground_theta', # discontinuous - not useful for diff
             'wind_speed_ground',
-            'wind_angle_ground_theta']
+            'wind_angle_ground_theta' # discontinuous, but ok since limited to first/fourth quadrant
+            ] 
         if obs.shape[1] == 7:
             colnames_diff.append('ego_course_direction_theta')
         for col in colnames_diff:
