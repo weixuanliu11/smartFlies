@@ -43,7 +43,7 @@ def evaluate_agent(actor_critic, env, args):
         # Initializing the agent 
         # x coordinate is fixed at venv.fixed_x
         for venv.fixed_x in [4.0, 6.0, 8.0]:
-          for venv.fixed_time_offset in [0.0, 1.0]: # time_offset
+          for venv.fixed_time_offset in args.time_offsets: # time_offset(s)
             env.reset()
 
             # Figure out extent of plume in y-direction
@@ -257,16 +257,19 @@ def eval_loop(args, actor_critic, test_sparsity=True):
             venv.reload_dataset()
 
         episode_logs, episode_summaries = evaluate_agent(actor_critic, env, args)
-
+        # save the logs
         fname3 = f"{args.abs_out_dir}/{args.dataset}.pkl"
         with open(fname3, 'wb') as f_handle:
             pickle.dump(episode_logs, f_handle)
             print("Saving", fname3)
+        if args.mlflow:
+            mlflow.log_artifact(fname3)
 
         fname3 = f"{args.abs_out_dir}/{args.dataset}_summary.csv"
         pd.DataFrame(episode_summaries).to_csv(fname3)
         print("Saving", fname3)
-
+        if args.mlflow:
+            mlflow.log_artifact(fname3)
         # graph_abs_out_dir = f"{args.abs_out_dir}/eg_trajectory/"
         if not args.no_viz:
             zoom = 1 if 'constant' in args.dataset else 2    
@@ -333,10 +336,13 @@ def eval_loop(args, actor_critic, test_sparsity=True):
                 with open(fname3, 'wb') as f_handle:
                     pickle.dump(episode_logs, f_handle)
                     print("Saving", fname3)
-
+                if args.mlflow:
+                    mlflow.log_artifact(fname3)
                 fname3 = f"{args.abs_out_dir}/{args.dataset}_{birthx}_summary.csv"
                 pd.DataFrame(episode_summaries).to_csv(fname3)
                 print("Saving", fname3)
+                if args.mlflow:
+                    mlflow.log_artifact(fname3)
 
                 if not args.no_viz:
                     zoom = 1 if 'constant' in args.dataset else 2    
@@ -405,7 +411,9 @@ if __name__ == "__main__":
     
     parser.add_argument('--no_vec_norm_stats', action='store_true', default=False, help='an agent that is trained without storing vecNormalize stats, or did not use it during training')
     parser.add_argument('--out_dir', type=str, default='eval')
-
+    
+    parser.add_argument('--mlflow', type=bool, default=False)
+    parser.add_argument('--time_offsets', type=float, nargs='+', default=[0.0, 1.0])
     
     args = parser.parse_args()
     # if perturb_RNN_by, then must provide a file that stores the orthogonal basis for the wind encoding subspace.
@@ -470,5 +478,19 @@ if __name__ == "__main__":
         actor_critic, ob_rms, optimizer_state_dict = torch.load(args.model_fname, map_location=torch.device(args.device))
     except ValueError:
         actor_critic, ob_rms = torch.load(args.model_fname, map_location=torch.device(args.device))
-        
-    eval_loop(args, actor_critic, test_sparsity=args.test_sparsity)
+    
+    if args.mlflow:
+        import mlflow
+        mlflow.set_tracking_uri(uri="https://dev0.uwcnc.net/mlflow/")
+        mlflow.set_system_metrics_sampling_interval(3600)
+        # Create a new MLflow Experiment
+        experiment_name = os.path.basename(exp_dir) + "_eval"
+        run_name = "_".join([args.f_prefix, args.dataset])
+        mlflow.set_experiment(experiment_name)
+        # Start an MLflow run
+        with mlflow.start_run(run_name=run_name, log_system_metrics=True):
+            # Log the hyperparameters dict to mlflow
+            mlflow.log_params(vars(args))
+            eval_loop(args, actor_critic, test_sparsity=args.test_sparsity)
+    else:
+        eval_loop(args, actor_critic, test_sparsity=args.test_sparsity)
