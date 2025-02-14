@@ -1,6 +1,7 @@
 # FROM ghcr.io/walkerlab/docker-pytorch-jupyter-cuda:cuda-11.8.0-pytorch-1.13.0-torchvision-0.14.0-torchaudio-0.13.0-ubuntu-20.04
 # Image Args
 # ARG UBUNTU_VER
+# to apptainer by apptainer build smartFlies_hyak_DATE.sif docker-daemon://smartflies-tamagotchi_dev_container_test:latest
 ARG CUDA_VER=12.4.1
 
 FROM nvidia/cuda:${CUDA_VER}-devel-ubuntu22.04
