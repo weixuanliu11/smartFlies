@@ -26,7 +26,7 @@ np.random.seed(config.seed_global)
 
 
 # from config import sim as simc
-from numba import jit # TODO
+# from numba import jit # TODO
 
 
 # wind/plume sim parameters
@@ -65,24 +65,6 @@ def get_wind_vectors_flexible(T, wind_magnitude, local_state=None, regime=None):
 
     # Add random noise to wind degree
     if 'noisy' in regime:
-        # every timestep noisy
-        # noise = local_state.normal(0, 5, len(T)) 
-
-        # switch every repN timesteps, with variance var degrees 
-        # if 'noisy1' in regime:
-        #     repN, var = 25, 5 # Small, fast changes
-        # if 'noisy2' in regime:
-        #     repN, var = 100, 45 # fewer switches
-        # if 'noisy3' in regime:
-        #     repN, var = 50, 45 # larger waves
-        # if 'noisy4' in regime:
-        #     repN, var = 100, 45 #
-        # if 'noisy5' in regime:
-        #     repN, var = 150, 30 #
-        # if 'noisy6' in regime:
-        #     repN, var = 300, 35 #
-        # noise = local_state.normal(0, var, int(len(T)/repN)+1)
-        # noise = np.repeat(noise, repN+1)[:len(T)]
 
         noise = np.zeros(len(T)) # Init
         repN = 100 # timesteps
@@ -100,29 +82,43 @@ def get_wind_vectors_flexible(T, wind_magnitude, local_state=None, regime=None):
         for idx in switch_idxs:
             noise[idx:] = local_state.normal(0, degz/2)
 
-        # Random spacing
-        # switch_N = int(len(T)/repN) # how many switches?
-        # switch_idxs = np.random.choice(np.arange(len(T), step=50, dtype=int), size=switch_N, replace=False)        
-        # switch_idxs = np.sort(switch_idxs)
-        # print(switch_N, switch_idxs)
-        # for idx in switch_idxs:
-        #     # noise[idx:] = np.random.uniform(-degz, degz)        
-        #     noise[idx:] = np.random.normal(0, degz/2)
 
         # limit max
         noise = np.clip(noise, -degz, degz)        
 
         wind_degrees += noise # no smoothing
 
-        # smooth out additive noise        
-        # noise_smooth = pd.Series(noise).rolling(50, win_type='triang').mean()
-        # noise_smooth = noise_smooth.interpolate(limit_direction='backward') # Eliminate NaNs
-        # wind_degrees += noise_smooth
+    # Add random noise to wind degree
+    if 'poisson_noisy' in regime:
+        # based on /src/JH_boilerplate/check_noisy_wind_dirs.ipynb
+        noise = np.zeros(len(T)) # Init
+        degz = 60 # +/- degz 
 
-    # if 'const2noisy' in regime:
-    # 	# Assume that wind_degrees has already been processed for noisyX from above
-    # 	# Then set the first 70 secs to 0 angle
-    #     wind_degrees[:int(len(T)*(70/120))] = 0
+        # Parameters used in sim_plume.sh
+        lambda_ = 1 / 3  # Average rate (1 event every 3 seconds)
+        # Time steps
+        num_samples = len(T)
+        local_state = np.random.RandomState(11)
+        # Generate Poisson-distributed events
+        events = local_state.poisson(lambda_ / 100, num_samples) # (average_hit_rate_per_sec / sampling_rate), len(time_series)
+        # Convert to binary (0s and 1s)
+        poisson_time_series = (events > 0).astype(int)
+        # for logging purposes
+        start_idx=60*100
+        end_idx=103*100
+        print(f"[LOG] avergae num wind changes per sec {sum(poisson_time_series[start_idx:end_idx]) / (end_idx-start_idx) * 100} from {start_idx/100} to {end_idx/100}")
+        print(f"[LOG] # wind changes {sum(poisson_time_series[start_idx:end_idx])} from {start_idx/100} to {end_idx/100}")
+
+        # which indices where the wind changes
+        switch_idxs = np.where(poisson_time_series == 1)[0]
+
+        for idx in switch_idxs:
+            noise[idx:] = local_state.normal(0, degz/2)
+            
+        # limit max
+        noise = np.clip(noise, -degz, degz)        
+
+        wind_degrees += noise # no smoothing
 
     # Convert to X Y
     wind_x = np.cos( wind_degrees * np.pi / 180. )*wind_speeds
