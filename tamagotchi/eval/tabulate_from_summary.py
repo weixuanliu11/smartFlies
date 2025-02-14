@@ -37,7 +37,7 @@ def parse_summary_files(fnames, BASE_DIR):
         counts_df.append(row)
         
     counts_df = pd.DataFrame(counts_df)
-    counts_df['relative_plume_density'] = [ds.split("_")[1] if len(ds.split("_")) == 2 else 1 for ds in counts_df['dataset']]
+    counts_df['relative_plume_density'] = [1 if len(ds.split("_")) == 1 else ds.split("_")[1] for ds in counts_df['dataset']]
     counts_df['condition'] = [ds.split("_")[0] for ds in counts_df['dataset']]
     counts_df['Success_pct'] = counts_df['HOME'] / counts_df['total'] * 100
     # pivot_df = counts_df.pivot(index=['model_dir', 'seed'], columns='dataset', values='HOME').reset_index()
