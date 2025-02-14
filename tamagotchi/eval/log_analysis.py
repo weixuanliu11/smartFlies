@@ -81,10 +81,12 @@ def get_selected_df(model_dir, use_datasets,
     min_ep_steps=0, 
     oob_only=True,
     balanced=True, 
-    verbose=False):
+    verbose=False, 
+    log_fname=None):
     episodes_df = []
     for dataset in use_datasets:
-        log_fname = f'{model_dir}/{dataset}.pkl'
+        if not log_fname:
+            log_fname = f'{model_dir}/{dataset}.pkl'
         with open(log_fname, 'rb') as f_handle:
             episode_logs = pickle.load(f_handle)
 
