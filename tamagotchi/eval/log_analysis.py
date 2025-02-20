@@ -176,21 +176,21 @@ def get_regimes(traj_df, outcome, RECOVER_MIN=12, RECOVER_MAX=25, seed=None):
         RECOVER_MAX = config.seedmeta[seed]['recover_max']
         print("seed specific thresholds", RECOVER_MIN, RECOVER_MAX)
 
-    # traj_df['regime'] = 'TRACK'
     traj_df['regime'] = 'RECOVER'
 
     # TRACK
-    traj_df['regime'].loc[ traj_df['odor_lastenc'] <= RECOVER_MIN ] = 'TRACK'
+    traj_df.loc[traj_df['odor_lastenc'] <= RECOVER_MIN, 'regime'] = 'TRACK'
 
     # SEARCH
-    traj_df['regime'].loc[ traj_df['odor_lastenc'] >= RECOVER_MAX ] = 'SEARCH'
+    traj_df.loc[traj_df['odor_lastenc'] >= RECOVER_MAX, 'regime'] = 'SEARCH'
 
     # RECOVER: Between RECOVER_MIN and RECOVER_MAX
     recover_idxs = traj_df['odor_lastenc'].apply(lambda x: x in np.arange(RECOVER_MIN, RECOVER_MAX))
-    traj_df['regime'].loc[ recover_idxs ] = 'RECOVER'
+    traj_df.loc[recover_idxs, 'regime'] = 'RECOVER'
 
     # Warm-up in RECOVER
-    traj_df['regime'].iloc[:RECOVER_MIN] = 'RECOVER' 
+    traj_df.iloc[:RECOVER_MIN, traj_df.columns.get_loc('regime')] = 'RECOVER'
+
 
     return traj_df['regime']
 
