@@ -622,8 +622,8 @@ def get_traj_df_tmp(episode_log,
     # for rel wind backwrad compatibility
     if 'air_velocity' in episode_log['infos'][0][0].keys():
         traj_df['air_velocity'] = [ record[0]['air_velcity'] for record in episode_log['infos']]
-    else:
-        print("air_velocity not found in episode_log['infos'][0][0].keys() Could be looking at an older log file. May or may not be a problem.")
+    # else:
+        # print("air_velocity not found in episode_log['infos'][0][0].keys() Could be looking at an older log file. May or may not be a problem.")
     act = episode_log['actions'] 
     act = pd.DataFrame(act)
     if squash_action:
@@ -642,7 +642,7 @@ def get_traj_df_tmp(episode_log,
         traj_df['odor_01'] = [0 if x <= config.env['odor_threshold'] else 1 for x in traj_df['odor_eps_log']]
     else:
         traj_df['odor_01'] = [0 if x <= config.env['odor_threshold'] else 1 for x in traj_df['odor_obs']]
-        print("[NOTE] odor_obs not found in episode_log['infos']. Could be an older file. Odor_01 depends on RMS normalized odor, may not be accurate.")
+        # print("[NOTE] odor_obs not found in episode_log['infos']. Could be an older file. Odor_01 depends on RMS normalized odor, may not be accurate.")
         
     # time since last encounter
     def _count_lenc(lenc0, maxcount=None):
