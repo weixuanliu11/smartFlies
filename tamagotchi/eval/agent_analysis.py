@@ -89,7 +89,11 @@ def visualize_single_episode(data_puffs, data_wind, traj_df,
     episode_idx, zoom=1, t_val=None, title_text=None, output_fname=None, 
     show=True, colorby=None, vmin=0, vmax=1, plotsize=None, xlims=None, ylims=None, legend=True,
     invert_colors=False, kwargs={}):
-    scatter_size = 15
+    if 'scatter_size' in kwargs.keys():
+        if kwargs['scatter_size'] is None:
+            scatter_size = 15
+        else:
+            scatter_size = kwargs['scatter_size']
 
     plotsize = (8,8) if plotsize is None else plotsize
     if 'subplot_spec' in kwargs.keys():
@@ -194,12 +198,13 @@ def visualize_single_episode(data_puffs, data_wind, traj_df,
         handles.extend([patch1, patch2])
         # plt.legend(handles=handles, loc='upper left')
         # plt.legend(handles=handles, loc='lower right')
-        leg = ax.legend(handles=handles, loc='upper right')
         if 'fontsize' in kwargs.keys():
-            ax.legend(fontsize=kwargs['fontsize'])
+            ax.legend(handles=handles, loc='upper right', fontsize=kwargs['fontsize']) 
+        else:
+            ax.legend(handles=handles, loc='upper right')
         # https://stackoverflow.com/questions/12848808/set-legend-symbol-opacity-with-matplotlib
-        for lh in leg.legendHandles: 
-            lh.set_alpha(1)
+        # for lh in leg.legendHandles: 
+            # lh.set_alpha(1) # no longer compatible
     if invert_colors:
         # for Bing presentation... set background to black and text to white
         ax.set_facecolor('black')
@@ -224,7 +229,7 @@ def animate_single_episode(
     data_puffs, data_wind, traj_df, 
     t_vals, t_vals_all,
     episode_idx, outprefix, fprefix, zoom, 
-    colorby=None, plotsize=None, legend=True, invert_colors=False):
+    colorby=None, plotsize=None, legend=True, invert_colors=False, scatter_size=None):
     
     n_tvals = len(t_vals) 
     if n_tvals == 0:
@@ -260,7 +265,8 @@ def animate_single_episode(
             colorby=None,
             plotsize=plotsize,
             legend=legend,
-            invert_colors=invert_colors
+            invert_colors=invert_colors,
+            scatter_size = scatter_size,
             )
         # release memory from matplotlib
         fig.clf()
@@ -304,6 +310,8 @@ def visualize_episodes(episode_logs,
                        legend=True,
                        invert_colors=False,
                        image_type='png',
+                       scatter_size=None,
+                       fontsize=None,
                        ):
 
     # Trim/preprocess loaded dataset!
@@ -377,7 +385,7 @@ def visualize_episodes(episode_logs,
             traj_df, episode_idx_title, zoom, t_val_end, 
             title_text, output_fname, colorby=colorby,
             vmin=vmin, vmax=vmax, plotsize=plotsize, 
-            xlims=xlims, ylims=ylims, legend=legend, invert_colors=invert_colors)
+            xlims=xlims, ylims=ylims, legend=legend, invert_colors=invert_colors, kwargs={'scatter_size':scatter_size,'fontsize':fontsize})
         figs.append(fig)
         axs.append(ax)
 
