@@ -619,7 +619,11 @@ def get_traj_df_tmp(episode_log,
     traj_df['wind_angle_ground_x'] = [ record[0][true_wind_direction_key][0] for record in episode_log['infos']]
     traj_df['wind_angle_ground_y'] = [ record[0][true_wind_direction_key][1] for record in episode_log['infos']]
     traj_df['wind_speed_ground'] = [ np.linalg.norm(record[0][true_wind_direction_key]) for record in episode_log['infos']]
-    traj_df['air_velocity'] = [ record[0]['air_velcity'] for record in episode_log['infos']]
+    # for rel wind backwrad compatibility
+    if 'air_velocity' in episode_log['infos'][0][0].keys():
+        traj_df['air_velocity'] = [ record[0]['air_velcity'] for record in episode_log['infos']]
+    # else:
+        # print("air_velocity not found in episode_log['infos'][0][0].keys() Could be looking at an older log file. May or may not be a problem.")
     act = episode_log['actions'] 
     act = pd.DataFrame(act)
     if squash_action:
@@ -627,17 +631,19 @@ def get_traj_df_tmp(episode_log,
     act.columns = ['step', 'turn']
     traj_df['step'] = act['step']
     traj_df['turn'] = act['turn']
-
-    traj_df['odor_raw'] = obs['odor'] # added for open loop perturbation analysis - do not rectify
-    traj_df['odor_eps_log'] = [ record[0]['odor_obs'] for record in episode_log['infos']] # added for visualization - after sensing, before normalization by running mean
-    traj_df['odor_obs'] = [0. if x <= config.env['odor_threshold'] else x for x in traj_df['odor_raw']]
-
     traj_df['stray_distance'] = [record[0]['stray_distance'] for record in episode_log['infos']]
-
     # Observation derived
-    traj_df['odor_01'] = [0 if x <= config.env['odor_threshold'] else 1 for x in traj_df['odor_eps_log']]
+    traj_df['odor_raw'] = obs['odor'] # added for open loop perturbation analysis - do not rectify
+    traj_df['odor_obs'] = [0. if x <= config.env['odor_threshold'] else x for x in traj_df['odor_raw']]
     traj_df['odor_clip'] = traj_df['odor_obs'].clip(lower=0., upper=1.0)
-
+    # for rel wind backwrad compatibility
+    if 'odor_obs' in episode_log['infos'][0][0].keys():
+        traj_df['odor_eps_log'] = [ record[0]['odor_obs'] for record in episode_log['infos']]# added for visualization - after sensing
+        traj_df['odor_01'] = [0 if x <= config.env['odor_threshold'] else 1 for x in traj_df['odor_eps_log']]
+    else:
+        traj_df['odor_01'] = [0 if x <= config.env['odor_threshold'] else 1 for x in traj_df['odor_obs']]
+        # print("[NOTE] odor_obs not found in episode_log['infos']. Could be an older file. Odor_01 depends on RMS normalized odor, may not be accurate.")
+        
     # time since last encounter
     def _count_lenc(lenc0, maxcount=None):
         count = 0
@@ -648,7 +654,7 @@ def get_traj_df_tmp(episode_log,
                 count = maxcount if count >= maxcount else count
             lenc.append(count)
         return lenc
-    
+    # traj_df['odor_lastenc'] = _count_lenc( 1 - traj_df['odor_01'], maxcount=15 )
     traj_df['odor_lastenc'] = _count_lenc( 1 - traj_df['odor_01'], maxcount=None )
 
     ### REGIMEs
