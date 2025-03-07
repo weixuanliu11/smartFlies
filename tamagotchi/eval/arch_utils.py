@@ -40,14 +40,14 @@ def get_J(model_fname):
     # if model_fname ends in start
     if model_fname.endswith('start'): # when saving the init. model, not storing the optimizer state.
         actor_critic, ob_rms = \
-            torch.load(model_fname, map_location=torch.device('cpu'))
+            torch.load(model_fname, map_location=torch.device('cpu'), weights_only=False)
     elif model_fname.endswith('pt'):
         try:
             actor_critic, ob_rms, optimizer_state_dict = \
-                torch.load(model_fname, map_location=torch.device('cpu'))
+                torch.load(model_fname, map_location=torch.device('cpu'), weights_only=False)
         except ValueError:
             actor_critic, ob_rms = \
-                torch.load(model_fname, map_location=torch.device('cpu'))
+                torch.load(model_fname, map_location=torch.device('cpu'), weights_only=False)
             print(f"[NOTE] Model file {model_fname} does not contain optimizer state. Load as the old format.")
     else:
         raise ValueError(f"Unexpected model_fname: {model_fname}. Does not end in .pt or .pt.start. May not be wrong but worth checking.")
