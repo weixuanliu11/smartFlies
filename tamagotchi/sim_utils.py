@@ -123,6 +123,51 @@ def get_wind_vectors_flexible(T, wind_magnitude, local_state=None, regime=None):
     # Convert to X Y
     wind_x = np.cos( wind_degrees * np.pi / 180. )*wind_speeds
     wind_y = np.sin( wind_degrees * np.pi / 180. )*wind_speeds
+    
+    # 040425 added for varying wind magnitude 
+    if 'mag' in regime:
+        noise = np.zeros(len(T)) # Init
+        degz = 60 # +/- degz 
+
+        # Parameters used in sim_plume.sh
+        lambda_ = 1 / 2  # Average rate (1 event every 3 seconds)
+        # Time steps
+        num_samples = len(T)
+        local_state = np.random.RandomState(11)
+        # Generate Poisson-distributed events
+        events = local_state.poisson(lambda_ / 100, num_samples) # (average_hit_rate_per_sec / sampling_rate), len(time_series)
+        # Convert to binary (0s and 1s)
+        poisson_time_series = (events > 0).astype(int)
+        
+        # Find indices where switches occur
+        switch_idxs = np.where(poisson_time_series == 1)[0]
+
+        # Wind magnitude bounds
+        wind_mag_max = 1.5
+        wind_mag_min = 0.1
+        max_factor = wind_mag_max / wind_magnitude
+        min_factor = wind_mag_min / wind_magnitude
+        
+        # Sample N wind magnitudes, where N is the number of switch points
+        N = len(switch_idxs)
+        sampled_magnitude_ratios = np.random.uniform(min_factor, max_factor, N)
+    
+
+        # Fill in the wind_magnitude array by repeating each sampled magnitude
+        # until the next switch point
+        wind_speed_ratios = np.ones(len(T))
+        for i in range(N):
+            # Current switch index
+            start_idx = switch_idxs[i]
+            
+            # End index is either the next switch point or the end of the array
+            end_idx = switch_idxs[i+1] if i < N-1 else len(T)
+            # Fill this segment with the sampled magnitude
+            wind_speed_ratios[start_idx:end_idx] = sampled_magnitude_ratios[i]
+            # print(f'factor = {sampled_magnitude_ratios[i]}, scaled mag = {wind_magnitude[start_idx:start_idx+1]}') 
+        # Now apply the wind magnitude to wind components
+        wind_x = wind_x * wind_speed_ratios
+        wind_y = wind_y * wind_speed_ratios
 
     return wind_x, wind_y
 
