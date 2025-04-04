@@ -43,8 +43,8 @@ def post_eval(args):
     is_recurrent = True if ('GRU' in args.model_dir) or ('VRNN' in args.model_dir) else False
     selected_df = log_analysis.get_selected_df(args.model_dir, 
                                   args.use_datasets, 
-                                  n_episodes_home=60, 
-                                  n_episodes_other=60,
+                                  n_episodes_home=720, 
+                                  n_episodes_other=10,
                                   min_ep_steps=0)
     # Generate common PCA
     h_episodes = []
@@ -88,6 +88,9 @@ def post_eval(args):
         subset_df = selected_df[selected_df['idx'].isin(args.viz_only_these_episodes)]
         print(f"Found these episodes {set(subset_df.idx)}...")
         print(f"Out of these episodes {set(selected_df.idx)}...")
+    elif args.viz_random_episodes:
+        subset_df = selected_df.sample(args.viz_episodes)
+        print(f"Visualizing random episodes... {set(subset_df.idx)}")
     else:
         subset_df = selected_df.groupby(['dataset', 'outcome']).head(args.viz_episodes)
     for episode_idx, row in subset_df.iterrows(): # each row is a trial/episode
@@ -244,8 +247,9 @@ def post_eval(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Common neural subspace plots/animations')
     parser.add_argument('--model_dir', default=None)
-    parser.add_argument('--viz_episodes', type=int, default=2)
+    parser.add_argument('--viz_episodes', type=int, default=2, help='Number of episodes to visualize, selecting from .head()')
     parser.add_argument('--viz_only_these_episodes', type=int, nargs='+', default=False)
+    parser.add_argument('--viz_random_episodes', type=bool, default=False)
     parser.add_argument('--walking', type=bool, default=False)
     parser.add_argument('--birthxs', type=float, nargs='+', default=[None])
     parser.add_argument('--diffusionx',  type=float, default=1.0)
