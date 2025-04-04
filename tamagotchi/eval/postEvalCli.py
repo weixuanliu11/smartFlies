@@ -43,8 +43,8 @@ def post_eval(args):
     is_recurrent = True if ('GRU' in args.model_dir) or ('VRNN' in args.model_dir) else False
     selected_df = log_analysis.get_selected_df(args.model_dir, 
                                   args.use_datasets, 
-                                  n_episodes_home=720, 
-                                  n_episodes_other=10,
+                                  n_episodes_home=60, 
+                                  n_episodes_other=60,
                                   min_ep_steps=0)
     # Generate common PCA
     h_episodes = []
