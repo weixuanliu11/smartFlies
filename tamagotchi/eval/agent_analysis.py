@@ -266,7 +266,7 @@ def animate_single_episode(
             plotsize=plotsize,
             legend=legend,
             invert_colors=invert_colors,
-            scatter_size = scatter_size,
+            kwargs={'scatter_size':scatter_size}
             )
         # release memory from matplotlib
         fig.clf()
