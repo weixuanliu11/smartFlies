@@ -183,8 +183,8 @@ def training_loop(agent, envs, args, device, actor_critic,
         schedule = build_tc_schedule_dict(num_updates, birthx={'num_classes': args.birthx_linear_tc_steps, 
                                                                 'difficulty_range': [0.7, args.birthx], 
                                                                 'dtype': 'float', 'step_type': 'linear'}, 
-                                          wind_cond={'num_classes': 2, 'difficulty_range': [1, 3], 
-                                                     'dtype': 'int', 'step_type': 'linear'}) # wind_cond: 1 is constant, 2 is switch, 3 is noisy
+                                          wind_cond={'num_classes': len(args.dataset) - 1, 'difficulty_range': [1, len(args.dataset)], 
+                                                     'dtype': 'int', 'step_type': 'linear'}) # wind_cond: in the sequence of args.dataset - first is 1, last is 3
         update_by_schedule(envs, schedule, 0) # update the initialized envs according to the curriculum schedule. The default init values are incorrect, hence this update s.t. reset() returns correctly.
         if not args.dryrun:
             utils.save_tc_schedule(schedule, num_updates, args.num_processes, args.num_steps, args.save_dir)
