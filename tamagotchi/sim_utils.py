@@ -428,7 +428,7 @@ def get_puffs_df_vector(wind_df, wind_y_var, birth_rate, verbose=True):
 
         tidx += 1
         wind_t = wind_df.query("tidx == @tidx").copy(deep=True).reset_index(drop=True)
-        if wind_t.shape[0] is not 1:
+        if wind_t.shape[0] != 1:
             print("Likely numerical error!:", tidx, wind_t)
 
     # Gather data and post-process float format
