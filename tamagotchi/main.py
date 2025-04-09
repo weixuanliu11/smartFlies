@@ -193,6 +193,7 @@ def main(args=None):
             os.makedirs(os.path.join(args.save_dir, 'train_logs'), exist_ok=True)
             os.makedirs(os.path.join(args.save_dir, 'chkpt'), exist_ok=True)
             os.makedirs(os.path.join(args.save_dir, 'json'), exist_ok=True)
+            os.makedirs(os.path.join(args.save_dir, 'tmp'), exist_ok=True)
             
         except OSError:
             raise Exception("Could not create save directory")
@@ -255,7 +256,8 @@ def main(args=None):
         lr=args.lr,
         eps=args.eps,
         max_grad_norm=args.max_grad_norm,
-        weight_decay=args.weight_decay)
+        weight_decay=args.weight_decay,
+        track_ppo_fraction=True)
     
 
     if not args.dryrun:    
