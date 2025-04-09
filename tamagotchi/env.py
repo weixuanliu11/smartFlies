@@ -1862,18 +1862,27 @@ class SubprocVecEnv(SubprocVecEnv_):
         self.wind_directions = 1 # the MAX number of directions of wind in the environment
         self.remote_directory = {} # key: index of remote, value: dataset name and deployment status
         available_datasets = self.get_attr_all_envs('dataset') # list of all available datasets 
-        
+        self.unique_datasets = []
+        seen = set()
+        for name in available_datasets:
+            if name not in seen:
+                seen.add(name)
+                self.unique_datasets.append(name)
         for i, ds in enumerate(available_datasets):
+            print(f"[DEBUG] dataset {i}: {ds}")
             self.remote_directory[i] = {'dataset': ds, 'deployed': True, 'wind_direction': self.ds2wind(ds)}
+            print(f"[DEBUG] remote_directory {i}: {self.remote_directory[i]}")
+        print(f"[DEBUG] unique_datasets: {self.unique_datasets}")
         
     def update_wind_direction(self, new_max_wind_direction: int):
-        # only support 1, 2, 3 which correspons to constant, switch, noisy
-        assert new_max_wind_direction <= 3 
-        assert new_max_wind_direction > 0 
         self.wind_directions = new_max_wind_direction
     
     def sample_wind_direction(self):
-        wind_dir = np.random.randint(1, self.wind_directions+1) # +1 because randint is end-exclusive
+        if np.random.random() > 0.5:
+            wind_dir = self.wind_directions
+        else:
+            wind_dir = np.random.randint(1, self.wind_directions+1) # +1 because randint is end-exclusive
+        
         return wind_dir
     
     def refresh_deployment_status(self):
@@ -1899,15 +1908,9 @@ class SubprocVecEnv(SubprocVecEnv_):
         # translate dataset name to number of changes in wind direction
         # input: dataset name
         # output: number of changes in wind direction (3 as in the agent may encounter up to 3 different wind directions)
-        # TODO: add switch condition... Skip for now. Now sure if concrete difference from nosiy.. 
-        if 'noisy' in ds:
-            return 3
-        elif 'constant' in ds:
-            return 1
-        elif 'switch' in ds:
-            return 2
-        else:
-            raise NotImplementedError
+        for i, name in enumerate(self.unique_datasets):
+            if ds == name:
+                return i + 1
         
     def swap(self, idx: int, idx_replacement_item: int) -> None:
         """
