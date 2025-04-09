@@ -223,24 +223,6 @@ def training_loop(agent, envs, args, device, actor_critic,
             'start_tidx', 'end_tidx', 'location_initial', 'init_angle'
         ])
         episode_counter = 0
-        def update_eps_info(update_episodes_df, infos, episode_counter):
-            # update the episode statistics
-            for i in range(len(infos)):
-                if infos[i]['done']:
-                    update_episodes_df = pd.concat([update_episodes_df,pd.DataFrame([
-                        {
-                            'episode_id': episode_counter,
-                            'dataset': infos[i]['dataset'],
-                            'outcome': infos[i]['done'],
-                            'reward': infos[i]['episode']['r'],
-                            'plume_density': infos[i]['plume_density'],
-                            'start_tidx': infos[i]['step_offset'],
-                            'end_tidx': infos[i]['tidx'],
-                            'location_initial': infos[i]['location_initial'],
-                            'init_angle': infos[i]['init_angle']
-                        }])]
-                    )
-            return update_episodes_df
 
         ##############################################################################################################
         # at each step of training 
@@ -261,7 +243,7 @@ def training_loop(agent, envs, args, device, actor_critic,
                         episode_plume_densities.append(infos[i]['plume_density']) # plume_density and num_puffs are expected to be similar across different agents. Tracking to confirm. 
                         episode_puffs.append(infos[i]['num_puffs'])
                         episode_wind_directions.append(envs.ds2wind(infos[i]['dataset'])) # density and dataset are logged to see eps. statistics implemented by the curriculum
-                        update_episodes_df = update_eps_info(update_episodes_df, infos, episode_counter)
+                        update_episodes_df = utils.update_eps_info(update_episodes_df, infos, episode_counter)
                     except KeyError:
                         raise KeyError("Logging info not found... check why it's not here when done")
             # If done then clean the history of observations in the recurrent_hidden_states. Done in the MLPBase forward method
@@ -282,7 +264,11 @@ def training_loop(agent, envs, args, device, actor_critic,
                 rollouts.masks[-1]).detach()
         rollouts.compute_returns(next_value, args.use_gae, args.gamma,
                                 args.gae_lambda, args.use_proper_time_limits)
-        value_loss, action_loss, dist_entropy = agent.update(rollouts)
+        value_loss, action_loss, dist_entropy, clip_fraction = agent.update(rollouts)
+
+        utils.log_agent_learning(j, value_loss, action_loss, dist_entropy, clip_fraction, agent.optimizer.param_groups[0]['lr'])
+        utils.log_eps_artifacts(j, args, update_episodes_df)
+                
         rollouts.after_update()
         total_num_steps = (j + 1) * args.num_processes * args.num_steps
         ##############################################################################################################

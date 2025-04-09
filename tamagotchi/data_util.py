@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 import pandas as pd
+import mlflow
 
 def load_plume(
     dataset='constant', 
@@ -256,6 +257,85 @@ def plot_tc_schedule(schedule, num_updates, num_processes, num_steps):
     ax.set_yscale('log')
     fig = ax.get_figure()
     return fig
+
+
+# for logging episode statistics 
+def update_eps_info(update_episodes_df, infos, episode_counter):
+    # update the episode statistics
+    for i in range(len(infos)):
+        if infos[i]['done']:
+            update_episodes_df = pd.concat([update_episodes_df,pd.DataFrame([
+                {
+                    'episode_id': episode_counter,
+                    'dataset': infos[i]['dataset'],
+                    'outcome': infos[i]['done'],
+                    'reward': infos[i]['episode']['r'],
+                    'plume_density': infos[i]['plume_density'],
+                    'start_tidx': infos[i]['step_offset'],
+                    'end_tidx': infos[i]['tidx'],
+                    'location_initial': infos[i]['location_initial'],
+                    'init_angle': infos[i]['init_angle']
+                }])]
+            )
+    return update_episodes_df
+
+
+def log_agent_learning(j, value_loss, action_loss, dist_entropy, clip_fraction, learning_rate):
+    mlflow.log_metric("value_loss", value_loss, step=j)
+    mlflow.log_metric("action_loss", action_loss, step=j)
+    mlflow.log_metric("dist_entropy", dist_entropy, step=j)
+    mlflow.log_metric("clip_fraction", clip_fraction, step=j)
+    mlflow.log_metric("learning_rate", learning_rate, step=j)
+
+            
+
+def log_eps_artifacts(j, args, update_episodes_df):
+    """
+    Log episode statistics and plot a histogram of plume density for successful episodes.
+    Args:
+        j (int): Update index for logging and for labeling the plot.
+        args (Namespace): Contains `save_dir` for saving the plot.
+        update_episodes_df (pd.DataFrame): DataFrame with 'outcome', 'dataset', and 'plume_density'.
+    """
+    
+    # Log episode statistics
+    for outcome in ['HOME', 'OOB', 'OOT']:
+        mlflow.log_metric(f"{outcome}_num", sum(update_episodes_df['outcome'] == outcome), step=j)
+        mlflow.log_metric(f"{outcome}_ratio", sum(update_episodes_df['outcome'] == outcome) / len(update_episodes_df['outcome']), step=j)
+        mlflow.log_metric('num_episodes', len(update_episodes_df['outcome']), step=j)
+    log_path = f"{args.save_dir}/tmp/eps_log_update_{j}.csv"
+    update_episodes_df.to_csv(log_path, index=False)
+    mlflow.log_artifact(log_path, artifact_path=f"eps_log/eps_log_update{j}.csv")
+    os.remove(log_path)
+    
+    # Plot plume density histogram for successful episodes
+    successful_df = update_episodes_df[update_episodes_df['outcome'] == 'HOME']
+    # Check if there's any data to plot
+    if len(successful_df) > 0:
+        # Get unique datasets
+        datasets = successful_df['dataset'].unique()    
+        # Set up colors - creating a color map for different datasets
+
+        # Create histogram for each dataset
+        for i, dataset in enumerate(datasets):
+            subset = successful_df[successful_df['dataset'] == dataset]
+            subset['plume_density'].hist(alpha=0.7, label=f'{dataset}', 
+                                            color=config.mlflow_colors[dataset], bins=10)                
+        # Add title and labels
+        plt.title(f'Plume Density Distribution by Dataset for Successful Episodes (Update {j})')
+        plt.xlabel('Plume Density')
+        plt.ylabel('Count')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+
+        # Save the figure to a file in your update directory
+        plt_path = f"{args.save_dir}/tmp/success_plume_density_hist_update{j}.png"
+        plt.savefig(plt_path, dpi=300, bbox_inches='tight')
+        plt.close()  # Close the figure to free memory
+
+        mlflow.log_artifact(plt_path, artifact_path=f"figs/{os.path.basename(plt_path)}")
+        os.remove(plt_path)
+        
 
 # from a2c_ppo_acktr/storage.py
 import torch
