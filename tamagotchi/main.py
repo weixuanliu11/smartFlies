@@ -216,8 +216,8 @@ def main(args=None):
         'qvar': args.qvar,
         'diff_max': args.diff_max,
         'diff_min': args.diff_min,
-        'reset_offset_tmax': [30, 3, 30], # 3 for switch condition, according to evalCli 
-        't_val_min': [60, 58, 60] # start time of plume data. 58 for switch condition, at around when the switching happens accoding to evalCli
+        'reset_offset_tmax': [30, 30, 30, 30], # 3 for switch condition, according to evalCli 
+        't_val_min': [60, 60, 60, 60] # start time of plume data. 58 for switch condition, at around when the switching happens accoding to evalCli
     }
     
     # creates the envs and deploys the first 'num_processes' envs 
