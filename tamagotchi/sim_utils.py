@@ -127,10 +127,9 @@ def get_wind_vectors_flexible(T, wind_magnitude, local_state=None, regime=None):
     # 040425 added for varying wind magnitude 
     if 'mag' in regime:
         noise = np.zeros(len(T)) # Init
-        degz = 60 # +/- degz 
 
         # Parameters used in sim_plume.sh
-        lambda_ = 1 / 2  # Average rate (1 event every 3 seconds)
+        lambda_ = 1 / 3  # Average rate (1 event every 3 seconds)
         # Time steps
         num_samples = len(T)
         local_state = np.random.RandomState(11)
@@ -143,8 +142,8 @@ def get_wind_vectors_flexible(T, wind_magnitude, local_state=None, regime=None):
         switch_idxs = np.where(poisson_time_series == 1)[0]
 
         # Wind magnitude bounds
-        wind_mag_max = 1.5
-        wind_mag_min = 0.1
+        wind_mag_max = 0.7 # mag_narrow = 0.7; mag 1.5
+        wind_mag_min = 0.3 # mag_narrow = 0.3; mag 0.1
         max_factor = wind_mag_max / wind_magnitude
         min_factor = wind_mag_min / wind_magnitude
         
