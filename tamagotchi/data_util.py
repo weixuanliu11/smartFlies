@@ -305,7 +305,7 @@ def log_eps_artifacts(j, args, update_episodes_df):
         mlflow.log_metric('num_episodes', len(update_episodes_df['outcome']), step=j)
     log_path = f"{args.save_dir}/tmp/eps_log_update_{j}.csv"
     update_episodes_df.to_csv(log_path, index=False)
-    mlflow.log_artifact(log_path, artifact_path=f"eps_log/")
+    mlflow.log_artifact(log_path, artifact_path=f"eps_log")
     os.remove(log_path)
     
     # Plot plume density histogram for successful episodes
@@ -333,7 +333,7 @@ def log_eps_artifacts(j, args, update_episodes_df):
         plt.savefig(plt_path, dpi=300, bbox_inches='tight')
         plt.close()  # Close the figure to free memory
 
-        mlflow.log_artifact(plt_path, artifact_path=f"figs/")
+        mlflow.log_artifact(plt_path, artifact_path=f"figs")
         os.remove(plt_path)
         
 
