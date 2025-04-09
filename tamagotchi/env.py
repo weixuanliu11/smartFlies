@@ -1401,6 +1401,7 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
         observation = super(PlumeEnvironment_v3, self).reset()
         if len(observation) == 7:
             observation[5:] = 0 # course direction to 0
+        self.init_angle = self.agent_angle
         return observation
     
     def step(self, action):
@@ -1532,7 +1533,6 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
             'flipx':self.flipx,
             'location':self.agent_location, 
             'location_last':self.agent_location_last, 
-            'location_initial':self.agent_location_init, 
             'stray_distance': self.stray_distance,
             'ambient_wind': self.ambient_wind,
             'angle': self.agent_angle,
@@ -1575,6 +1575,9 @@ class PlumeEnvironment_v3(PlumeEnvironment_v2):
             info['dataset'] = self.dataset
             info['num_puffs'] = self.data_puffs.puff_number.nunique()
             info['plume_density'] = self.puff_density
+            info['location_initial'] = self.agent_location_init
+            info['step_offset'] = self.step_offset
+            info['init_angle'] = self.init_angle
 
 
         if self.verbose > 0:
