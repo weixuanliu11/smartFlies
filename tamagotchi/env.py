@@ -1640,6 +1640,10 @@ def make_vec_envs(env_name,
                         envs.train()
                 else: # if not specified, assume it's training. May be relevant when using checkpoint
                     envs.train()
+                try:
+                    print(f"VecNormalize loaded from file, {envs.training}, {envs.obs_rms}, {envs.norm_obs}, {envs.norm_reward}")
+                except:
+                    print(f"VecNormalize loaded from file - some attributes not available")
             else:
                 if gamma is None:
                     envs = VecNormalize(envs, ret=False)
