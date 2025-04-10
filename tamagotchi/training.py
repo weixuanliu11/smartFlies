@@ -176,6 +176,7 @@ def training_loop(agent, envs, args, device, actor_critic,
     best_mean = 0.0
 
     training_log = training_log if training_log is not None else []
+    update = len(training_log) # the number of updates already done
     eval_log = eval_log if eval_log is not None else []
     
     # initialize the curriculum schedule
@@ -194,7 +195,11 @@ def training_loop(agent, envs, args, device, actor_critic,
     rollouts.to(device)
     start = time.time()
     # at each bout of update
-    for j in range(num_updates):
+    if update:
+        update_range = range(update, num_updates)
+    else:
+        update_range = range(num_updates)
+    for j in update_range:
         # decrease learning rate linearly
         if args.use_linear_lr_decay:
             utils.update_linear_schedule(
