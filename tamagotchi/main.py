@@ -139,12 +139,6 @@ def get_args():
     args.cuda = cuda_available
     print("CUDA:", args.cuda)
     assert args.algo in ['a2c', 'ppo']
-    args.model_fname = f"{args.env_name}_{args.outsuffix}.pt"
-    args.model_fpath = os.path.join(args.save_dir, 'weights', args.model_fname)
-    args.training_log = os.path.join(args.save_dir, 'train_logs', args.model_fname.replace(".pt", '_train.csv'))
-    # Save args and config info
-    # https://stackoverflow.com/questions/16878315/what-is-the-right-way-to-treat-argparse-namespace-as-a-dictionary
-    args.json_config = os.path.join(args.save_dir, 'json', args.model_fname.replace(".pt", "_args.json"))
     print(args)
     return args
 
@@ -153,14 +147,14 @@ def load_model(args, curriculum_vars):
       
     # load model
     try:
-        actor_critic, ob_rms, optimizer_state_dict = torch.load(args.model_fname, map_location=torch.device(args.device))
+        actor_critic, ob_rms, optimizer_state_dict = torch.load(args.model_fpath, map_location=torch.device(args.device))
     except ValueError:
-        actor_critic, ob_rms = torch.load(args.model_fname, map_location=torch.device(args.device))
+        actor_critic, ob_rms = torch.load(args.model_fpath, map_location=torch.device(args.device))
     except Exception as e:
         print(f"Loading model failed.. see exception message: {e}", flush=True)
         raise e
     # load vecNormalize
-    vecNormalize_pkl_file = args.model_fname.replace('.pt', '_vecNormalize.pkl')
+    vecNormalize_pkl_file = args.model_fpath.replace('.pt', '_vecNormalize.pkl')
     if os.path.isfile(vecNormalize_pkl_file):
         print("Loading vecNormalize from", vecNormalize_pkl_file)
         curriculum_vars['vecNormalize_pkl_file'] = vecNormalize_pkl_file # load the vecNormalize - not a CL var but will get handled correctly in make_vec_envs
@@ -200,7 +194,13 @@ def main(args=None):
         args = argparse.Namespace(**args)
         args.dryrun = False
         args.flip_ventral_optic_flow = False
-        
+    
+    args.model_fname = f"{args.env_name}_{args.outsuffix}.pt"
+    args.model_fpath = os.path.join(args.save_dir, 'weights', args.model_fname)
+    args.training_log = os.path.join(args.save_dir, 'train_logs', args.model_fname.replace(".pt", '_train.csv'))
+    # Save args and config info
+    # https://stackoverflow.com/questions/16878315/what-is-the-right-way-to-treat-argparse-namespace-as-a-dictionary
+    args.json_config = os.path.join(args.save_dir, 'json', args.model_fname.replace(".pt", "_args.json"))
     print("PPO Args --->", args)
     print(args.seed)
     set_random_seed(args.seed)
@@ -228,7 +228,7 @@ def main(args=None):
     torch.set_num_threads(1)
     gpu_idx = 0
     device = torch.device(f"cuda:{gpu_idx}" if args.cuda else "cpu")
-
+    args.device = device
     # Build envs for training
     curriculum_vars = {
         'dataset': args.dataset,
@@ -240,10 +240,11 @@ def main(args=None):
     }
     
     # handling checkpoint loading
-    if args.model_fname and os.path.isfile(args.model_fname):
-        print("Loading model from", args.model_fname)
+    if os.path.isfile(args.model_fpath):
+        print("Loading model from", args.model_fpath)
         actor_critic, optimizer_state_dict, curriculum_vars = load_model(args, curriculum_vars)
     else:
+        print(f"No model file found. Starting from scratch. {args.model_fpath}")
         actor_critic = None
         optimizer_state_dict = None
         
@@ -254,7 +255,7 @@ def main(args=None):
         args.num_processes,
         args.gamma,
         args.log_dir,
-        device,
+        args.device,
         True,  # allow_early_resets? This is to support resetting an env twice in a row. Twice in a row happens because one auto reset after done and another after swapping.
         args = args,
         **curriculum_vars) # set these envs vars according to the curriculum
@@ -323,7 +324,22 @@ def main(args=None):
     run_name = args.outsuffix
     mlflow.set_experiment(experiment_name)
     # Start an MLflow run
-    with mlflow.start_run(run_name=run_name, log_system_metrics=True):
+    run_object = mlflow.search_runs(filter_string=f"attributes.run_name = '{run_name}'")
+    run_params = {}
+    if len(run_object) > 0:
+        # Run exists - use its run_id
+        run_id = run_object.iloc[0]["run_id"]
+        run_params['run_id'] = run_id
+        run_params['log_system_metrics'] = True
+        print(f"Continuing existing run: {run_name} (ID: {run_id})")
+    else:
+        # Run doesn't exist - use run_name
+        run_params['run_name'] = run_name
+        run_params['log_system_metrics'] = True
+        print(f"Starting new run: {run_name}")
+
+    # Single block using the appropriate parameters
+    with mlflow.start_run(**run_params):
         # Log the hyperparameters dict to mlflow
         mlflow.log_params(vars(args)) 
 
