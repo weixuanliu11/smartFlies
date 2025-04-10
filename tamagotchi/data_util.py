@@ -303,9 +303,12 @@ def log_eps_artifacts(j, args, update_episodes_df):
         mlflow.log_metric(f"{outcome}_num", sum(update_episodes_df['outcome'] == outcome), step=j)
         mlflow.log_metric(f"{outcome}_ratio", sum(update_episodes_df['outcome'] == outcome) / len(update_episodes_df['outcome']), step=j)
         mlflow.log_metric('num_episodes', len(update_episodes_df['outcome']), step=j)
-    log_path = f"{args.save_dir}/tmp/eps_log_update_{j}.csv"
+    log_path = f"{args.save_dir}/tmp/{args.model_fname}_eps_log_{j}.csv"
     update_episodes_df.to_csv(log_path, index=False)
-    mlflow.log_artifact(log_path, artifact_path=f"eps_log")
+    try:
+        mlflow.log_artifact(log_path, artifact_path=f"eps_log")
+    except Exception as e:
+        print(f"Error logging artifact {log_path}: {e}")
     os.remove(log_path)
     
     # Plot plume density histogram for successful episodes
@@ -314,8 +317,8 @@ def log_eps_artifacts(j, args, update_episodes_df):
     if len(successful_df) > 0:
         # Get unique datasets
         datasets = successful_df['dataset'].unique()    
-        # Set up colors - creating a color map for different datasets
-
+        
+        plt.figure(figsize=(6, 6))
         # Create histogram for each dataset
         for i, dataset in enumerate(datasets):
             subset = successful_df[successful_df['dataset'] == dataset]
@@ -329,11 +332,13 @@ def log_eps_artifacts(j, args, update_episodes_df):
         plt.grid(True, alpha=0.3)
 
         # Save the figure to a file in your update directory
-        plt_path = f"{args.save_dir}/tmp/success_plume_density_hist_update{j}.png"
-        plt.savefig(plt_path, dpi=300, bbox_inches='tight')
+        plt_path = f"{args.save_dir}/tmp/{args.model_fname}HOME_density_{j}.png"
+        plt.savefig(plt_path, dpi=150, bbox_inches='tight')
         plt.close()  # Close the figure to free memory
-
-        mlflow.log_artifact(plt_path, artifact_path=f"figs")
+        try:
+            mlflow.log_artifact(plt_path, artifact_path=f"figs")
+        except Exception as e:
+            print(f"Error logging artifact {plt_path}: {e}")
         os.remove(plt_path)
         
 
