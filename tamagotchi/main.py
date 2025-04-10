@@ -139,8 +139,58 @@ def get_args():
     args.cuda = cuda_available
     print("CUDA:", args.cuda)
     assert args.algo in ['a2c', 'ppo']
+    args.model_fname = f"{args.env_name}_{args.outsuffix}.pt"
+    args.model_fpath = os.path.join(args.save_dir, 'weights', args.model_fname)
+    args.training_log = os.path.join(args.save_dir, 'train_logs', args.model_fname.replace(".pt", '_train.csv'))
+    # Save args and config info
+    # https://stackoverflow.com/questions/16878315/what-is-the-right-way-to-treat-argparse-namespace-as-a-dictionary
+    args.json_config = os.path.join(args.save_dir, 'json', args.model_fname.replace(".pt", "_args.json"))
     print(args)
     return args
+
+
+def load_model(args, curriculum_vars):      
+      
+    # load model
+    try:
+        actor_critic, ob_rms, optimizer_state_dict = torch.load(args.model_fname, map_location=torch.device(args.device))
+    except ValueError:
+        actor_critic, ob_rms = torch.load(args.model_fname, map_location=torch.device(args.device))
+    except Exception as e:
+        print(f"Loading model failed.. see exception message: {e}", flush=True)
+        raise e
+    # load vecNormalize
+    vecNormalize_pkl_file = args.model_fname.replace('.pt', '_vecNormalize.pkl')
+    if os.path.isfile(vecNormalize_pkl_file):
+        print("Loading vecNormalize from", vecNormalize_pkl_file)
+        curriculum_vars['vecNormalize_pkl_file'] = vecNormalize_pkl_file # load the vecNormalize - not a CL var but will get handled correctly in make_vec_envs
+    else:
+        print("No vecNormalize file found. Not loading vecNormalize.")
+    return actor_critic, optimizer_state_dict, curriculum_vars
+
+
+def make_dirs(args):
+    try:
+        os.makedirs(args.save_dir, exist_ok=True)
+        os.makedirs(os.path.join(args.save_dir, 'weights'), exist_ok=True)
+        os.makedirs(os.path.join(args.save_dir, 'train_logs'), exist_ok=True)
+        os.makedirs(os.path.join(args.save_dir, 'chkpt'), exist_ok=True)
+        os.makedirs(os.path.join(args.save_dir, 'json'), exist_ok=True)
+        os.makedirs(os.path.join(args.save_dir, 'tmp'), exist_ok=True)
+        
+    except OSError:
+        raise Exception("Could not create save directory")
+    # some legacy code - Monitor wrapper get saved to log_dir
+    log_dir = os.path.expanduser(args.log_dir)
+    args.eval_log_dir = log_dir + "_eval"
+    os.makedirs(log_dir, exist_ok=True)
+    os.makedirs(args.eval_log_dir, exist_ok=True)
+
+def set_random_seed(seed):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    ptitle('PPO Seed {}'.format(seed))
 
 def main(args=None):
     if not args:
@@ -148,29 +198,16 @@ def main(args=None):
     else:
         # turn a dict into a parsed arg object.
         args = argparse.Namespace(**args)
-        # default_args = get_args()
-        # defaults = {param.name: param.default for param in default_args.parameters.values() if param.default != inspect.Parameter.empty}
-        # defaults.update({param.name: param.default for param in init_signature_vis_fb_params.parameters.values() if param.default != inspect.Parameter.empty})
-        # Write into args if not already present
-        # for key, value in defaults.items():
-        #     if not hasattr(args, key):
-        #         setattr(args, key, value)
-        # Only default values
         args.dryrun = False
         args.flip_ventral_optic_flow = False
         
     print("PPO Args --->", args)
     print(args.seed)
-        
-
-    np.random.seed(args.seed)
+    set_random_seed(args.seed)
+    
     if args.betadist:
         print("Setting args.squash_action = False")
         args.squash_action = False # No squashing when using Beta
-
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
-    ptitle('PPO Seed {}'.format(args.seed))
 
     if args.cuda and torch.cuda.is_available() and args.cuda_deterministic:
         torch.backends.cudnn.benchmark = False
@@ -179,33 +216,15 @@ def main(args=None):
     if args.cuda and not torch.cuda.is_available():
         print("CUDA is not available. Running on CPU.", flush=True, file=sys.stderr)
         args.cuda = False
-    
-    args.model_fname = f"{args.env_name}_{args.outsuffix}.pt"
-    args.model_fpath = os.path.join(args.save_dir, 'weights', args.model_fname)
-    args.training_log = os.path.join(args.save_dir, 'train_logs', args.model_fname.replace(".pt", '_train.csv'))
-    # Save args and config info
-    # https://stackoverflow.com/questions/16878315/what-is-the-right-way-to-treat-argparse-namespace-as-a-dictionary
-    args.json_config = os.path.join(args.save_dir, 'json', args.model_fname.replace(".pt", "_args.json"))
-    if not args.dryrun:
-        try:
-            os.makedirs(args.save_dir, exist_ok=True)
-            os.makedirs(os.path.join(args.save_dir, 'weights'), exist_ok=True)
-            os.makedirs(os.path.join(args.save_dir, 'train_logs'), exist_ok=True)
-            os.makedirs(os.path.join(args.save_dir, 'chkpt'), exist_ok=True)
-            os.makedirs(os.path.join(args.save_dir, 'json'), exist_ok=True)
-            os.makedirs(os.path.join(args.save_dir, 'tmp'), exist_ok=True)
-            
-        except OSError:
-            raise Exception("Could not create save directory")
-        
-        with open(args.json_config , 'w') as fp:
-            json.dump(vars(args), fp)
-            
-        log_dir = os.path.expanduser(args.log_dir)
-        args.eval_log_dir = log_dir + "_eval"
-        utils.cleanup_log_dir(log_dir)
-        utils.cleanup_log_dir(args.eval_log_dir)
 
+    if not args.dryrun:
+        make_dirs(args)
+        # handling checkpoint loading
+            # only save json if not loading a checkpoint
+        if not os.path.isfile(args.json_config):
+            with open(args.json_config , 'w') as fp:
+                json.dump(vars(args), fp)
+                
     torch.set_num_threads(1)
     gpu_idx = 0
     device = torch.device(f"cuda:{gpu_idx}" if args.cuda else "cpu")
@@ -220,6 +239,14 @@ def main(args=None):
         't_val_min': [60, 60, 60, 60] # start time of plume data. 58 for switch condition, at around when the switching happens accoding to evalCli
     }
     
+    # handling checkpoint loading
+    if args.model_fname and os.path.isfile(args.model_fname):
+        print("Loading model from", args.model_fname)
+        actor_critic, optimizer_state_dict, curriculum_vars = load_model(args, curriculum_vars)
+    else:
+        actor_critic = None
+        optimizer_state_dict = None
+        
     # creates the envs and deploys the first 'num_processes' envs 
     envs = make_vec_envs(
         args.env_name,
@@ -234,17 +261,27 @@ def main(args=None):
     
     if not args.if_vec_norm:
         envs.venv.norm_obs = False
-
-    actor_critic = Policy(
-        envs.observation_space.shape, 
-        envs.action_space,
-        base_kwargs={
-                     'recurrent': args.recurrent_policy,
-                     'rnn_type': args.rnn_type,
-                     'hidden_size': args.hidden_size,
-                     },
-        args=args)
-    actor_critic.to(device)
+    
+    # handling checkpoint loading
+    if actor_critic is None:
+        actor_critic = Policy(
+            envs.observation_space.shape, 
+            envs.action_space,
+            base_kwargs={
+                        'recurrent': args.recurrent_policy,
+                        'rnn_type': args.rnn_type,
+                        'hidden_size': args.hidden_size,
+                        },
+            args=args)
+        actor_critic.to(device)
+        if not args.dryrun:    
+            # Save model at START of training
+            start_fname = f'{args.model_fpath}.start'
+            torch.save([
+                actor_critic,
+                getattr(get_vec_normalize(envs), 'ob_rms', None)
+            ], start_fname)
+            print('Saved', start_fname)
 
     agent = PPO(
         actor_critic,
@@ -259,18 +296,19 @@ def main(args=None):
         weight_decay=args.weight_decay,
         track_ppo_fraction=True)
     
-
-    if not args.dryrun:    
-        # Save model at START of training
-        start_fname = f'{args.model_fpath}.start'
-        torch.save([
-            actor_critic,
-            getattr(get_vec_normalize(envs), 'ob_rms', None)
-        ], start_fname)
-        print('Saved', start_fname)
+    # handling checkpoint loading
+    if optimizer_state_dict is not None:
+        agent.optimizer.load_state_dict(optimizer_state_dict)
     
-    # keeping these for backwards compatibility
-    training_log = None
+    # handling checkpoint loading
+    if os.path.isfile(args.training_log):
+        # load csv to pd dataframe
+        import pandas as pd
+        training_log = pd.read_csv(args.training_log, index_col=0)
+        training_log = training_log.to_dict('records')
+    else:
+        training_log = None
+        
     eval_log = None
     # run training loop
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
