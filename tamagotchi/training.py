@@ -310,11 +310,10 @@ def training_loop(agent, envs, args, device, actor_critic,
             pd.DataFrame(training_log).to_csv(args.training_log)
     
     # save the final model to mlflow
-    if args.mlflow:
-        mlflow.log_artifact(args.model_fpath, artifact_path="weights")
-        mlflow.log_artifact(args.training_log, artifact_path="training_logs")
-        if args.if_vec_norm:
-            mlflow.log_artifact(vecNormalize_state_fname, artifact_path="weights")
+    mlflow.log_artifact(args.model_fpath, artifact_path="weights")
+    mlflow.log_artifact(args.training_log, artifact_path="training_logs")
+    if args.if_vec_norm:
+        mlflow.log_artifact(vecNormalize_state_fname, artifact_path="weights")
         # save the final training log
         
     return training_log, eval_log
