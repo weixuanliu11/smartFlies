@@ -143,3 +143,6 @@ datajoint.ipynb
 orca.deb
 tsboard_logs
 tools/*
+
+# weixuan
+docker-compose_weixuan.yml
